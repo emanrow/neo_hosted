@@ -1,0 +1,32 @@
+{
+  "name": "neo-hosted",
+  "private": true,
+  "version": "0.1.0",
+  "description": "NEO, Hugh Howey's word processor for authors, served as an authenticated website.",
+  "license": "MIT",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@farscrl/hunspell-wasm": "1.0.1",
+    "dictionary-de": "^3.0.0",
+    "dictionary-el": "^4.0.0",
+    "dictionary-en-au": "^3.0.0",
+    "dictionary-en-ca": "^3.0.0",
+    "dictionary-en-gb": "^3.0.0",
+    "dictionary-en-us": "^2.2.1",
+    "dictionary-es": "^4.0.0",
+    "dictionary-fr": "^3.0.0",
+    "dictionary-nl": "^2.0.0",
+    "dictionary-pl": "^2.0.0",
+    "dictionary-pt": "4.0.0",
+    "dictionary-ro": "3.0.0",
+    "dictionary-ru": "^3.0.0",
+    "jszip": "^3.10.1"
+  }
+}

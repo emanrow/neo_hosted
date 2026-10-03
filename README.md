@@ -2,6 +2,8 @@
 
 **A distraction-free word processor for authors, by a wannabe author.**
 
+> **This is a fork.** NEO is [Hugh Howey's](https://github.com/hughhowey/neo) app, and everything below is his README. This fork adds a hosted edition in `web/`: the same editor, served as an authenticated website on Railway, with each writer's books as plain files on a volume. See [HOSTED.md](HOSTED.md) for how it works, what matches the desktop, and the backlog (mind map, map map, timelines, handwritten notes, opt-in AI). All credit for NEO itself belongs to Hugh.
+
 NEO understands from the moment you install it that you are writing *books* and nothing else. No bloat, no distractions, with manuscripts that look like books as you write them.
 
 NEO runs locally. WIPs are saved in plain files on your disk. No accounts or subscriptions. And it's free!

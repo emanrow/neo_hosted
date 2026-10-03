@@ -1,0 +1,202 @@
+'use strict';
+
+// The server end to end: a fresh data folder, a writer signing up, and the
+// window.neo channels answering over HTTP.
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { describe, test, before, after } = require('node:test');
+
+const { createApp } = require('../server');
+
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-server-'));
+const app = createApp({ dev: true, dataDir, sessionSecret: 's'.repeat(40), signup: 'invite', inviteCode: 'come-in', trustProxy: false, port: 0 });
+let base = '';
+let cookie = '';
+
+const call = (method, p, { body, headers = {}, raw } = {}) => fetch(base + p, {
+  method,
+  headers: { 'Sec-Fetch-Site': 'same-origin', ...(raw ? {} : { 'Content-Type': 'application/json' }), ...(cookie ? { Cookie: cookie } : {}), ...headers },
+  body: raw || (body === undefined ? undefined : JSON.stringify(body)),
+  redirect: 'manual'
+});
+const api = async (channel, ...args) => {
+  const res = await call('POST', '/api/' + channel, { body: { args } });
+  const data = await res.json();
+  return { status: res.status, ...data };
+};
+
+before(() => new Promise((resolve) => app.server.listen(0, '127.0.0.1', () => { base = `http://127.0.0.1:${app.server.address().port}`; resolve(); })));
+after(() => app.close());
+
+describe('the hosted server', () => {
+  test('answers the health check and sends the sign-in page to strangers', async () => {
+    assert.equal(await (await call('GET', '/healthz')).text(), 'ok');
+    const home = await call('GET', '/');
+    assert.equal(home.status, 302);
+    assert.equal(home.headers.get('location'), '/login');
+    const login = await call('GET', '/login');
+    assert.equal(login.status, 200);
+    assert.match(login.headers.get('content-security-policy'), /script-src 'self'/);
+    assert.equal((await api('library:read')).status, 401);
+    assert.equal((await call('GET', '/library/book-x/cover-1.png')).status, 401);
+  });
+
+  test('serves the desktop app\'s own files and refuses to leave the folder', async () => {
+    assert.equal((await call('GET', '/app.js')).status, 200);
+    assert.match((await call('GET', '/styles.css')).headers.get('content-type'), /text\/css/);
+    assert.equal((await call('GET', '/locales/fr.json')).status, 200);
+    assert.equal((await call('GET', '/jszip.min.js')).status, 200);
+    assert.equal((await call('GET', '/web/web-bridge.js')).status, 200);
+    assert.equal((await call('GET', '/favicon.ico')).headers.get('content-type'), 'image/png');
+    assert.equal((await call('GET', '/main.js')).status, 404, 'the main process is not for the browser');
+    assert.equal((await call('GET', '/web/../package.json')).status, 404);
+    assert.equal((await call('GET', '/locales/..%2F..%2Fpackage.json')).status, 404);
+  });
+
+  test('the first writer signs up without an invitation, the next one needs it', async () => {
+    const bad = await call('POST', '/auth/signup', { body: { email: 'not-an-email', password: 'longenough' } });
+    assert.equal(bad.status, 400);
+    const short = await call('POST', '/auth/signup', { body: { email: 'w@example.com', password: 'short' } });
+    assert.equal(short.status, 400);
+    const first = await call('POST', '/auth/signup', { body: { email: 'w@example.com', password: 'longenough' } });
+    assert.equal(first.status, 200);
+    cookie = first.headers.get('set-cookie').split(';')[0];
+    assert.match(first.headers.get('set-cookie'), /HttpOnly/);
+    assert.match(first.headers.get('set-cookie'), /SameSite=Lax/);
+    const saved = cookie;
+    cookie = '';
+    const second = await call('POST', '/auth/signup', { body: { email: 'two@example.com', password: 'longenough' } });
+    assert.equal(second.status, 403);
+    const invited = await call('POST', '/auth/signup', { body: { email: 'two@example.com', password: 'longenough', invite: 'come-in' } });
+    assert.equal(invited.status, 200);
+    const dup = await call('POST', '/auth/signup', { body: { email: 'W@example.com', password: 'longenough', invite: 'come-in' } });
+    assert.equal(dup.status, 409);
+    cookie = saved;
+  });
+
+  test('cross-site posts are refused even with the cookie', async () => {
+    const res = await call('POST', '/api/library:read', { body: { args: [] }, headers: { 'Sec-Fetch-Site': 'cross-site' } });
+    assert.equal(res.status, 403);
+  });
+
+  test('the writing room is the desktop page with this writer\'s facts in it', async () => {
+    const res = await call('GET', '/');
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    assert.ok(html.includes('id="neo-hosted-config"'));
+    assert.ok(html.includes('"email":"w@example.com"'));
+    assert.ok(html.includes('/web/web-menu.js'));
+    assert.match(res.headers.get('content-security-policy'), /connect-src 'self'/);
+    const login = await call('GET', '/login');
+    assert.equal(login.status, 302, 'a signed-in writer is sent to the room');
+  });
+
+  test('the window.neo channels answer with the desktop\'s shapes', async () => {
+    const lib = await api('library:read');
+    assert.equal(lib.ok, true);
+    assert.equal(lib.result.shelves[0].name, 'Works in Progress');
+
+    const created = await api('book:create', { title: 'Hosted Book', author: 'W' });
+    const book = created.result;
+    assert.match(book.id, /^book-hosted-book-/);
+    assert.equal((await api('chapter:write', book.id, 'ch-1', '<p>First words.</p>')).result, true);
+    assert.equal((await api('chapter:read', book.id, 'ch-1')).result, '<p>First words.</p>');
+    assert.match((await api('chapter:stamps', book.id)).result['ch-1'], /:19$/, 'mtime:size, and the size is the HTML\'s 19 bytes');
+    assert.equal((await api('aux:write', book.id, 'notes', '<p>n</p>')).result, true);
+    assert.equal((await api('aux:read', book.id, 'notes')).result, '<p>n</p>');
+    assert.deepEqual((await api('json:read', book.id, 'darlings', 'fb')).result, []);
+    assert.equal((await api('json:write', book.id, 'stickies', [{ a: 1 }])).result, true);
+    assert.deepEqual((await api('json:read', book.id, 'stickies', null)).result, [{ a: 1 }]);
+    assert.equal(typeof (await api('book:writeMeta', book.id, { ...book, title: 'Renamed' })).result, 'string');
+    assert.equal((await api('book:readMeta', book.id)).result.title, 'Renamed');
+    assert.deepEqual((await api('library:listBooks')).result.map((b) => b.title), ['Renamed']);
+    assert.match((await api('app:version')).result, /\(NEO \d+\.\d+\.\d+\)$/);
+
+    const bad = await api('chapter:read', '../etc', 'passwd');
+    assert.equal(bad.status, 500);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /Invalid library name/);
+    assert.equal((await api('no:such')).status, 404);
+
+    // the files are where desktop NEO would keep them
+    const userDirs = fs.readdirSync(path.join(dataDir, 'users'));
+    const libraryDir = path.join(dataDir, 'users', userDirs.find((d) => fs.existsSync(path.join(dataDir, 'users', d, 'NEO Library', book.id))), 'NEO Library');
+    assert.equal(fs.readFileSync(path.join(libraryDir, book.id, 'chapters', 'ch-1.html'), 'utf8'), '<p>First words.</p>');
+    assert.ok(fs.readFileSync(path.join(libraryDir, '_catalog.txt'), 'utf8').includes('Renamed'));
+  });
+
+  test('covers upload as raw bytes and come back as images, per writer', async () => {
+    const book = (await api('book:create', { title: 'Covered' })).result;
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+    const up = await call('POST', `/api/cover:upload?bookId=${book.id}&ext=png`, { raw: png, headers: { 'Content-Type': 'application/octet-stream' } });
+    const fname = (await up.json()).result;
+    assert.match(fname, /^cover-\d+\.png$/);
+    const img = await call('GET', `/library/${book.id}/${fname}`);
+    assert.equal(img.status, 200);
+    assert.equal(img.headers.get('content-type'), 'image/png');
+    assert.deepEqual(Buffer.from(await img.arrayBuffer()), png);
+    assert.equal((await call('GET', `/library/${book.id}/book.json`)).status, 404, 'only images are served from a book folder');
+    const gif = await call('POST', `/api/cover:upload?bookId=${book.id}&ext=gif`, { raw: png, headers: { 'Content-Type': 'application/octet-stream' } });
+    assert.equal(gif.status, 400);
+    assert.equal((await api('cover:remove', book.id)).result, true);
+    assert.equal((await call('GET', `/library/${book.id}/${fname}`)).status, 404);
+  });
+
+  test('a book deleted from the page lands in the writer\'s Trash', async () => {
+    const book = (await api('book:create', { title: 'Trashed' })).result;
+    assert.equal((await api('book:delete', book.id)).result, true);
+    assert.equal((await api('book:readMeta', book.id)).result, null);
+  });
+
+  test('secrets, spellcheck and the error log answer', async () => {
+    assert.equal((await api('secret:has', 'openai')).result, false);
+    assert.equal((await api('secret:set', 'openai', 'sk-abc')).result, true);
+    assert.equal((await api('secret:has', 'openai')).result, true);
+    assert.equal((await api('secret:set', 'bad name!', 'x')).status, 500);
+    const checked = await api('spell:check', ['writing', 'wrtiing']);
+    assert.deepEqual(checked.result, { writing: true, wrtiing: false });
+    assert.equal((await api('spell:setLanguage', 'xx')).result, false);
+    assert.equal((await api('spell:setLanguage', 'en-GB')).result, true);
+    assert.equal((await api('log:error', 'the page hiccuped')).result, true);
+  });
+
+  test('the interface language is the writer\'s choice, saved for next time', async () => {
+    assert.equal((await api('settings:language', 'fr-CA')).result, 'fr-CA');
+    const html = await (await call('GET', '/')).text();
+    assert.ok(html.includes('"locale":"fr-CA"'));
+    assert.equal((await api('settings:language', 'en')).result, 'en');
+  });
+
+  test('wrong passwords are counted and the throttle closes the door', async () => {
+    cookie = '';
+    for (let i = 0; i < 10; i++) {
+      const res = await call('POST', '/auth/login', { body: { email: 'two@example.com', password: 'nope-nope' } });
+      assert.equal(res.status, 401);
+    }
+    const blocked = await call('POST', '/auth/login', { body: { email: 'two@example.com', password: 'longenough' } });
+    assert.equal(blocked.status, 429);
+    const other = await call('POST', '/auth/login', { body: { email: 'w@example.com', password: 'longenough' }, headers: { 'X-Forwarded-For': '10.0.0.9' } });
+    assert.equal(other.status, 429, 'the IP is throttled too, and a forwarded address is not believed without a trusted proxy');
+  });
+
+  test('signing out clears the cookie', async () => {
+    const first = await call('POST', '/auth/signup', { body: { email: 'three@example.com', password: 'longenough', invite: 'come-in' } });
+    cookie = first.headers.get('set-cookie').split(';')[0];
+    assert.equal((await api('library:read')).ok, true);
+    const out = await call('POST', '/auth/logout');
+    assert.match(out.headers.get('set-cookie'), /Max-Age=0/);
+  });
+
+  test('the backup sweep zips every writer\'s library', async () => {
+    await app.backupEveryone();
+    const users = fs.readdirSync(path.join(dataDir, 'users'));
+    const withLibrary = users.filter((u) => fs.existsSync(path.join(dataDir, 'users', u, 'NEO Library')));
+    assert.ok(withLibrary.length >= 1);
+    for (const u of withLibrary) {
+      assert.equal(fs.readdirSync(path.join(dataDir, 'users', u, 'NEO Library', 'Backups')).length, 1);
+    }
+  });
+});
