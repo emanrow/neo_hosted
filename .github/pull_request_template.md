@@ -13,3 +13,7 @@
 ## Upstream
 
 <!-- Did this touch app.js, main.js, index.html or styles.css? If so, say why it could not live in web/ (CLAUDE.md, Workflow Rules 5). -->
+
+## Public repository
+
+<!-- This repository is public. Confirm the diff, the commit messages and this text contain no secrets, no personal details about the owner, no names or contents of private repositories, no client or business information, and no writers' data (docs/public-repo.md). -->
