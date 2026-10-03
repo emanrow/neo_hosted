@@ -1,0 +1,71 @@
+/* ====================== NEO, HOSTED ====================== */
+/* The menu bar that stands in for the native menus, and the  */
+/* sign-in page. Colors come from styles.css's tokens.         */
+
+#hosted-menu-hotzone {
+  position: fixed; top: 0; left: 0; right: 0; height: 10px;
+  z-index: 950;
+}
+#hosted-menubar {
+  position: fixed; top: 0; left: 0; right: 0; height: 30px;
+  display: flex; align-items: stretch; padding: 0 8px;
+  background: var(--pane, #202020); color: #ccc;
+  font: 13px/30px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  border-bottom: 1px solid #2c2c2c;
+  z-index: 960;
+  transform: translateY(-100%); opacity: 0;
+  transition: transform .18s ease, opacity .18s ease;
+  user-select: none; -webkit-user-select: none;
+}
+/* hidden until the pointer reaches the top edge, the bar is used, or the keyboard asks */
+#hosted-menu-hotzone:hover ~ #hosted-menubar,
+#hosted-menubar:hover, #hosted-menubar:focus-within, #hosted-menubar.open {
+  transform: none; opacity: 1;
+}
+body.light #hosted-menubar { background: #efede8; color: #333; border-bottom-color: #dcd8d0; }
+
+.hm-top { position: relative; }
+.hm-title {
+  all: unset; display: block; padding: 0 10px; height: 30px; cursor: default; color: inherit;
+  border-radius: 4px;
+}
+.hm-title:hover, .hm-top.hm-open > .hm-title, .hm-title:focus-visible { background: rgba(255,255,255,.08); }
+body.light .hm-title:hover, body.light .hm-top.hm-open > .hm-title { background: rgba(0,0,0,.07); }
+
+#hosted-menubar ul {
+  display: none; position: absolute; top: 100%; left: 0; min-width: 240px; margin: 0; padding: 5px 0;
+  list-style: none; background: var(--pane, #202020); color: #ddd;
+  border: 1px solid #333; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  line-height: 26px; z-index: 970;
+}
+body.light #hosted-menubar ul { background: #f6f4ef; color: #222; border-color: #d6d2c8; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+#hosted-menubar .hm-top.hm-open > ul { display: block; }
+#hosted-menubar li { position: relative; display: flex; align-items: center; padding: 0 14px 0 8px; white-space: nowrap; cursor: default; }
+#hosted-menubar li:not(.hm-sep):not(.hm-disabled):hover,
+#hosted-menubar li:focus-visible { background: var(--accent, #c9a86a); color: #1c1c1c; outline: none; }
+#hosted-menubar li:not(.hm-sep):not(.hm-disabled):hover .hm-accel { color: #1c1c1c; opacity: .8; }
+.hm-sep { height: 1px; margin: 5px 10px; background: #3a3a3a; padding: 0 !important; }
+body.light .hm-sep { background: #ddd8ce; }
+.hm-disabled { color: var(--muted, #8a8a8a); font-size: 12px; }
+.hm-mark { width: 18px; text-align: center; font-size: 11px; }
+.hm-label { flex: 1; }
+.hm-accel { margin-left: 28px; color: var(--muted, #8a8a8a); font-size: 12px; }
+.hm-chevron { margin-left: 18px; color: var(--muted, #8a8a8a); }
+/* flyout submenus, to the right */
+.hm-has-sub > ul { top: -6px; left: 100%; }
+#hosted-menubar .hm-has-sub:hover > ul { display: block; }
+
+/* ---------- sign in ---------- */
+body.hosted-login { display: flex; align-items: center; justify-content: center; overflow: auto; }
+.login-card { width: min(380px, 92vw); padding: 36px 32px 28px; background: var(--pane, #202020); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.login-card h1 { font-size: 22px; letter-spacing: 6px; text-align: center; margin-bottom: 4px; color: #eee; }
+.login-card .tagline { text-align: center; color: var(--muted, #8a8a8a); font-size: 13px; margin-bottom: 26px; }
+.login-card label { display: block; font-size: 12px; color: #aaa; margin: 12px 0 4px; }
+.login-card input { width: 100%; padding: 9px 11px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #eee; font-size: 15px; }
+.login-card input:focus { outline: none; border-color: var(--accent, #c9a86a); }
+.login-card .actions { display: flex; gap: 10px; margin-top: 22px; align-items: center; }
+.login-card .btn-gold { flex: 1; padding: 10px; border: 0; border-radius: 6px; background: var(--accent, #c9a86a); color: #1c1c1c; font-size: 15px; cursor: pointer; }
+.login-card .switch { all: unset; color: var(--muted, #8a8a8a); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.login-card .error { min-height: 20px; margin-top: 12px; color: #e0897f; font-size: 13px; text-align: center; }
+.login-card .credits { margin-top: 26px; font-size: 11px; line-height: 1.6; color: #6f6f6f; text-align: center; }
+.login-card .credits a { color: #9a9a9a; }

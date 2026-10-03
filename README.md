@@ -2,6 +2,42 @@
 
 **A distraction-free word processor for authors, by a wannabe author.**
 
+> **This is a fork.** NEO is [Hugh Howey's](https://github.com/hughhowey/neo) app, and everything past the next section is his README, kept as he wrote it. This fork adds a **hosted edition**: the same editor, served as a website you sign in to. All credit for NEO itself belongs to Hugh.
+
+## The hosted edition
+
+Desktop NEO keeps your books in a folder on your Mac or PC. The hosted edition keeps the same folder on a server, behind a password, so you can open your shelf from any browser, on any machine, and keep writing where you left off. It is the same NEO: the same page, the same shelf, the same Enter-Enter-Enter, the same covers and exports. Nothing about the app changed; only where it runs.
+
+**What you get**
+
+- Your books as plain files, one `NEO Library` folder per account, laid out exactly as the desktop app's. Download the folder and open it in desktop NEO any time, or drop a desktop library in and carry on.
+- Two browsers signed into the same account see each other's edits, the same way two laptops do over iCloud.
+- Spellcheck in ten languages, uploaded and painted covers, exports to EPUB, Word, HTML, Markdown and text, daily backups, a Trash folder instead of a void. The full list of what matches the desktop, and the few things that do not yet (importing manuscripts is first in line), is in [docs/parity.md](docs/parity.md).
+- Menus live in a bar at the top edge that appears when your pointer reaches it, or on Alt / F10. Keyboard shortcuts are the desktop's.
+
+**Running your own**
+
+You need a place to run one Node process with a persistent folder. On [Railway](https://railway.app): deploy this repository, add a volume mounted at `/data`, set `NEO_SESSION_SECRET` to a long random string and `NEO_SIGNUP` to `open`, `invite` or `closed`, generate a domain, and open it. The first account created owns the deployment. Step by step, with every setting explained: [docs/deployment.md](docs/deployment.md).
+
+On your own machine, for a look around:
+
+```
+cd web && npm install && cd ..
+NEO_DEV=1 NEO_SIGNUP=open npm run start:web      # then open http://localhost:8080
+```
+
+**Where things are**
+
+| | |
+|---|---|
+| [HOSTED.md](HOSTED.md) | The hosted edition in a page: credits, the shape of it, where to read next |
+| [docs/deployment.md](docs/deployment.md) | Railway, Docker, environment variables, how to check a deploy worked |
+| [docs/parity.md](docs/parity.md) | What matches desktop NEO and what does not yet |
+| [docs/backlog.md](docs/backlog.md) | What is planned: import, downloads, mind map, map map, timelines, handwritten notes, opt-in AI |
+| [CLAUDE.md](CLAUDE.md) | The entry point for coding agents and contributors: the map of the documentation tree |
+
+Everything from here down is Hugh's README for desktop NEO.
+
 NEO understands from the moment you install it that you are writing *books* and nothing else. No bloat, no distractions, with manuscripts that look like books as you write them.
 
 NEO runs locally. WIPs are saved in plain files on your disk. No accounts or subscriptions. And it's free!

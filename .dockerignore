@@ -1,0 +1,11 @@
+node_modules
+web/node_modules
+web/data
+data
+dist
+pocket
+.git
+.github
+Claude outputs
+*.md
+!README.md

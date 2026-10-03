@@ -100,7 +100,7 @@ node scripts/i18n.js template
 node scripts/i18n.js check fr
 ```
 
-`scripts/i18n.js` only scans `app.js`, `main.js`, `covers.js`, and `index.html`. A new string in another file will not enter the template until that list includes it.
+`scripts/i18n.js` only scans `app.js`, `main.js`, `covers.js`, `web/public/web-bridge.js`, `web/public/web-menu.js`, and `index.html`. A new string in another file will not enter the template until that list includes it.
 
 Details, plural forms, and regional fallback (`fr-CA` → `fr` → English) are in [TRANSLATING.md](TRANSLATING.md). Quotation marks follow the spellcheck language (`QUOTE_STYLES` in `app.js`). Import chapter detection is `CHAPTER_WORDS` in `main.js`. Cover small-words are `CONNECTORS` in `covers.js`.
 
@@ -111,6 +111,10 @@ Italian has no spellcheck dictionary: the only Hunspell package on npm is GPL-3.
 `pocket/` is a Capacitor app that runs the desktop editor. Its bridge (`pocket/www/pocket-bridge.js`) implements `window.neo` against the phone's library folder. Android shares `Documents/NEO Library` via sync. iOS uses the app folder, optionally iCloud, with `LibraryHome.swift` locating that folder.
 
 CI copies `app.js`, `covers.js`, `styles.css`, `i18n.js`, `fonts/`, and `locales/` into `pocket/www/` at build time. A change to those files changes Pocket. Pocket-only behavior belongs in `pocket-bridge.js` or the native projects, not behind a desktop-only branch scattered through `app.js`.
+
+## Hosted edition
+
+`web/` serves the same app as an authenticated website (Railway, Docker, or `npm run start:web`). It is a third doorway beside `preload.js` and `pocket-bridge.js`: `web/public/web-bridge.js` implements `window.neo` over HTTP, `web/server.js` answers each IPC channel at `POST /api/<channel>`, and every writer has a plain-file `NEO Library` on a volume. Nothing is copied at build time: the server serves `app.js`, `styles.css`, `covers.js`, `i18n.js`, `fonts/` and `locales/` from the repository root, so a change to those files changes the hosted edition too. Agents start at [CLAUDE.md](CLAUDE.md), the root of the hosted edition's documentation tree; humans start at [HOSTED.md](HOSTED.md). A new `window.neo` method needs a channel in `web/lib/handlers.js` and a method in `web-bridge.js` as well as the three desktop places. `web/lib/files.js` and `web/lib/library.js` are ports of the disk code in `main.js`; a fix to one is a fix to both. `npm run test:web` runs its tests.
 
 ## Commands
 
@@ -124,6 +128,8 @@ npm run test:spellcheck    # node --test scripts/spellcheck.test.js
 npm run test:dashes        # node --test scripts/dashes.test.js
 npm run package:mac        # macOS build; npm run package calls this
 npm run package:linux      # AppImage via electron-builder; also package, package:mac, package:win, package:all
+npm run start:web          # the hosted edition on :8080 (NEO_DEV=1 NEO_SIGNUP=open for a laptop)
+npm run test:web           # node --test web/test/*.test.js
 ```
 
 Tests use `node:test` and load `app.js` or `spell-worker.js` inside `vm`. They are not run by CI. The only CI check is a Windows smoke test that the packaged exe boots and creates a library (`.github/workflows/build.yml`, on `v*` tags). Pocket builds from `.github/workflows/pocket.yml`.

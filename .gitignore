@@ -27,3 +27,8 @@ pocket/www/locales/
 # working files beside the repo, never part of it
 Claude outputs/
 docs/sessions/
+
+# NEO, hosted
+web/node_modules/
+web/data/
+data/
