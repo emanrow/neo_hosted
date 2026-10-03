@@ -39,6 +39,8 @@ hosted    index.html + app.js  →  web/public/web-bridge.js  →  web/server.js
 | Menus | `web/public/web-menu.js` | `buildMenu()` in `main.js` |
 | Sign in | `web/public/login.html`, `login.js` | nothing |
 
+One piece is shared rather than ported: `import-parse.js` at the repository root turns a .docx, .txt or .md manuscript into chapters, and both `main.js` and `web/server.js` require it. A fix to chapter detection lands in both editions at once.
+
 There is no build step. The server serves `app.js`, `styles.css`, `covers.js`, `i18n.js`, `fonts/` and `locales/` straight from the repository root, so a change to the editor is a change to the hosted edition, as it is for Pocket. The page is built from `index.html` at request time by replacing four marked lines; if upstream moves one, the server refuses to boot and `web/test/page.test.js` names the marker.
 
 ## What a writer gets
@@ -71,7 +73,7 @@ A writer can download their `NEO Library` folder and open it in desktop NEO, or 
 | Spellcheck pass, suggestions, learned words | ✔ | one Hunspell per language shared by all writers; a writer's `customWords` are laid on top at check time, never added to the shared instance |
 | Export txt, md, html, docx, epub | ✔ | built by `app.js` as before; the browser downloads the file |
 | Export PDF, ⌘E email snapshot | ◐ | the browser opens the export as a print view ("Save as PDF") and a mail draft; no server-side PDF yet |
-| Import .docx / .txt / .md | ✘ | first item on the backlog, see below |
+| Import .docx / .txt / .md | ✔ | the browser uploads each file as raw bytes to `POST /api/import:upload`; the parser is `import-parse.js`, the same module `main.js` uses |
 | Daily zip backups | ✔ | per writer, inside their library; off-site copies are on the backlog |
 | Delete a book | ✔ | moves to `Trash/` inside the library, named with a timestamp |
 | Menus and shortcuts | ✔ | a hover-revealed bar at the top edge, Alt or F10 for the keyboard; same labels, same messages |
@@ -121,16 +123,15 @@ The volume is the only state. Back it up: the daily zips live on it too, so they
 
 Extensions planned for this fork, in rough order. Each one keeps the rules: nothing interrupts a writer mid-sentence, controls stay hidden until asked for, words are never discarded, books stay plain files.
 
-1. **Import** .docx / .txt / .md. Lift `importFile` and the `docx*` helpers out of `main.js` into a shared `import-parse.js` that works on a buffer, require it from `main.js`, and add `POST /api/import:upload`. Desktop and hosted then share one parser.
-2. **Off-site backups** of each writer's daily zip to an S3-compatible bucket; and a **Download my library** item in the File menu (one zip, the whole folder).
-3. **Server-side PDF** for exports and the email snapshot, with a headless Chromium only if the image stays reasonable; otherwise keep the print view.
-4. **Mind map** — a canvas sidecar per book (`mindmap.json`), nodes that can link to chapters and placeholders.
-5. **Map map** — a place to draw the world: an image or a blank sheet, pins that link to chapters and notes (`maps.json`, images beside it).
-6. **Timelines** — a `timeline.json` sidecar: events with story-time and chapter references, drawn on one line, dragged to reorder.
-7. **Handwritten notes** — a stylus pad that saves strokes as SVG beside the stickies, never OCR'd into the manuscript unless asked.
-8. **AI throughout** — only ever at the writer's request, never while typing: ask a question of the manuscript, name a placeholder, continue a scene into Darlings (never onto the page), paint covers as today. Keys per writer, encrypted as today. Upstream NEO is firm that it has no generative tools; this fork adds them as opt-in rooms off the hallway, not squiggles on the page.
-9. **Password reset** by email, and with it the move of users to a real store (see above).
-10. **Translate the sign-in page** with the same `locales/` files.
+1. **Off-site backups** of each writer's daily zip to an S3-compatible bucket; and a **Download my library** item in the File menu (one zip, the whole folder).
+2. **Server-side PDF** for exports and the email snapshot, with a headless Chromium only if the image stays reasonable; otherwise keep the print view.
+3. **Mind map** — a canvas sidecar per book (`mindmap.json`), nodes that can link to chapters and placeholders.
+4. **Map map** — a place to draw the world: an image or a blank sheet, pins that link to chapters and notes (`maps.json`, images beside it).
+5. **Timelines** — a `timeline.json` sidecar: events with story-time and chapter references, drawn on one line, dragged to reorder.
+6. **Handwritten notes** — a stylus pad that saves strokes as SVG beside the stickies, never OCR'd into the manuscript unless asked.
+7. **AI throughout** — only ever at the writer's request, never while typing: ask a question of the manuscript, name a placeholder, continue a scene into Darlings (never onto the page), paint covers as today. Keys per writer, encrypted as today. Upstream NEO is firm that it has no generative tools; this fork adds them as opt-in rooms off the hallway, not squiggles on the page.
+8. **Password reset** by email, and with it the move of users to a real store (see above).
+9. **Translate the sign-in page** with the same `locales/` files.
 
 ## For agents
 
@@ -138,6 +139,7 @@ Read [AGENTS.md](AGENTS.md) first. Then:
 
 - A new `window.neo` capability is added in three places, as on the desktop, plus one: `ipcMain.handle` in `main.js`, the method in `preload.js`, the call in `app.js`, and now the channel in `web/lib/handlers.js` with its method in `web/public/web-bridge.js` (and in `pocket-bridge.js`, which the desktop rule already implies).
 - Pocket-only behavior goes in the Pocket bridge; hosted-only behavior goes in `web/`. Neither belongs behind a branch in `app.js`.
+- Import is the model for the rest: `import-parse.js` is one module both editions require, so there is nothing to keep in step. The Dockerfile copies it beside `app.js`; a new shared root module needs the same line.
 - `web/lib/files.js` and `web/lib/library.js` are ports of `main.js`. A fix to `writeFileDurable`, `readJSON` or `rebuildBookMeta` upstream needs the same fix here; the comments at the top of each file say so. Lifting them into a module both can `require` is welcome once the hosted edition has settled.
 - `scripts/i18n.js` scans `web/public/web-bridge.js` and `web/public/web-menu.js`. A new writer-visible string in `web/` goes through `t()` (the bridge's `tr()`) and `node scripts/i18n.js template`.
 - Tests: `npm run test:web`. They start the real server on a free port with a temporary data folder.

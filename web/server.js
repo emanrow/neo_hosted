@@ -14,6 +14,7 @@
 //   POST /auth/signup | /auth/login | /auth/logout
 //   POST /api/<channel>            { args: [...] } → { ok, result | error }   (see lib/handlers.js)
 //   POST /api/cover:upload?bookId=&ext=            raw image bytes → file name
+//   POST /api/import:upload?name=<file name>       raw .docx/.txt/.md bytes → the parsed book
 //   GET  /library/<bookId>/<cover-or-art file>     cover images for the shelf
 //   GET  /healthz
 
@@ -21,6 +22,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const JSZip = require('jszip');                      // web/node_modules' copy, handed to the shared parser
 
 const { loadConfig } = require('./lib/config');
 const { HttpError, readBody, readJSONBody, sendJSON, sendHTML, sendText, redirect, serveFile, parseCookies, cookieHeader, isSameOrigin, clientAddress, isSecureRequest } = require('./lib/http');
@@ -32,6 +34,8 @@ const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
 const { buildHostedPage, PAGE_CSP } = require('./lib/page');
 const { readJSON, writeJSON, libName } = require('./lib/files');
+// the desktop's own manuscript parser, shared with main.js
+const { importBuffer, isImportable } = require('../import-parse');
 const i18n = require('./lib/i18n');
 
 const ROOT = path.join(__dirname, '..');            // the desktop app: app.js, styles.css, fonts/, locales/
@@ -39,6 +43,7 @@ const PUBLIC = path.join(__dirname, 'public');
 const SESSION_COOKIE = 'neo_session';
 const API_BODY_LIMIT = 24 * 1024 * 1024;            // a whole library.json or one very long chapter
 const COVER_BODY_LIMIT = 12 * 1024 * 1024;
+const IMPORT_BODY_LIMIT = 25 * 1024 * 1024;         // a whole manuscript as .docx, pictures and all
 const AUTH_BODY_LIMIT = 16 * 1024;
 const MIN_PASSWORD = 8;
 const BACKUP_SWEEP_MS = 60 * 60 * 1000;
@@ -194,6 +199,21 @@ function createApp(config) {
     sendJSON(res, 200, { ok: true, result: ctx.library.setCoverBytes(bookId, ext, bytes) });
   }
 
+  // A manuscript the writer picked or dropped, parsed into chapters the way
+  // main.js does it for the desktop. The page then creates the book over the
+  // ordinary channels; nothing is written here.
+  async function handleImportUpload(ctx, url, req, res) {
+    const name = path.basename(String(url.searchParams.get('name') || ''));
+    if (!isImportable(name)) throw new HttpError(400, 'Manuscripts are .docx, .txt or .md files');
+    const bytes = await readBody(req, IMPORT_BODY_LIMIT);
+    try {
+      sendJSON(res, 200, { ok: true, result: await importBuffer(name, bytes, { JSZip }) });
+    } catch (err) {
+      ctx.logError('import', err);
+      sendJSON(res, 500, { ok: false, error: String((err && err.message) || err) });
+    }
+  }
+
   function serveCover(ctx, bookId, fname, res) {
     const file = ctx.library.coverPath(bookId, fname);
     if (!file) throw new HttpError(404, 'No such image');
@@ -242,6 +262,7 @@ function createApp(config) {
       if (method === 'POST' && !isSameOrigin(req)) throw new HttpError(403, 'Cross-site request refused');
       const ctx = contextFor(user, req);
       if (method === 'POST' && p === '/api/cover:upload') return handleCoverUpload(ctx, url, req, res);
+      if (method === 'POST' && p === '/api/import:upload') return handleImportUpload(ctx, url, req, res);
       if (method === 'POST' && p.startsWith('/api/')) return handleApi(ctx, p.slice(5), req, res);
       if (method === 'GET' && p.startsWith('/library/')) {
         const [bookId, fname, ...rest] = p.slice(9).split('/');

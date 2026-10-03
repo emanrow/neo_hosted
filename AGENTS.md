@@ -18,7 +18,8 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before adding a feature. The product is 
 
 | File | Role |
 |---|---|
-| `main.js` | Window, menus, every filesystem operation, import parsing, PDF, backups |
+| `main.js` | Window, menus, every filesystem operation, PDF, backups |
+| `import-parse.js` | The manuscript parser: .docx / .txt / .md → chapters, on a buffer. Shared by `main.js` and the hosted server. `CHAPTER_WORDS` lives here |
 | `preload.js` | The entire renderer API, `window.neo` |
 | `index.html` | Two views: `#bookshelf-view` and `#editor-view`. CSP is `script-src 'self'` |
 | `app.js` | The whole UI, in banner-marked sections. Search for the banner before reading the file |
@@ -102,7 +103,7 @@ node scripts/i18n.js check fr
 
 `scripts/i18n.js` only scans `app.js`, `main.js`, `covers.js`, `web/public/web-bridge.js`, `web/public/web-menu.js`, and `index.html`. A new string in another file will not enter the template until that list includes it.
 
-Details, plural forms, and regional fallback (`fr-CA` → `fr` → English) are in [TRANSLATING.md](TRANSLATING.md). Quotation marks follow the spellcheck language (`QUOTE_STYLES` in `app.js`). Import chapter detection is `CHAPTER_WORDS` in `main.js`. Cover small-words are `CONNECTORS` in `covers.js`.
+Details, plural forms, and regional fallback (`fr-CA` → `fr` → English) are in [TRANSLATING.md](TRANSLATING.md). Quotation marks follow the spellcheck language (`QUOTE_STYLES` in `app.js`). Import chapter detection is `CHAPTER_WORDS` in `import-parse.js`. Cover small-words are `CONNECTORS` in `covers.js`.
 
 Italian has no spellcheck dictionary: the only Hunspell package on npm is GPL-3.0-only, and NEO is MIT. Do not add it.
 
