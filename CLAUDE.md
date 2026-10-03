@@ -8,6 +8,10 @@ Documentation follows **progressive disclosure**: this file is a table of conten
 
 **Two owners.** This is a fork of [Hugh Howey's NEO](https://github.com/hughhowey/neo). Upstream's docs ([AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md), [TRANSLATING.md](TRANSLATING.md), [TUTORIAL.md](TUTORIAL.md), `pocket/`) describe the editor and are authoritative for it. This tree describes the hosted edition in `web/`. Read AGENTS.md's "Rules that override convenience" before touching anything; they apply here unchanged.
 
+## This Repository Is PUBLIC -- READ FIRST
+
+`emanrow/neo_hosted` is a public fork of `hughhowey/neo`. The owner's other repositories are private; this one is not. Everything committed, pushed, or written in a PR, issue or comment is visible to anyone. **Never** include secrets, personal details about the owner (address, time zone, location, employer, schedule), the names or contents of the owner's private repositories, client or business information, or writers' data. Hooks remind you at session start and on every prompt and scan every push; the policy, the allow-list and the audit log are in [docs/public-repo.md](docs/public-repo.md).
+
 ## Deployment Model -- READ FIRST
 
 **The owner has NO local dev environment for this project.** Code reaches a running system only by:
@@ -21,7 +25,7 @@ Consequences:
 - **Never** suggest `railway run`, `curl localhost`, or anything implying a local shell near the app or its volume in user-facing instructions. (The building agent's own container may run the server for verification -- see [docs/testing.md](docs/testing.md).)
 - **Verification** in PRs must be things the owner can do: open a URL, click in the page, read a Railway log line, look at the volume. [docs/deployment.md](docs/deployment.md) lists them.
 - **No migrations.** Libraries are plain files; users are a JSON file. A deploy never rewrites a writer's folder.
-- **Timezone**: the owner is in Eastern time. Set `TZ=America/New_York` on the Railway service so backup dates and log lines match the calendar day.
+- **Timezone**: set `TZ` on the Railway service to the owner's local zone (the Railway dashboard, not this repository) so backup dates and log lines match their calendar day.
 
 ## What This Project Does
 
@@ -39,6 +43,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 | [docs/deployment.md](docs/deployment.md) | Environment variables, Railway steps, Docker, a laptop, verifying without a shell |
 | [docs/testing.md](docs/testing.md) | The hosted suite, the Chromium smoke run, upstream's suite, what a good test here looks like |
 | [docs/backlog.md](docs/backlog.md) | Import first, then downloads and off-site backups, then the rooms off the hallway (mind map, map map, timelines, handwriting, opt-in AI) |
+| [docs/public-repo.md](docs/public-repo.md) | **This repository is public**: what never goes in, what is fine, the hooks that enforce it, what to do if something slips, the audit log |
 | [docs/doc-conventions.md](docs/doc-conventions.md) | How this tree is shaped, enforced and kept |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Upstream's bar for a feature: it helps someone finish a book |
 | [TRANSLATING.md](TRANSLATING.md) | Upstream: adding a language, plurals, regional fallback |
@@ -83,6 +88,7 @@ node web/scripts/smoke.e2e.js    # optional: headless Chromium end to end (needs
 5. **Hosted behavior lives in `web/`, never behind a branch in `app.js`.** A parity gap that cannot be closed from the bridge goes in the backlog. This keeps upstream merges clean and is the same rule AGENTS.md sets for Pocket.
 6. **Keep the ports in step.** `web/lib/files.js` and `web/lib/library.js` mirror `main.js`'s disk code; a fix to one is a fix to both ([docs/architecture.md](docs/architecture.md#what-was-ported-from-mainjs-and-must-stay-in-step)).
 7. **Credit stays.** Hugh Howey wrote NEO. The sign-in page, the Help menu, HOSTED.md and the README say so; do not trim it.
+8. **It is public.** Read your own diff, commit message and PR text as a stranger would before pushing ([docs/public-repo.md](docs/public-repo.md)). The pre-push scanner is a net, not a reviewer.
 
 ## Key Concepts
 
@@ -100,4 +106,4 @@ node web/scripts/smoke.e2e.js    # optional: headless Chromium end to end (needs
 
 - **Breadcrumbs**: every `.md` this fork owns, except this one and `README.md`, starts with `> [CLAUDE.md](../CLAUDE.md) > Page Name` (a root-level file such as `HOSTED.md` links to `CLAUDE.md`). Upstream's files keep upstream's shape.
 - **Size cap**: ~300 lines per `.md`; split when exceeded.
-- **Enforcement**: `.claude/hooks/md-quality-check.sh` warns on every Write/Edit; `.claude/hooks/pre-push-doc-check.sh` blocks pushes that add source files without doc changes.
+- **Enforcement**: `.claude/hooks/md-quality-check.sh` warns on every Write/Edit; `.claude/hooks/pre-push-doc-check.sh` blocks pushes that add source files without doc changes; `.claude/hooks/pre-push-public-check.sh` blocks pushes that would publish secrets, personal details or private-repository references; `.claude/hooks/public-repo-reminder.sh` restates the public-repository rule at session start and on every prompt.

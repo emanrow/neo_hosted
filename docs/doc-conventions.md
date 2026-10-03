@@ -14,12 +14,15 @@ How the doc tree is shaped and kept, so an agent finds what it needs in one or t
 6. **Docs travel in the PR.** A change that moves behavior, a route, a file, or a rule updates the leaf in the same PR, and the PR template's Docs section names the files touched or says why none were needed.
 7. **Self-navigation over reading lists.** Read the index, pick one or two leaves, read those. No per-task reading lists.
 8. **Credit stays.** Every doc that explains the editor says it is Hugh Howey's work. Do not trim the credits to save lines.
+9. **Public.** Docs name no private repository, no personal detail of the owner, no client. Describe a borrowed pattern in this repository's own words ([public-repo.md](public-repo.md)).
 
 ## Enforcement
 
 - `.claude/hooks/md-quality-check.sh` runs after every Write or Edit of a `.md` file and warns on the size cap, a missing breadcrumb, and stale-status words near the top.
 - `.claude/hooks/pre-push-doc-check.sh` blocks a `git push` that adds source files under `web/` or at the root without touching `docs/`, `CLAUDE.md`, `HOSTED.md` or `web/CLAUDE.md`.
 - A `Grep` hook asks whether what was found should have been findable from the tree. If yes, add it before the task ends.
+- `.claude/hooks/public-repo-reminder.sh` restates at session start and on every prompt that this repository is public, and `.claude/hooks/pre-push-public-check.sh` blocks a push that would publish a secret, a personal detail or a private-repository reference ([public-repo.md](public-repo.md)).
+
 
 ## When to update the tree
 
