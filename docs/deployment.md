@@ -41,7 +41,7 @@ docker build -t neo-hosted .
 docker run -p 8080:8080 -v neo-data:/data -e NEO_SESSION_SECRET=... -e NEO_SIGNUP=open neo-hosted
 ```
 
-The image runs as the `node` user, so a bind-mounted folder must be writable by uid 1000.
+The server runs as the `node` user. Railway and Docker mount volumes owned by root, which once failed the first sign-up with `EACCES: permission denied, open '/data/users.json.tmp'`, so `web/docker-entrypoint.sh` starts as root, gives the volume's top folder to `node`, and drops privileges before starting the server. A bind-mounted folder needs no special ownership.
 
 ## A laptop
 
