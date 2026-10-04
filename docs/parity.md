@@ -1,0 +1,31 @@
+> [CLAUDE.md](../CLAUDE.md) > Parity with the desktop
+
+# Parity with the desktop
+
+What a writer gets in a browser compared with desktop NEO. ✔ same code, same files. ◐ works, with a browser-shaped difference. ✘ not yet. — does not apply.
+
+| Desktop | Hosted | Notes |
+|---|---|---|
+| Shelves, books, chapters, notes, outline, darlings, stickies, goals | ✔ | the same `app.js`, the same files |
+| Covers: seeded art, uploaded images | ✔ | upload is a raw `POST /api/cover:upload`; the shelf fetches `/library/<book>/<file>` |
+| Painted covers (OpenAI) | ✔ | `art.js` runs on the server with the writer's own key, encrypted at rest |
+| Spellcheck pass, suggestions, learned words | ✔ | one Hunspell per language shared by all writers; a writer's `customWords` are laid on top at check time, never added to the shared instance |
+| Export txt, md, html, docx, epub | ✔ | built by `app.js` as before; the browser downloads the file |
+| Export PDF, ⌘E email snapshot | ◐ | the browser opens the export as a print view ("Save as PDF") and a mail draft; no server-side PDF yet |
+| Import .docx / .txt / .md | ✔ | the browser uploads each file as raw bytes to `POST /api/import:upload`; the parser is `import-parse.js` at the repository root, the same module `main.js` uses, so chapter detection cannot drift between editions |
+| Daily zip backups | ✔ | per writer, inside their library; off-site copies are on the backlog |
+| Delete a book | ✔ | moves to `Trash/` inside the library, named with a timestamp; the bridge says where it went |
+| Menus and shortcuts | ✔ | a hover-revealed bar at the top edge, Alt or F10 for the keyboard; same labels, same messages |
+| Interface language, 10 languages | ✔ | saved per writer; the sign-in page is English for now |
+| Full screen | ✔ | the browser's Fullscreen API |
+| Auto-update, Check for Update | — | the site is always current; the item is gone from the menu |
+| Library Folder… | — | the server chooses the folder |
+| Other Font… (local font picker) | — | left out of the menu; `queryLocalFonts` is Chrome-only and needs a permission prompt |
+
+## Where the differences live
+
+Every difference above is in `web/public/web-bridge.js` or `web/public/web-menu.js`, never in `app.js`. That is the rule from AGENTS.md ("Pocket-only behavior belongs in `pocket-bridge.js`") applied to a third doorway. If a parity gap cannot be closed from the bridge, say so in the backlog rather than branching the editor.
+
+## Accelerators
+
+The native menu used to catch these; `web-menu.js` does now: ⌘E, ⌘, (Goals), ⌘F, ⌘0, ⌘⇧I, ⌘⇧L/C/R/J (align), ⌘⇧T, ⌘⇧O, ⌘⇧F. `app.js` already handles ⌘; ⌘+ ⌘− and ⌘/ inside the editor by character, so those stay out of the table (one press, one action). Browsers keep a few for themselves (⌘⇧I opens devtools in Chrome); the menu item still works by click.

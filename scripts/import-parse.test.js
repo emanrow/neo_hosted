@@ -30,7 +30,7 @@ describe('what counts as a manuscript', () => {
   test('the three extensions, in any case, anywhere in a path', () => {
     assert.deepEqual(IMPORT_EXTENSIONS, ['docx', 'txt', 'md']);
     assert.ok(isImportable('Novel.docx'));
-    assert.ok(isImportable('/Users/w/Desktop/NOTES.TXT'));
+    assert.ok(isImportable('manuscripts/NOTES.TXT'));
     assert.ok(isImportable('upload:3/draft.md'));
     assert.equal(isImportable('cover.png'), false);
     assert.equal(isImportable('novel.docx.bak'), false);
