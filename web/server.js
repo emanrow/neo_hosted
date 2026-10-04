@@ -328,4 +328,4 @@ if (require.main === module) {
   app.startBackups();
 }
 
-module.exports = { createApp, VERSIONS };
+module.exports = { createApp, VERSIONS, ROOT_FILES, ROOT_DIRS };

@@ -56,6 +56,7 @@ Things the owner can do from a browser and the Railway dashboard:
 
 - `https://<domain>/healthz` answers `ok`.
 - `https://<domain>/` redirects to `/login`; creating an account lands on the shelf and the first-run questions.
+- The editor is styled: the shelf has its paper background, not browser defaults. The image copies the desktop app's files by name, so a file missing from the `Dockerfile` shows up here first; `web/test/dockerfile.test.js` guards the list.
 - Railway → Deploy logs show `NEO hosted <version> (NEO <version>) listening on :8080` and the data folder path.
 - Railway → Volume shows `users.json` and `users/<id>/NEO Library/` after the first sign-up.
 - A failing save shows a toast in the page and a line in that writer's `neo-errors.log` on the volume.
