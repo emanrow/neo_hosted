@@ -27,7 +27,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ## Railway
 
 1. New project → Deploy from this GitHub repo. `railway.json` selects the `Dockerfile`; the image installs only `web/package.json`'s runtime dependencies (the spellcheck engine, its dictionaries, JSZip). No Electron.
-2. Add a **Volume** and mount it at `/data`.
+2. Add a **Volume** and mount it at `/data`. The `Dockerfile` deliberately has no `VOLUME` instruction: Railway fails the build on one ("The Dockerfile failed validation") and expects the mount to come from its own Volume.
 3. Set `NEO_SESSION_SECRET`, `NEO_SIGNUP`, and for invite mode `NEO_INVITE_CODE`.
 4. Generate a domain. Health checks hit `/healthz`.
 5. Open the site and create the first account. It is the owner's.
