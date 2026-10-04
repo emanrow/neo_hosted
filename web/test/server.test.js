@@ -145,6 +145,53 @@ describe('the hosted server', () => {
     assert.equal((await call('GET', `/library/${book.id}/${fname}`)).status, 404);
   });
 
+  test('manuscripts upload as raw bytes and come back split into chapters', async () => {
+    const upload = async (name, bytes) => {
+      const res = await call('POST', '/api/import:upload?name=' + encodeURIComponent(name), { raw: bytes, headers: { 'Content-Type': 'application/octet-stream' } });
+      return { status: res.status, ...(await res.json()) };
+    };
+    const prose = (chapter) => chapter.paras.filter((p) => p.text).map((p) => p.text);
+
+    const txt = await upload('Short Story.txt', Buffer.from('Chapter 1\n\nIt began.\n\nChapter 2\n\nIt ended.', 'utf8'));
+    assert.equal(txt.status, 200);
+    assert.equal(txt.ok, true);
+    assert.equal(txt.result.name, 'Short Story');
+    assert.equal(txt.result.chapters.length, 2);
+    assert.deepEqual(prose(txt.result.chapters[0]), ['It began.']);
+    assert.deepEqual(prose(txt.result.chapters[1]), ['It ended.']);
+
+    const md = await upload('draft.md', Buffer.from('# Chapter 1\n\nShe knocked.\n\n# Chapter 2\n\nNobody came.', 'utf8'));
+    assert.equal(md.result.chapters.length, 2);
+    assert.deepEqual(md.result.chapters.map((c) => c.title), ['', ''], 'NEO numbers chapters itself');
+    assert.deepEqual(prose(md.result.chapters[1]), ['Nobody came.']);
+
+    // a .docx built here: two paragraphs, one italic run
+    const JSZip = require('jszip');
+    const zip = new JSZip();
+    zip.file('word/document.xml', '<?xml version="1.0"?><w:document xmlns:w="w"><w:body>'
+      + '<w:p><w:r><w:t>She spoke </w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>softly</w:t></w:r><w:r><w:t>.</w:t></w:r></w:p>'
+      + '<w:p><w:r><w:t>He did not hear.</w:t></w:r></w:p>'
+      + '</w:body></w:document>');
+    const docx = await upload('Quiet.docx', await zip.generateAsync({ type: 'nodebuffer' }));
+    assert.equal(docx.status, 200);
+    assert.equal(docx.result.name, 'Quiet');
+    assert.deepEqual(prose(docx.result.chapters[0]), ['She spoke *softly*.', 'He did not hear.']);
+
+    // what the server refuses, and how: the page turns these into { name, error }
+    const notZip = await upload('broken.docx', Buffer.from('this is not a zip'));
+    assert.equal(notZip.status, 500);
+    assert.equal(notZip.ok, false);
+    assert.equal(typeof notZip.error, 'string');
+    const logs = fs.readdirSync(path.join(dataDir, 'users')).map((u) => path.join(dataDir, 'users', u, 'NEO Library', 'neo-errors.log')).filter((f) => fs.existsSync(f));
+    assert.ok(logs.some((f) => fs.readFileSync(f, 'utf8').includes('[import]')), 'the failure is in the writer\'s own error log');
+    assert.equal((await upload('cover.png', Buffer.from([1, 2, 3]))).status, 400);
+    assert.equal((await upload('', Buffer.from('x'))).status, 400);
+    const signedIn = cookie;
+    cookie = '';
+    assert.equal((await upload('a.txt', Buffer.from('x'))).status, 401, 'strangers may not use the parser');
+    cookie = signedIn;
+  });
+
   test('a book deleted from the page lands in the writer\'s Trash', async () => {
     const book = (await api('book:create', { title: 'Trashed' })).result;
     assert.equal((await api('book:delete', book.id)).result, true);

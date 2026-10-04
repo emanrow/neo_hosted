@@ -29,6 +29,7 @@ web/
     login.html, login.js  sign in / create account (English only for now)
   scripts/smoke.e2e.js  optional headless-Chromium run, see docs/testing.md
   test/*.test.js        node:test; server.test.js boots the real server
+../import-parse.js      NOT in web/: the manuscript parser shared with main.js (importBuffer, isImportable, CHAPTER_WORDS)
 ```
 
 ## Request path
@@ -55,7 +56,7 @@ The context (`ctx`) a handler receives:
 5. `web/test/server.test.js`: assert the shape `app.js` relies on.
 6. Docs: this file's tree if a file was added; [docs/parity.md](../docs/parity.md) if a writer can tell.
 
-Bytes (uploads, images) are not channels: see `handleCoverUpload` and `serveCover` in `server.js` for the pattern.
+Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, `handleImportUpload` and `serveCover` in `server.js` for the pattern.
 
 ## Gotchas
 

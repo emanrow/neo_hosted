@@ -101,6 +101,7 @@ node web/scripts/smoke.e2e.js    # optional: headless Chromium end to end (needs
 7. **Spellcheck is shared, learned words are not.** One Hunspell per language for every writer; `customWords` from each writer's `library.json` are laid over the result.
 8. **The menu bar is `buildMenu()` in a browser.** Same labels (translated through `locales/`), same `{ type, ... }` messages to `window.neo.onMenu`, hidden until the top edge is hovered or Alt/F10 is pressed.
 9. **New strings** go through `t()` (the bridge's `tr()`) and `node scripts/i18n.js template`, which scans the two `web/public/*.js` files too.
+10. **One manuscript parser.** `import-parse.js` at the root is required by both `main.js` and `web/server.js`; chapter detection (`CHAPTER_WORDS`) lives there and nowhere else.
 
 ## Documentation Standards
 

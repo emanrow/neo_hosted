@@ -88,6 +88,38 @@
     return true;
   }
 
+  // Manuscripts go up as raw bytes and come back parsed, one request each,
+  // in the shape import:pick answers with on the desktop: a book per file,
+  // or { name, error } for one that would not parse, so the rest still land.
+  const IMPORT_ACCEPT = '.docx,.txt,.md';
+  const IMPORTABLE = /\.(docx|txt|md)$/i;
+  async function uploadManuscript(file) {
+    try {
+      const res = await fetch('/api/import:upload?name=' + encodeURIComponent(file.name), {
+        method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }
+      });
+      const body = await res.json().catch(() => ({ ok: false, error: res.statusText }));
+      if (!body.ok) return { name: file.name, error: body.error || 'Import failed' };
+      return body.result;
+    } catch (err) {
+      return { name: file.name, error: String((err && err.message) || err) };
+    }
+  }
+  async function importMany(files) {
+    const out = [];
+    for (const file of files) {
+      if (!IMPORTABLE.test(file.name)) continue;
+      out.push(await uploadManuscript(file));
+    }
+    return out;
+  }
+  // a handed-over file by its token, released once claimed
+  function takeHanded(token) {
+    const file = handed.get(token);
+    if (file) handed.delete(token);
+    return file || null;
+  }
+
   const ZIP_MIME = { epub: 'application/epub+zip', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
   const TEXT_MIME = { txt: 'text/plain', md: 'text/markdown', html: 'text/html' };
 
@@ -182,9 +214,10 @@
       return opened ? { ok: true, method: 'gmail' } : { ok: false };
     },
 
-    /* ---------- import: not yet in the hosted edition (HOSTED.md, backlog) ---------- */
-    importPick: async () => { say(tr('Importing manuscripts is coming to the hosted edition — for now, paste the text into a new chapter'), 8000); return []; },
-    importFiles: async () => { say(tr('Importing manuscripts is coming to the hosted edition — for now, paste the text into a new chapter'), 8000); return []; },
+    /* ---------- import: the server parses, the page makes the book ---------- */
+    importPick: async () => importMany(await pickFile(IMPORT_ACCEPT, true)),
+    // the tokens pathForFile handed out for dropped files
+    importFiles: async (paths) => importMany((paths || []).map(takeHanded).filter(Boolean)),
 
     /* ---------- the window ---------- */
     fullscreenToggle: async () => {

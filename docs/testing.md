@@ -18,7 +18,8 @@ npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test
 | `web/test/auth.test.js` | password hashes, session tokens (tamper, expiry, wrong secret), the throttle, the JSON user store, the secret box, config validation |
 | `web/test/page.test.js` | the `index.html` transform, script order, inline-JSON escaping, the loud failure on a moved marker, the CSP |
 | `web/test/spell.test.js` | the shared Hunspell with a writer's words laid on top, suggestions, the fallback when a dictionary cannot load |
-| `web/test/server.test.js` | the real server on a free port with a temporary data folder: health, static fencing, signup policy, CSRF refusal, the page, every channel's shape, cover upload and serving, Trash, secrets, spellcheck, language, throttle, logout, the backup sweep |
+| `web/test/server.test.js` | the real server on a free port with a temporary data folder: health, static fencing, signup policy, CSRF refusal, the page, every channel's shape, cover upload and serving, manuscript upload (.txt, .md, a .docx built in the test), Trash, secrets, spellcheck, language, throttle, logout, the backup sweep |
+| `scripts/import-parse.test.js` | the shared manuscript parser on its own: chapter and scene-break detection, titles, .docx italics and styles. Lives beside upstream's tests because `main.js` uses the same module; needs the root `npm install` (JSZip) |
 
 The server test is the one to extend when a channel changes: it asserts the shapes `app.js` relies on.
 

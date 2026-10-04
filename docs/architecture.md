@@ -22,7 +22,7 @@ The server serves `app.js`, `styles.css`, `covers.js`, `i18n.js`, `fonts/` and `
 1. `server.js` reads the session cookie, verifies its signature (`lib/auth.js`), and finds the writer (`lib/user-store.js`).
 2. `contextFor(user, req)` builds the writer's context: their locale (saved choice, else `Accept-Language`), a translator bound to it, an `openLibrary()` over `<data>/users/<id>/NEO Library`, their settings and secrets files, and an error logger that appends to their own `neo-errors.log`.
 3. `POST /api/<channel>` parses `{ args: [...] }`, calls the handler as `fn(ctx, ...args)`, and answers `{ ok: true, result }`. A thrown error answers `{ ok: false, error }` with status 500 and is logged for that writer. The bridge rethrows, so `persistChapter` in `app.js` rolls back `savedHTML` and retries on the next flush, as on the desktop.
-4. Two routes are not channels because they move bytes: `POST /api/cover:upload` (raw image body) and `GET /library/<book>/<cover-or-art-file>` (the shelf's images).
+4. Three routes are not channels because they move bytes: `POST /api/cover:upload` (raw image body), `POST /api/import:upload?name=` (a raw manuscript in, the parsed book out; the page then creates the book over the ordinary channels, nothing is written server-side), and `GET /library/<book>/<cover-or-art-file>` (the shelf's images).
 
 ## A writer's corner of the volume
 
@@ -57,6 +57,8 @@ A writer can download their `NEO Library` folder and open it in desktop NEO, or 
 | `book:delete` → `shell.trashItem` | `library.trashBook` | the folder moves to `Trash/` inside the library, timestamped |
 
 A fix to one of these upstream needs the same fix here. Lifting them into a module both can `require` is welcome once the hosted edition has settled.
+
+One piece is already shared rather than ported: `import-parse.js` at the repository root turns a .docx, .txt or .md manuscript into chapters on a buffer, and both `main.js` and `web/server.js` require it (the server hands it its own JSZip). `CHAPTER_WORDS`, the per-language chapter-heading table translators maintain, lives there. A fix to chapter detection lands in both editions at once; it is the model for the rest of the table above.
 
 ## Security posture in one paragraph
 

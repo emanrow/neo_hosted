@@ -12,7 +12,7 @@ What a writer gets in a browser compared with desktop NEO. ✔ same code, same f
 | Spellcheck pass, suggestions, learned words | ✔ | one Hunspell per language shared by all writers; a writer's `customWords` are laid on top at check time, never added to the shared instance |
 | Export txt, md, html, docx, epub | ✔ | built by `app.js` as before; the browser downloads the file |
 | Export PDF, ⌘E email snapshot | ◐ | the browser opens the export as a print view ("Save as PDF") and a mail draft; no server-side PDF yet |
-| Import .docx / .txt / .md | ✘ | first item in [backlog.md](backlog.md); the bridge says so in a toast |
+| Import .docx / .txt / .md | ✔ | the browser uploads each file as raw bytes to `POST /api/import:upload`; the parser is `import-parse.js` at the repository root, the same module `main.js` uses, so chapter detection cannot drift between editions |
 | Daily zip backups | ✔ | per writer, inside their library; off-site copies are on the backlog |
 | Delete a book | ✔ | moves to `Trash/` inside the library, named with a timestamp; the bridge says where it went |
 | Menus and shortcuts | ✔ | a hover-revealed bar at the top edge, Alt or F10 for the keyboard; same labels, same messages |
