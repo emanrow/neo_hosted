@@ -2,7 +2,7 @@
 
 # NEO, hosted
 
-NEO is [Hugh Howey's](https://github.com/hughhowey/neo) word processor for authors: a local Electron app, MIT licensed, opinionated on purpose. This repository is a fork that serves the same app as an authenticated website, so a writer can open their shelf from any browser and keep writing. Every opinion in [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) still holds. The editor is Hugh's `app.js`, unchanged; what this fork adds is a server that stands where `main.js` stood.
+NEO is [Hugh Howey's](https://github.com/hughhowey/neo) word processor for authors: a local Electron app, MIT licensed, opinionated on purpose. This repository is an independent fork, not affiliated with or endorsed by him, that serves the same app as an authenticated website, so a writer can open their shelf from any browser and keep writing. Every opinion in [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) still holds. The editor is Hugh's `app.js`, unchanged; what this fork adds is a server that stands where `main.js` stood.
 
 ## Credit
 

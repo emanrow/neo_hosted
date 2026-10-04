@@ -28,6 +28,7 @@ web/
     web.css             menu bar and sign-in styles, on styles.css's tokens
     login.html, login.js  sign in / create account (English only for now)
   scripts/smoke.e2e.js  optional headless-Chromium run, see docs/testing.md
+  docker-entrypoint.sh  starts as root, hands the mounted volume to `node`, drops privileges (docs/deployment.md)
   test/*.test.js        node:test; server.test.js boots the real server
 ../import-parse.js      NOT in web/: the manuscript parser shared with main.js (importBuffer, isImportable, CHAPTER_WORDS)
 ```

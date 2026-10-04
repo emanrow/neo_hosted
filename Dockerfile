@@ -23,12 +23,13 @@ ENV NODE_ENV=production \
     PORT=8080 \
     NEO_DATA_DIR=/data
 
-RUN mkdir -p /data && chown node:node /data
-USER node
+# The entrypoint starts as root only to hand the mounted volume to `node`, then
+# drops to `node` for the server. See web/docker-entrypoint.sh.
+RUN mkdir -p /data && chown node:node /data && chmod +x web/docker-entrypoint.sh
 # No VOLUME instruction: Railway refuses a Dockerfile that declares one and
 # mounts its own volume at /data instead. `docker run -v` still works without it.
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8080)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["node", "web/server.js"]
+ENTRYPOINT ["web/docker-entrypoint.sh"]

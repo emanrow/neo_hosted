@@ -2,7 +2,7 @@
 
 **A distraction-free word processor for authors, by a wannabe author.**
 
-> **This is a fork.** NEO is [Hugh Howey's](https://github.com/hughhowey/neo) app, and everything past the next section is his README, kept as he wrote it. This fork adds a **hosted edition**: the same editor, served as a website you sign in to. All credit for NEO itself belongs to Hugh.
+> **This is a fork.** NEO is [Hugh Howey's](https://github.com/hughhowey/neo) app, and everything past the next section is his README, kept as he wrote it. This fork adds a **hosted edition**: the same editor, served as a website you sign in to. All credit for NEO itself belongs to Hugh; the hosted edition is independent work, not affiliated with or endorsed by him.
 
 ## The hosted edition
 
