@@ -43,6 +43,7 @@ web/
     web-timeline.js     View → Timeline…: the book's events in story order (story-time, title, chapter link), drag to reorder; timeline.json through json:read/json:write, nothing server-side
     web-mindmap.js      View → Mind Map…: nodes on a canvas (drag, link, tie to a chapter, jump to it); mindmap.json through json:read/json:write, nothing server-side
     web-map.js          View → Map…: an uploaded sheet (POST /api/map:upload, map-<ts>.<ext> served with the covers) or a blank one, pins with a label, note and chapter; maps.json through json:read/json:write
+    web-handwriting.js  View → Handwriting…: pages of strokes (pointer events, coalesced; inks, widths, eraser, undo), a title and chapter per page; handwriting.json through json:read/json:write, drawn as SVG
     web-mobile.js       a touch screen only ((hover: none)): the ☰ button that opens the menu bar, edge swipes for the chapter and notes panes; web.css's body.hosted-touch and max-width rules do the rest
     web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, Show Changes (revision:compare: that save against the draft now, a blackline from merge.js), restore by writing the draft back and calling the editor's refreshFromDisk
     web.css             menu bar and sign-in styles, on styles.css's tokens

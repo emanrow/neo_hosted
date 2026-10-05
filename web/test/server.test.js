@@ -113,6 +113,8 @@ describe('the hosted server', () => {
     assert.equal((await call('GET', '/web/web-mindmap.js')).status, 200);
     assert.ok(html.includes('/web/web-map.js'));
     assert.equal((await call('GET', '/web/web-map.js')).status, 200);
+    assert.ok(html.includes('/web/web-handwriting.js'));
+    assert.equal((await call('GET', '/web/web-handwriting.js')).status, 200);
     assert.match(html, /"feedback":false/, 'with email off, Send Feedback… stays off the menu');
     assert.match(html, /"welcome":""/);
     const feedback = await api('feedback:send', 'Hello?');
@@ -174,6 +176,9 @@ describe('the hosted server', () => {
     assert.equal((await call('POST', `/api/map:upload?bookId=${book.id}&ext=gif`, { raw: sheet, headers: { 'Content-Type': 'application/octet-stream' } })).status, 400);
     assert.equal((await api('map:removeImage', book.id)).result, '');
     assert.equal((await call('GET', `/library/${book.id}/${sheetName}`)).status, 404, 'the sheet is gone');
+    const pages = { pages: [{ id: 'hw-1', title: 'Margin note', createdAt: '2026-10-05T12:00:00.000Z', chapterId: 'ch-1', strokes: [{ id: 's-1', ink: 'ink', width: 4, points: [[10, 10], [40, 30.5]] }] }] };
+    assert.equal((await api('json:write', book.id, 'handwriting', pages)).ok, true, 'handwriting is a sidecar like the other rooms');
+    assert.deepEqual((await api('json:read', book.id, 'handwriting', { pages: [] })).result, pages);
     assert.equal((await api('json:write', book.id, 'stickies', [{ a: 1 }])).result, true);
     assert.deepEqual((await api('json:read', book.id, 'stickies', null)).result, [{ a: 1 }]);
     assert.equal(typeof (await api('book:writeMeta', book.id, { ...book, title: 'Renamed' })).result, 'string');
