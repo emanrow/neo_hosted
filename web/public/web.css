@@ -55,6 +55,27 @@ body.light .hm-sep { background: #ddd8ce; }
 .hm-has-sub > ul { top: -6px; left: 100%; }
 #hosted-menubar .hm-has-sub:hover > ul { display: block; }
 
+/* ---------- history (File → History…) ---------- */
+.hosted-history-modal { width: min(820px, 94vw); display: flex; flex-direction: column; max-height: 85vh; }
+.hh-body { display: flex; gap: 18px; min-height: 0; flex: 1; }
+.hh-list { list-style: none; margin: 0; padding: 0; width: 220px; flex: none; overflow-y: auto; border-right: 1px solid #333; }
+.hh-list li { padding: 7px 10px; border-radius: 6px; cursor: default; display: flex; flex-direction: column; gap: 2px; }
+.hh-list li:hover { background: rgba(255,255,255,.05); }
+.hh-list li.hh-chosen { background: var(--accent, #c9a86a); color: #1c1c1c; }
+.hh-list li:focus-visible { outline: 1px solid var(--accent, #c9a86a); }
+.hh-when { font-size: 13px; }
+.hh-words { font-size: 11px; opacity: .7; }
+.hh-preview { flex: 1; overflow-y: auto; padding: 4px 8px; min-height: 240px; font-size: 15px; line-height: 1.6; }
+.hh-preview p { margin-bottom: 1em; }
+.hh-actions { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.hh-note { flex: 1; color: var(--muted, #8a8a8a); font-size: 13px; }
+body.light .hh-list { border-right-color: #ddd8ce; }
+body.light .hh-list li:hover { background: rgba(0,0,0,.05); }
+@media (max-width: 640px) {
+  .hh-body { flex-direction: column; }
+  .hh-list { width: auto; max-height: 160px; border-right: 0; border-bottom: 1px solid #333; }
+}
+
 /* ---------- sign in ---------- */
 body.hosted-login { display: flex; align-items: center; justify-content: center; overflow: auto; }
 .login-card { width: min(380px, 92vw); padding: 36px 32px 28px; background: var(--pane, #202020); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
