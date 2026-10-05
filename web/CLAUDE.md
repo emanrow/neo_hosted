@@ -37,7 +37,7 @@ web/
   public/
     web-bridge.js       window.neo for the browser; rpc(channel, ...args) → POST /api/<channel>; neoHosted.downloadLibrary() fetches /library.zip
     web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10; flyouts open on tap too; neoHosted.menu.open/close/toggle for web-mobile.js
-    web-branches.js     File → Branches: new, switch, delete, Compare & Merge… (the merge panel: chapter list, blackline, conflict choices); a switch or merge saves, tells the server, reloads and reopens the book
+    web-branches.js     File → Branches: new, switch, delete, Compare & Merge… (the merge panel: chapter list, blackline, conflict choices), Side by Side… (two read-only columns from branch:read, chapter picker, scrolled together); a switch or merge saves, tells the server, reloads and reopens the book
     web-share.js        File → Share…: publish the book or the chapter the caret is in as a read-only page, copy the link, publish again, unpublish; the HTML comes from app.js's own buildHtml/bookExportData/chapterExportData
     web-feedback.js     Help → Send Feedback…: a note to the owner (feedback:send, emailed to NEO_ADMIN_EMAILS); the same panel opens once, unasked, as the welcome for a guest of honor (config.welcome, then welcome:seen)
     web-timeline.js     View → Timeline…: the book's events in story order (story-time, title, chapter link), drag to reorder; timeline.json through json:read/json:write, nothing server-side

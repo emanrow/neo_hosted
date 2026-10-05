@@ -289,6 +289,7 @@ describe('PgLibrary', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is n
       await api('chapter:write', book.id, 'ch-1', '<p>Branch words.</p>');
       assert.equal((await api('branch:switch', book.id, 'main')).active, 'main');
       assert.equal(await api('chapter:read', book.id, 'ch-1'), '<p>First words.</p>');
+      assert.equal((await api('branch:read', book.id, 'what if')).chapters['ch-1'], '<p>Branch words.</p>', 'the other draft reads beside this one');
       const preview = await api('branch:mergePreview', book.id, 'what if');
       assert.equal(preview.chapters[0].status, 'merged');
       assert.deepEqual(await api('branch:merge', book.id, 'what if', {}), { into: 'main', from: 'what if', chapters: 1 });
