@@ -225,7 +225,7 @@
     bd.querySelector('.mp-delete').onclick = removeSelected;
     bd.addEventListener('keydown', (e) => {
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
-      if (e.key === 'Escape') { e.stopPropagation(); if (typing) e.target.blur(); else close(); }
+      if (e.key === 'Escape') { e.stopPropagation(); if (typing) { e.target.blur(); bd.focus(); } else close(); }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !typing) { e.preventDefault(); removeSelected(); }
     });
 

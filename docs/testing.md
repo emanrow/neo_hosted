@@ -36,7 +36,7 @@ The server test is the one to extend when a channel changes: it asserts the shap
 
 ## A browser smoke run
 
-`web/scripts/smoke.e2e.js` boots the server with a throwaway data folder, signs up in headless Chromium, walks the first-run questions, opens a menu, changes the page theme, creates a book and a chapter, types a sentence, and checks that the chapter HTML landed on disk with no console errors. It needs Playwright and a Chromium:
+`web/scripts/smoke.e2e.js` boots the server with a throwaway data folder, signs up in headless Chromium, walks the first-run questions, opens a menu, changes the page theme, creates a book and a chapter, types a sentence, opens each room off the hallway (Timeline, Mind Map, Map, Handwriting, History, Share) and does one thing in it, and checks that the chapter HTML and each room's sidecar landed on disk with no console errors. It needs Playwright and a Chromium:
 
 ```
 npm i -D playwright            # or point CHROMIUM_PATH at an installed Chromium

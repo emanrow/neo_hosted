@@ -113,7 +113,7 @@
     bd.addEventListener('click', (e) => { if (e.target === bd) close(); });
     bd.addEventListener('keydown', (e) => {
       const typing = /^(INPUT|SELECT)$/.test(e.target.tagName);
-      if (e.key === 'Escape') { e.stopPropagation(); if (typing) e.target.blur(); else close(); }
+      if (e.key === 'Escape') { e.stopPropagation(); if (typing) { e.target.blur(); bd.focus(); } else close(); }
       if ((e.key === 'z' || e.key === 'Z') && (e.metaKey || e.ctrlKey) && !typing) { e.preventDefault(); undo(); }
     });
     bd.focus();
