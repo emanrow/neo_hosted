@@ -10,8 +10,7 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 2. **Images to object storage**: covers and paintings are bytes in `book_files` since stage D; move them to a bucket when they outgrow the table.
 3. **Server-side PDF** for exports and the email snapshot, with a headless Chromium only if the image stays reasonable; otherwise keep the print view.
 4. **Translate the sign-in page** with the same `locales/` files.
-5. **Mobile pass**: the hosted edition is the only NEO on a phone. The menu bar needs a touch way in (there is no top edge to hover and no Alt), so Sign Out and everything else in it is reachable; the shelf and the page at narrow widths.
-6. **Public sharing** of an excerpt or a whole work as a read-only page, by the writer's choice only. Belongs after the storage stages below, which decide what a "version" to share is.
+5. **Public sharing** of an excerpt or a whole work as a read-only page, by the writer's choice only. Belongs after the storage stages below, which decide what a "version" to share is.
 
 ## Storage
 
@@ -34,6 +33,7 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 
 ## Done
 
+- **Mobile pass** (2026-10-05): a viewport meta slotted in by `web/lib/page.js`, `web/public/web-mobile.js` (a ☰ button for the menu bar, edge swipes for the panes, on `(hover: none)` screens only) and touch and narrow-width rules in `web.css`; flyouts open on tap. Sign Out and the rest of the menu are reachable on a phone.
 - **Words in Postgres** (2026-10-05): `web/lib/pg-library.js` and migration `003-library`; with `DATABASE_URL` every library call lands on rows laid out as the desktop folder, one per file, keyed by book and branch, and the first boot imports each writer's folder from the volume. `GET /library.zip` (File → Download Library…) and the daily zip write the folder back out. Storage stage D; the folder library stays for laptops and tests.
 - **Revision log** (2026-10-05): `web/lib/revisions.js`, the `revisions` table; every `chapter:write` that changed the words appends a snapshot or paragraph-grain diff, hash-chained with its timestamp. `revision:list`, `revision:read`, `revision:verify` answer. Storage stage B.
 - **Branches** (2026-10-05): File → Branches in the hosted menu; `web/lib/branches.js` keeps each as a copy of the book folder under `.branches/`, the library follows the active one, the revision log keys by it. Compare & Merge… (`web/lib/merge.js`, `web/lib/branch-merge.js`) brings a branch into the draft you are in with a three-way merge at paragraph grain, a blackline per chapter and a choice on each conflict. Storage stage C.

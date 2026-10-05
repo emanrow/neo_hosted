@@ -12,6 +12,7 @@
 
 const MARKERS = {
   csp: /^\s*<meta http-equiv="Content-Security-Policy"[^\n]*\n/m,
+  styles: '<link rel="stylesheet" href="styles.css" />',
   dragstrip: /^\s*<!-- Draggable strip[^\n]*\n\s*<div id="dragstrip"><\/div>\n/m,
   i18nScript: '<script src="i18n.js"></script>',
   appScript: '<script src="app.js"></script>'
@@ -38,6 +39,8 @@ function buildHostedPage({ indexHtml, i18n, hostedConfig }) {
   html = html.replace(MARKERS.csp, '');
   // no frameless window to drag
   html = html.replace(MARKERS.dragstrip, '');
+  // a phone lays the page out at its own width (the desktop window never needed saying)
+  html = html.replace(MARKERS.styles, '<meta name="viewport" content="width=device-width, initial-scale=1" />\n  ' + MARKERS.styles);
   html = html.replace(MARKERS.i18nScript,
     '<link rel="stylesheet" href="/web/web.css" />\n' +
     `  <script id="neo-i18n" type="application/json">${inlineJSON(i18n)}</script>\n` +
@@ -45,7 +48,7 @@ function buildHostedPage({ indexHtml, i18n, hostedConfig }) {
     '  <script src="/jszip.min.js"></script>\n' +
     '  <script src="i18n.js"></script>\n' +
     '  <script src="/web/web-bridge.js"></script>');
-  html = html.replace(MARKERS.appScript, '<script src="app.js"></script>\n  <script src="/web/web-menu.js"></script>\n  <script src="/web/web-history.js"></script>\n  <script src="/web/web-branches.js"></script>');
+  html = html.replace(MARKERS.appScript, '<script src="app.js"></script>\n  <script src="/web/web-menu.js"></script>\n  <script src="/web/web-history.js"></script>\n  <script src="/web/web-branches.js"></script>\n  <script src="/web/web-mobile.js"></script>');
   return html;
 }
 
