@@ -247,6 +247,10 @@ body.light .ht-fields input, body.light .ht-fields select { background: #fff; co
 .mm-spacer { flex: 1; }
 .mm-canvas { position: relative; flex: 1; min-height: 0; overflow: auto; border: 1px solid #3a3a3a; border-radius: 8px; background: #141414; cursor: default; outline: none; }
 .mm-canvas::after { content: ''; display: block; width: var(--mm-w); height: var(--mm-h); }
+.mm-sheet { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.mm-zoom { display: inline-flex; align-items: center; gap: 2px; }
+.mm-zoom .btn-quiet { padding-left: 8px; padding-right: 8px; min-width: 0; }
+.mm-zoom-reset { font-variant-numeric: tabular-nums; }
 .mm-links { position: absolute; left: 0; top: 0; pointer-events: none; }
 .mm-line { stroke: #6a6a6a; stroke-width: 2; }
 .mm-node { position: absolute; min-width: 120px; max-width: 240px; padding: 8px 12px; border: 1px solid #4a4a4a; border-radius: 10px; background: #222; color: #ddd; font-size: 14px; line-height: 1.4; user-select: none; touch-action: none; cursor: grab; display: flex; flex-direction: column; gap: 2px; }
