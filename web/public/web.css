@@ -246,6 +246,12 @@ body.light .hf-text { background: #fff; color: #222; border-color: #ddd8ce; }
 .ht-mark:hover .ht-mark-dot, .ht-mark:focus .ht-mark-dot { stroke: var(--accent, #c9a86a); }
 .ht-mark-when { fill: #9a9a9a; }
 .ht-mark-title { fill: #ddd; }
+.ht-sheet-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.ht-tab { min-height: 0; padding: 3px 12px; border-radius: 6px 6px 0 0; border: 1px solid #3a3a3a; border-bottom: 0; background: transparent; color: #aaa; font: inherit; font-size: 12px; cursor: pointer; border-top: 2px solid var(--sheet, #777); }
+.ht-tab.ht-tab-on { background: #141414; color: #ddd; font-weight: 600; }
+.ht-jump { font-size: 10px; font-style: italic; }
+.ht-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ht-extra .ht-sheet { width: auto; padding: 2px 6px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 12px; margin: 0; }
 .ht-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 120px; }
 .ht-event { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 8px 4px 8px 30px; border-radius: 6px; }
 .ht-event::before { content: ''; position: absolute; left: 11px; top: 0; bottom: 0; width: 2px; background: #3a3a3a; }
@@ -271,6 +277,9 @@ body.light .ht-mark-dot { fill: #fff; stroke: #444; }
 body.light .ht-mark-title { fill: #222; }
 body.light .ht-mark-when, body.light .ht-chapter-label { fill: #6a6a6a; }
 body.light .ht-who button { color: #555; }
+body.light .ht-tab { border-color: #ddd8ce; color: #555; }
+body.light .ht-tab.ht-tab-on { background: #faf8f3; color: #222; }
+body.light .ht-extra .ht-sheet { background: #fff; color: #222; border-color: #ddd8ce; }
 @media (max-width: 640px) {
   .ht-event { flex-wrap: wrap; }
   .ht-fields { grid-template-columns: 1fr; }

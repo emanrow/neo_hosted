@@ -15,13 +15,19 @@
 /* needs nothing of the server. It never writes into chapter HTML.      */
 /*                                                                      */
 /* The file: { lanes: [{ id, name, color }], characters: [{ id, name,   */
-/* color }], events: [{ id, when, title, chapterId, laneId,             */
-/* characterIds }] }. Older files carry only events; a missing laneId   */
-/* draws in the "(no place)" lane. Story order is the array order; the  */
-/* "when" is text the writer reads, never parsed, so a story can run    */
-/* backwards, sideways or twice. Alternate sheets of time (a split      */
-/* world, a second frame of reference) would be one more field on an   */
-/* event, not a different file.                                         */
+/* color }], sheets: [{ id, name, color }], events: [{ id, when, title, */
+/* chapterId, laneId, characterIds, sheetId }] }. Older files carry     */
+/* only events; a missing laneId draws in the "(no place)" lane, a     */
+/* missing sheetId is the main sheet. Story order is the array order;   */
+/* the "when" is text the writer reads, never parsed, so a story can    */
+/* run backwards, sideways or twice.                                    */
+/*                                                                      */
+/* A sheet of time is an alternate timeline the story keeps beside the  */
+/* main one: a split world, a second frame of reference, the loop that  */
+/* went the other way. The chart shows one sheet at a time (tabs above  */
+/* it); a character whose next or previous event is on another sheet   */
+/* gets a marker at the jump, naming the sheet they came from or went   */
+/* to, so a crossing is visible from either side.                       */
 
 (function () {
   'use strict';
@@ -29,7 +35,7 @@
   const { t } = window.NeoI18n;
   const hosted = window.neoHosted;
   const SIDECAR = 'timeline';
-  const EMPTY = { lanes: [], characters: [], events: [] };
+  const EMPTY = { lanes: [], characters: [], sheets: [], events: [] };
   const PALETTE = ['#c9a86a', '#5fb3d9', '#8fd17a', '#e07a7a', '#c58fe0', '#f0a35e', '#6ad1c4', '#d9d9d9'];
   const CHART = { laneLeft: 24, column: 120, row: 72, top: 30, bottom: 26, labelChars: 18 };
   const say = (msg) => { if (typeof window.toast === 'function') window.toast(msg); };
@@ -52,9 +58,10 @@
     return {
       lanes: list(data.lanes).map((l, i) => ({ id: l.id || newId('ln'), name: l.name || '', color: l.color || PALETTE[i % PALETTE.length] })),
       characters: list(data.characters).map((c, i) => ({ id: c.id || newId('ch'), name: c.name || '', color: c.color || PALETTE[(i + 1) % PALETTE.length] })),
+      sheets: list(data.sheets).map((sh, i) => ({ id: sh.id || newId('sh'), name: sh.name || '', color: sh.color || PALETTE[(i + 2) % PALETTE.length] })),
       events: list(data.events).map((e) => ({
         id: e.id || newId('ev'), when: e.when || '', title: e.title || '', chapterId: e.chapterId || '',
-        laneId: e.laneId || '', characterIds: Array.isArray(e.characterIds) ? e.characterIds.filter((id) => typeof id === 'string') : [],
+        laneId: e.laneId || '', characterIds: Array.isArray(e.characterIds) ? e.characterIds.filter((id) => typeof id === 'string') : [], sheetId: e.sheetId || '',
       })),
     };
   }
@@ -97,7 +104,9 @@
         <div class="ht-sets">
           <div class="ht-set ht-lanes"><span class="ht-set-label"></span><span class="ht-chips"></span><button class="ht-add-lane btn-quiet"></button></div>
           <div class="ht-set ht-chars"><span class="ht-set-label"></span><span class="ht-chips"></span><button class="ht-add-char btn-quiet"></button></div>
+          <div class="ht-set ht-sheets"><span class="ht-set-label"></span><span class="ht-chips"></span><button class="ht-add-sheet btn-quiet"></button></div>
         </div>
+        <div class="ht-sheet-tabs" role="tablist" hidden></div>
         <div class="ht-chart" hidden>
           <div class="ht-lane-names"></div>
           <div class="ht-chart-scroll"><svg class="ht-svg" aria-hidden="true"></svg></div>
@@ -112,11 +121,15 @@
     document.body.appendChild(bd);
     open = bd;
     bd.querySelector('h2').textContent = t('Timeline');
-    bd.querySelector('.hs-lead').textContent = t('The story in the order it happens. Each event has a time in the story, a place and the characters who are there; the chart draws one lane per place and a line per character across them. Drag events to reorder them.');
+    bd.querySelector('.hs-lead').textContent = t('The story in the order it happens. Each event has a time in the story, a place and the characters who are there; the chart draws one lane per place and a line per character across them. A sheet of time is an alternate timeline beside the main one. Drag events to reorder them.');
     bd.querySelector('.ht-lanes .ht-set-label').textContent = t('Places');
     bd.querySelector('.ht-chars .ht-set-label').textContent = t('Characters');
     bd.querySelector('.ht-add-lane').textContent = t('Add Place');
     bd.querySelector('.ht-add-char').textContent = t('Add Character');
+    bd.querySelector('.ht-sheets .ht-set-label').textContent = t('Sheets of time');
+    bd.querySelector('.ht-add-sheet').textContent = t('Add Sheet');
+    const tabs = bd.querySelector('.ht-sheet-tabs');
+    let activeSheet = ''; // '' is the main sheet; the tabs switch it, the chart draws it, a new event lands on it
     const list = bd.querySelector('.ht-list');
     const note = bd.querySelector('.hh-note');
     const chart = bd.querySelector('.ht-chart');
@@ -164,6 +177,8 @@
 
     // ---- places and characters: a chip each, with a colour swatch and a name ----
     const laneOf = (id) => data.lanes.find((l) => l.id === id);
+    const sheetOf = (id) => data.sheets.find((sh) => sh.id === id);
+    const sheetNameOf = (id) => { const sh = sheetOf(id); return sh ? (sh.name || t('(unnamed)')) : t('Main sheet'); };
     const charOf = (id) => data.characters.find((c) => c.id === id);
     const nextColor = (set) => PALETTE[set.length % PALETTE.length];
     const cycleColor = (item) => { item.color = PALETTE[(PALETTE.indexOf(item.color) + 1) % PALETTE.length]; };
@@ -206,6 +221,42 @@
           changed(); drawAll();
         }, t('Character')));
       }
+      const sheets = bd.querySelector('.ht-sheets .ht-chips');
+      sheets.innerHTML = '';
+      for (const sheet of data.sheets) {
+        sheets.appendChild(chip(sheet, () => { renameSheet(sheet); drawTabs(); drawChart(); }, () => { drawTabs(); drawChart(); }, () => {
+          const used = data.events.filter((e) => e.sheetId === sheet.id).length;
+          if (used && !window.confirm(t('Remove the sheet "{name}"? Its {count} events move to the main sheet.', { name: sheet.name, count: used }))) return;
+          data.sheets = data.sheets.filter((sh) => sh !== sheet);
+          for (const e of data.events) if (e.sheetId === sheet.id) e.sheetId = '';
+          if (activeSheet === sheet.id) activeSheet = '';
+          changed(); drawAll();
+        }, t('Sheet')));
+      }
+    }
+    const renameSheet = (sheet) => {
+      for (const opt of list.querySelectorAll('.ht-sheet option[value="' + sheet.id + '"]')) opt.textContent = sheet.name || t('(unnamed)');
+    };
+
+    /** One tab per sheet, the main sheet first; the chart draws the active one. Hidden until a sheet exists. */
+    function drawTabs() {
+      tabs.hidden = !data.sheets.length;
+      tabs.innerHTML = '';
+      if (tabs.hidden) { activeSheet = ''; return; }
+      if (activeSheet && !sheetOf(activeSheet)) activeSheet = '';
+      for (const sheet of [{ id: '', name: t('Main sheet'), color: '' }, ...data.sheets]) {
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'ht-tab' + (sheet.id === activeSheet ? ' ht-tab-on' : '');
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-selected', String(sheet.id === activeSheet));
+        tab.dataset.id = sheet.id;
+        if (sheet.color) tab.style.setProperty('--sheet', sheet.color);
+        const count = data.events.filter((e) => e.sheetId === sheet.id).length;
+        tab.textContent = (sheet.name || t('(unnamed)')) + (count ? ' · ' + count : '');
+        tab.onclick = () => { activeSheet = sheet.id; drawTabs(); drawChart(); };
+        tabs.appendChild(tab);
+      }
     }
     /** A rename reaches every place select and lane label without redrawing the list (the writer is typing). */
     const renameLane = (lane) => {
@@ -221,6 +272,14 @@
       const last = bd.querySelector('.ht-lanes .ht-chip:last-child .ht-chip-name');
       if (last) last.focus();
     };
+    bd.querySelector('.ht-add-sheet').onclick = () => {
+      const sheet = { id: newId('sh'), name: '', color: PALETTE[(data.sheets.length + 2) % PALETTE.length] };
+      data.sheets.push(sheet);
+      activeSheet = sheet.id;
+      changed(); drawAll();
+      const last = bd.querySelector('.ht-sheets .ht-chip:last-child .ht-chip-name');
+      if (last) last.focus();
+    };
     bd.querySelector('.ht-add-char').onclick = () => {
       data.characters.push({ id: newId('ch'), name: '', color: nextColor(data.characters) });
       changed(); drawAll();
@@ -232,10 +291,11 @@
     function drawChart() {
       chart.hidden = !data.events.length;
       if (chart.hidden) return;
+      const shown = data.events.filter((e) => (sheetOf(e.sheetId) ? e.sheetId : '') === activeSheet);
       const lanes = data.lanes.slice();
-      if (data.events.some((e) => !laneOf(e.laneId))) lanes.push({ id: '', name: t('(no place)'), color: '#6a6a6a' });
+      if (shown.some((e) => !laneOf(e.laneId))) lanes.push({ id: '', name: t('(no place)'), color: '#6a6a6a' });
       const laneRow = (id) => { const i = lanes.findIndex((l) => l.id === id); return i < 0 ? lanes.length - 1 : i; };
-      const width = CHART.laneLeft + data.events.length * CHART.column + 20;
+      const width = CHART.laneLeft + Math.max(shown.length, 1) * CHART.column + 20;
       const height = CHART.top + lanes.length * CHART.row + CHART.bottom;
       svg.setAttribute('width', width);
       svg.setAttribute('height', height);
@@ -258,7 +318,7 @@
 
       // a dotted boundary wherever the chapter changes
       let lastChapter = null;
-      data.events.forEach((event, i) => {
+      shown.forEach((event, i) => {
         if (event.chapterId === lastChapter) return;
         lastChapter = event.chapterId;
         const ch = chapters.find((c) => c.id === event.chapterId);
@@ -273,18 +333,34 @@
       // every character's path, drawn under the dots so the dots stay clickable
       data.characters.forEach((who, k) => {
         const offset = (k - (data.characters.length - 1) / 2) * 4;
+        const theirs = data.events.filter((event) => event.characterIds.includes(who.id)); // in story order, across every sheet
         const points = [];
-        data.events.forEach((event, i) => { if (event.characterIds.includes(who.id)) points.push({ x: xOf(i), y: yOf(laneRow(event.laneId)) + offset }); });
+        shown.forEach((event, i) => {
+          if (!event.characterIds.includes(who.id)) return;
+          const at = theirs.indexOf(event);
+          const before = theirs[at - 1];
+          const after = theirs[at + 1];
+          points.push({
+            x: xOf(i), y: yOf(laneRow(event.laneId)) + offset,
+            from: before && before.sheetId !== event.sheetId ? sheetNameOf(before.sheetId) : '',
+            to: after && after.sheetId !== event.sheetId ? sheetNameOf(after.sheetId) : '',
+          });
+        });
         if (!points.length) return;
         const path = svgEl('path', { d: pathThrough(points), class: 'ht-path', stroke: who.color, 'data-id': who.id });
         const title = svgEl('title', {});
         title.textContent = who.name;
         path.appendChild(title);
         svg.appendChild(path);
-        for (const p of points) svg.appendChild(svgEl('circle', { cx: p.x, cy: p.y, r: 3.5, fill: who.color, class: 'ht-path-dot' }));
+        for (const p of points) {
+          svg.appendChild(svgEl('circle', { cx: p.x, cy: p.y, r: 3.5, fill: who.color, class: 'ht-path-dot' }));
+          // a crossing between sheets: where they came from, where they go, in their own colour
+          if (p.from) { const m = svgEl('text', { x: p.x - 10, y: p.y + 4, class: 'ht-jump', fill: who.color, 'text-anchor': 'end' }); m.textContent = '⇠ ' + clip(p.from, 14); svg.appendChild(m); }
+          if (p.to) { const m = svgEl('text', { x: p.x + 10, y: p.y + 4, class: 'ht-jump', fill: who.color }); m.textContent = clip(p.to, 14) + ' ⇢'; svg.appendChild(m); }
+        }
       });
 
-      data.events.forEach((event, i) => {
+      shown.forEach((event, i) => {
         const x = xOf(i);
         const y = yOf(laneRow(event.laneId));
         const g = svgEl('g', { class: 'ht-mark', 'data-id': event.id, tabindex: 0, role: 'button' });
@@ -337,7 +413,7 @@
             <select class="ht-place"></select>
             <select class="ht-chapter"></select>
           </div>
-          <div class="ht-who" hidden></div>
+          <div class="ht-extra" hidden><select class="ht-sheet" hidden></select><div class="ht-who"></div></div>
         </div>
         <div class="ht-tools">
           <button class="ht-up btn-quiet" title="${t('Move up')}" aria-label="${t('Move up')}">↑</button>
@@ -350,6 +426,8 @@
       const place = li.querySelector('.ht-place');
       const chapter = li.querySelector('.ht-chapter');
       const who = li.querySelector('.ht-who');
+      const extra = li.querySelector('.ht-extra');
+      const sheetSel = li.querySelector('.ht-sheet');
       const go = li.querySelector('.ht-go');
       const dot = li.querySelector('.ht-dot');
       when.placeholder = t('When in the story');
@@ -378,7 +456,12 @@
       };
       showGo();
 
-      who.hidden = !data.characters.length;
+      extra.hidden = !data.characters.length && !data.sheets.length;
+      sheetSel.hidden = !data.sheets.length;
+      option(sheetSel, '', t('Main sheet'));
+      for (const sheet of data.sheets) option(sheetSel, sheet.id, sheet.name || t('(unnamed)'));
+      sheetSel.value = sheetOf(event.sheetId) ? event.sheetId : '';
+      sheetSel.onchange = () => { event.sheetId = sheetSel.value; changed(); drawTabs(); drawChart(); };
       for (const person of data.characters) {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -402,7 +485,7 @@
       li.querySelector('.ht-up').onclick = () => move(index, index - 1);
       li.querySelector('.ht-down').onclick = () => move(index, index + 1);
       li.querySelector('.ht-remove').onclick = () => {
-        const drop = () => { data.events.splice(index, 1); changed(); drawList(); drawChart(); keepFocus(); };
+        const drop = () => { data.events.splice(index, 1); changed(); drawTabs(); drawList(); drawChart(); keepFocus(); };
         if (!event.title && !event.when) { drop(); return; }
         if (window.confirm(t('Remove "{title}" from the timeline? The chapter itself is untouched.', { title: event.title || event.when }))) drop();
       };
@@ -425,13 +508,13 @@
     }
     /** A redraw that removes the focused button would drop focus to the page, and Escape with it; the panel takes it back. */
     const keepFocus = () => { if (!bd.contains(document.activeElement)) bd.focus(); };
-    const drawAll = () => { drawSets(); drawList(); drawChart(); keepFocus(); };
+    const drawAll = () => { drawSets(); drawTabs(); drawList(); drawChart(); keepFocus(); };
 
     bd.querySelector('.ht-add').onclick = () => {
       const last = data.events[data.events.length - 1];
-      data.events.push({ id: newId('ev'), when: '', title: '', chapterId: last ? last.chapterId : '', laneId: last ? last.laneId : '', characterIds: [] });
+      data.events.push({ id: newId('ev'), when: '', title: '', chapterId: last ? last.chapterId : '', laneId: last ? last.laneId : '', characterIds: [], sheetId: activeSheet });
       changed();
-      drawList(); drawChart();
+      drawTabs(); drawList(); drawChart();
       const field = list.querySelector('.ht-event:last-child .ht-when');
       if (field) field.focus();
     };
