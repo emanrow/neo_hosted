@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Français (Canada)",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Connexion",
+  "A word processor for authors. Distraction-free by default.": "Un traitement de texte pour les auteurs. Sans distraction, par défaut.",
+  "Email": "Courriel",
+  "Password": "Mot de passe",
+  "Invitation code": "Code d’invitation",
+  "Sign in": "Se connecter",
+  "Create an account": "Créer un compte",
+  "Forgot your password?": "Mot de passe oublié?",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "NEO est le traitement de texte pour auteurs écrit par {author}, sous licence MIT.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "Ceci est une {edition} indépendante, ni affiliée à lui ni approuvée par lui.",
+  "hosted edition": "édition hébergée",
+  "Your books are yours: download your whole library any time from the File menu.": "Vos livres sont à vous : téléchargez toute votre bibliothèque en tout temps depuis le menu Fichier.",
+  "Create account": "Créer le compte",
+  "I already have an account": "J’ai déjà un compte",
+  "Email me a reset link": "M’envoyer un lien de réinitialisation",
+  "Back to sign in": "Retour à la connexion",
+  "Set new password": "Définir le nouveau mot de passe",
+  "New password": "Nouveau mot de passe",
+  "Could not sign in": "Connexion impossible",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Ce lien a expiré ou a déjà servi. Connectez-vous pour en recevoir un nouveau, ou demandez une réinitialisation du mot de passe.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Si cette adresse a un compte ici, un lien de réinitialisation est en route. Vérifiez vos courriels.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Presque fini. Nous vous avons envoyé un lien de confirmation; ouvrez-le pour commencer à écrire.",
+  "Too many emails requested. Try again in a few minutes.": "Trop de courriels demandés. Réessayez dans quelques minutes.",
+  "That does not look like an email address": "Cela ne ressemble pas à une adresse courriel",
+  "A password needs at least {n} characters": "Un mot de passe doit faire au moins {n} caractères",
+  "New accounts are not being created here": "Aucun nouveau compte n’est créé ici",
+  "That invitation code is not right": "Ce code d’invitation n’est pas le bon",
+  "That email already has an account": "Ce courriel a déjà un compte",
+  "Too many attempts. Try again in a few minutes.": "Trop de tentatives. Réessayez dans quelques minutes.",
+  "That email and password do not match": "Ce courriel et ce mot de passe ne correspondent pas",
+  "Confirm your email first. We just sent you a new link.": "Confirmez d’abord votre courriel. Nous venons de vous envoyer un nouveau lien.",
+  "That reset link has expired or was already used. Ask for a new one.": "Ce lien de réinitialisation a expiré ou a déjà servi. Demandez-en un nouveau.",
+  "Password reset by email is not set up on this server": "La réinitialisation par courriel n’est pas configurée sur ce serveur"
+}

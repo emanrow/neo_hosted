@@ -173,4 +173,5 @@ function rowToUser(row) {
 /** True unless the account is explicitly waiting on its confirmation link. */
 const isEmailVerified = (user) => !user || user.emailVerifiedAt !== null;
 
-module.exports = { JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified };
+module.exports = {
+  EMAIL_TAKEN, JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified };

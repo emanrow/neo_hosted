@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Русский",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Вход",
+  "A word processor for authors. Distraction-free by default.": "Текстовый редактор для писателей. Ничего лишнего по умолчанию.",
+  "Email": "Эл. почта",
+  "Password": "Пароль",
+  "Invitation code": "Код приглашения",
+  "Sign in": "Войти",
+  "Create an account": "Создать аккаунт",
+  "Forgot your password?": "Забыли пароль?",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "NEO — текстовый редактор для писателей, написанный {author}, лицензия MIT.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "Это независимая {edition}, не связанная с ним и не одобренная им.",
+  "hosted edition": "размещённая версия",
+  "Your books are yours: download your whole library any time from the File menu.": "Ваши книги принадлежат вам: скачайте всю библиотеку в любой момент через меню «Файл».",
+  "Create account": "Создать аккаунт",
+  "I already have an account": "У меня уже есть аккаунт",
+  "Email me a reset link": "Прислать ссылку для сброса пароля",
+  "Back to sign in": "Назад ко входу",
+  "Set new password": "Сохранить новый пароль",
+  "New password": "Новый пароль",
+  "Could not sign in": "Не удалось войти",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Эта ссылка устарела или уже была использована. Войдите, чтобы получить новую, или запросите сброс пароля.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Если у этого адреса есть аккаунт, ссылка для сброса пароля уже в пути. Проверьте почту.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Почти готово. Мы отправили вам ссылку для подтверждения; откройте её, чтобы начать писать.",
+  "Too many emails requested. Try again in a few minutes.": "Слишком много запросов писем. Попробуйте снова через несколько минут.",
+  "That does not look like an email address": "Это не похоже на адрес электронной почты",
+  "A password needs at least {n} characters": "Пароль должен быть не короче {n} символов",
+  "New accounts are not being created here": "Новые аккаунты здесь не создаются",
+  "That invitation code is not right": "Этот код приглашения не подходит",
+  "That email already has an account": "У этого адреса уже есть аккаунт",
+  "Too many attempts. Try again in a few minutes.": "Слишком много попыток. Попробуйте снова через несколько минут.",
+  "That email and password do not match": "Адрес и пароль не совпадают",
+  "Confirm your email first. We just sent you a new link.": "Сначала подтвердите почту. Мы только что отправили вам новую ссылку.",
+  "That reset link has expired or was already used. Ask for a new one.": "Эта ссылка для сброса пароля устарела или уже была использована. Запросите новую.",
+  "Password reset by email is not set up on this server": "Сброс пароля по почте на этом сервере не настроен"
+}

@@ -42,6 +42,13 @@ describe('the hosted server', () => {
     const login = await call('GET', '/login');
     assert.equal(login.status, 200);
     assert.match(login.headers.get('content-security-policy'), /script-src 'self'/);
+    assert.match(await login.text(), /<html lang="en">[\s\S]*id="submit">Sign in</, 'English without a preference');
+    const german = await call('GET', '/login', { headers: { 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.5' } });
+    assert.match(await german.text(), /<html lang="de">[\s\S]*id="submit">Anmelden</, 'the browser\'s language');
+    assert.equal(german.headers.get('vary'), 'Accept-Language');
+    const wrong = await call('POST', '/auth/signup', { body: { email: 'not-an-address', password: 'longenough' }, headers: { 'Accept-Language': 'fr' } });
+    assert.equal(wrong.status, 400);
+    assert.equal((await wrong.json()).error, 'Cela ne ressemble pas à une adresse e-mail', 'errors speak it too');
     assert.equal((await api('library:read')).status, 401);
     assert.equal((await call('GET', '/library/book-x/cover-1.png')).status, 401);
   });

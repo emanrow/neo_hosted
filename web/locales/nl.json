@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Nederlands",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Inloggen",
+  "A word processor for authors. Distraction-free by default.": "Een tekstverwerker voor auteurs. Standaard zonder afleiding.",
+  "Email": "E-mail",
+  "Password": "Wachtwoord",
+  "Invitation code": "Uitnodigingscode",
+  "Sign in": "Inloggen",
+  "Create an account": "Een account aanmaken",
+  "Forgot your password?": "Wachtwoord vergeten?",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "NEO is de tekstverwerker voor auteurs, geschreven door {author}, onder MIT-licentie.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "Dit is een onafhankelijke {edition}, niet aan hem verbonden en niet door hem aanbevolen.",
+  "hosted edition": "gehoste editie",
+  "Your books are yours: download your whole library any time from the File menu.": "Je boeken zijn van jou: download je hele bibliotheek wanneer je wilt via het menu Bestand.",
+  "Create account": "Account aanmaken",
+  "I already have an account": "Ik heb al een account",
+  "Email me a reset link": "Stuur me een herstellink",
+  "Back to sign in": "Terug naar inloggen",
+  "Set new password": "Nieuw wachtwoord instellen",
+  "New password": "Nieuw wachtwoord",
+  "Could not sign in": "Inloggen is niet gelukt",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Die link is verlopen of al gebruikt. Log in voor een nieuwe, of vraag een wachtwoordherstel aan.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Als dat adres hier een account heeft, is er een herstellink onderweg. Kijk in je e-mail.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Bijna klaar. We hebben je een bevestigingslink gestuurd; open die om te beginnen met schrijven.",
+  "Too many emails requested. Try again in a few minutes.": "Te veel e-mails aangevraagd. Probeer het over een paar minuten opnieuw.",
+  "That does not look like an email address": "Dat ziet er niet uit als een e-mailadres",
+  "A password needs at least {n} characters": "Een wachtwoord heeft minstens {n} tekens nodig",
+  "New accounts are not being created here": "Hier worden geen nieuwe accounts aangemaakt",
+  "That invitation code is not right": "Die uitnodigingscode klopt niet",
+  "That email already has an account": "Dat e-mailadres heeft al een account",
+  "Too many attempts. Try again in a few minutes.": "Te veel pogingen. Probeer het over een paar minuten opnieuw.",
+  "That email and password do not match": "Dat e-mailadres en wachtwoord horen niet bij elkaar",
+  "Confirm your email first. We just sent you a new link.": "Bevestig eerst je e-mail. We hebben je net een nieuwe link gestuurd.",
+  "That reset link has expired or was already used. Ask for a new one.": "Die herstellink is verlopen of al gebruikt. Vraag een nieuwe aan.",
+  "Password reset by email is not set up on this server": "Wachtwoordherstel per e-mail is op deze server niet ingesteld"
+}
