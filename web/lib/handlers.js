@@ -31,8 +31,17 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   // ---------- chapters and sidecars ----------
   api.handle('chapter:stamps', (ctx, bookId) => ctx.library.chapterStamps(bookId));
   api.handle('chapter:read', (ctx, bookId, chapterId) => ctx.library.readChapter(bookId, chapterId));
-  api.handle('chapter:write', (ctx, bookId, chapterId, html) => ctx.library.writeChapter(bookId, chapterId, html));
+  // the file first, then the history; a log that cannot be written never costs a save
+  api.handle('chapter:write', async (ctx, bookId, chapterId, html) => {
+    const saved = ctx.library.writeChapter(bookId, chapterId, html);
+    try { await ctx.revisions.record(bookId, chapterId, html); } catch (err) { ctx.logError('revisions', err); }
+    return saved;
+  });
   api.handle('chapter:delete', (ctx, bookId, chapterId) => ctx.library.deleteChapter(bookId, chapterId));
+  // ---------- history (hosted only; the editor does not call these yet) ----------
+  api.handle('revision:list', (ctx, bookId, chapterId) => ctx.revisions.list(bookId, chapterId));
+  api.handle('revision:read', (ctx, id) => ctx.revisions.read(id));
+  api.handle('revision:verify', (ctx, bookId, chapterId) => ctx.revisions.verify(bookId, chapterId));
   api.handle('aux:read', (ctx, bookId, name) => ctx.library.readAux(bookId, name));
   api.handle('aux:write', (ctx, bookId, name, html) => ctx.library.writeAux(bookId, name, html));
   api.handle('json:read', (ctx, bookId, name, fallback) => ctx.library.readSidecar(bookId, name, fallback));

@@ -31,6 +31,7 @@ const { HttpError, readBody, readJSONBody, sendJSON, sendHTML, sendText, redirec
 const { hashPassword, verifyPassword, signSession, verifySession, signLink, verifyLink, linkStamp, LoginThrottle, SESSION_TTL_MS } = require('./lib/auth');
 const { JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified } = require('./lib/user-store');
 const { openDatabase } = require('./lib/db');
+const { RevisionLog, NullRevisionLog } = require('./lib/revisions');
 const { createMailer, confirmationMessage, resetMessage } = require('./lib/mail');
 const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
@@ -75,6 +76,7 @@ function createApp(config, deps = {}) {
   const usersFile = path.join(config.dataDir, 'users.json');
   const db = deps.db || (config.databaseUrl ? openDatabase(config.databaseUrl) : null);
   const users = db ? new PgUserStore(db) : new JsonUserStore(usersFile);
+  const revisions = db ? new RevisionLog(db) : new NullRevisionLog();
   const ready = db ? prepareDatabase() : Promise.resolve({ store: 'users.json', imported: 0 });
 
   // Migrate, then take over a users.json if one is there and the table is
@@ -125,6 +127,13 @@ function createApp(config, deps = {}) {
     return {
       user, req, locale, t, logError,
       library: openLibrary({ dir: libraryDir, t, logError }),
+      // this writer's slice of the revision log; a no-op without a database
+      revisions: {
+        record: (bookId, chapterId, html) => revisions.record({ userId: user.id, bookId, chapterId, html }),
+        list: (bookId, chapterId) => revisions.list({ userId: user.id, bookId, chapterId }),
+        read: (id) => revisions.read({ userId: user.id, id }),
+        verify: (bookId, chapterId) => revisions.verify({ userId: user.id, bookId, chapterId })
+      },
       secretsFile: path.join(root, 'secrets.json'),
       setLanguage(code) {
         const resolved = i18n.resolveLanguage(code) || 'en';
@@ -438,7 +447,7 @@ function createApp(config, deps = {}) {
   }
 
   return {
-    server, users, db, ready, spell, mailer, config, backupEveryone, startBackups,
+    server, users, db, revisions, ready, spell, mailer, config, backupEveryone, startBackups,
     close: async () => {
       await new Promise((resolve) => { timers.forEach(clearTimeout); server.close(() => resolve()); });
       if (db && !deps.db) await db.close();

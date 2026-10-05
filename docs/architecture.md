@@ -22,13 +22,14 @@ The server serves `app.js`, `styles.css`, `covers.js`, `i18n.js`, `fonts/` and `
 1. `server.js` reads the session cookie, verifies its signature (`lib/auth.js`), and finds the writer (`lib/user-store.js`).
 2. `contextFor(user, req)` builds the writer's context: their locale (saved choice, else `Accept-Language`), a translator bound to it, an `openLibrary()` over `<data>/users/<id>/NEO Library`, their settings and secrets files, and an error logger that appends to their own `neo-errors.log`.
 3. `POST /api/<channel>` parses `{ args: [...] }`, calls the handler as `fn(ctx, ...args)`, and answers `{ ok: true, result }`. A thrown error answers `{ ok: false, error }` with status 500 and is logged for that writer. The bridge rethrows, so `persistChapter` in `app.js` rolls back `savedHTML` and retries on the next flush, as on the desktop.
-4. Three routes are not channels because they move bytes: `POST /api/cover:upload` (raw image body), `POST /api/import:upload?name=` (a raw manuscript in, the parsed book out; the page then creates the book over the ordinary channels, nothing is written server-side), and `GET /library/<book>/<cover-or-art-file>` (the shelf's images).
+4. `chapter:write` writes the file, then appends a row to the revision log (`lib/revisions.js`) when the words changed; a log failure is logged for the writer and never fails the save. The log lives in Postgres beside the accounts ([auth-and-users.md](auth-and-users.md#where-users-live)); without a database it is a no-op. `revision:list`, `revision:read` and `revision:verify` read it back; nothing in `app.js` calls them yet.
+5. Three routes are not channels because they move bytes: `POST /api/cover:upload` (raw image body), `POST /api/import:upload?name=` (a raw manuscript in, the parsed book out; the page then creates the book over the ordinary channels, nothing is written server-side), and `GET /library/<book>/<cover-or-art-file>` (the shelf's images).
 
 ## A writer's corner of the volume
 
 ```
 <NEO_DATA_DIR>/
-  users.json                        who can sign in (see auth-and-users.md)
+  users.json                        who can sign in without Postgres (see auth-and-users.md)
   neo-errors.log                    the server's own failures
   users/<id>/
     settings.json                   uiLanguage
@@ -39,6 +40,8 @@ The server serves `app.js`, `styles.css`, `covers.js`, `i18n.js`, `fonts/` and `
       Trash/<book-id>--<timestamp>/       a "deleted" book; there is no system trash on a server
       book-<slug>-<id>/ ...
 ```
+
+**The revision log** (Postgres, `revisions` table): one row per autosave that changed a chapter, a snapshot of the whole chapter every twentieth row and a paragraph-grain diff against the parent otherwise, each row hashed into the one before it with its timestamp. Rebuilding any revision walks back to the nearest snapshot and replays forward. The files on the volume stay the chapter's truth; the log is history, and a chapter written before the log existed simply has history that starts at its next save. The `branch` column is `main` for every row until alternate drafts arrive ([backlog.md](backlog.md#storage)).
 
 A writer can download their `NEO Library` folder and open it in desktop NEO, or drop a desktop library in and carry on. Two browsers signed into the same account see each other's edits through the same `refreshFromDisk` machinery that syncs two laptops over iCloud: `chapter:stamps` answers with `mtime:size`, and `app.js` decides what to adopt. Nothing here replaces that with last-write-wins; AGENTS.md, "Saving and sync", explains why.
 

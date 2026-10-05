@@ -23,6 +23,28 @@ const MIGRATIONS = [
         email_verified_at TIMESTAMPTZ
       );
     `
+  },
+  {
+    id: '002-revisions',
+    sql: `
+      CREATE TABLE IF NOT EXISTS revisions (
+        id           BIGSERIAL PRIMARY KEY,
+        user_id      TEXT NOT NULL REFERENCES users(id),
+        book_id      TEXT NOT NULL,
+        chapter_id   TEXT NOT NULL,
+        branch       TEXT NOT NULL DEFAULT 'main',
+        parent_id    BIGINT REFERENCES revisions(id),
+        kind         TEXT NOT NULL CHECK (kind IN ('snapshot', 'diff')),
+        depth        INTEGER NOT NULL,
+        body         TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        chain_hash   TEXT NOT NULL,
+        chars        INTEGER NOT NULL,
+        words        INTEGER NOT NULL,
+        created_at   TIMESTAMPTZ NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS revisions_head ON revisions (user_id, book_id, chapter_id, branch, id DESC);
+    `
   }
 ];
 
