@@ -18,7 +18,8 @@
 //   POST /api/<channel>            { args: [...] } → { ok, result | error }   (see lib/handlers.js)
 //   POST /api/cover:upload?bookId=&ext=            raw image bytes → file name
 //   POST /api/import:upload?name=<file name>       raw .docx/.txt/.md bytes → the parsed book
-//   GET  /library/<bookId>/<cover-or-art file>     cover images for the shelf
+//   GET  /library/<bookId>/<cover, art or map file>  cover images for the shelf, the map map's sheet
+//   POST /api/map:upload?bookId=&ext=   the map map's sheet, raw image body (hosted only)
 //   GET  /library.zip              the writer's whole library as the desktop folder
 //   GET  /healthz
 
@@ -401,12 +402,13 @@ function createApp(config, deps = {}) {
     }
   }
 
-  async function handleCoverUpload(ctx, url, req, res) {
+  /** A raw image body in, its file name out: the cover (setCoverBytes) or the map map's sheet (setMapImage). */
+  async function handleImageUpload(ctx, url, req, res, store) {
     const bookId = url.searchParams.get('bookId');
     const ext = String(url.searchParams.get('ext') || '').toLowerCase();
-    if (!COVER_EXTS.includes(ext)) throw new HttpError(400, 'Covers are PNG, JPEG or WebP');
+    if (!COVER_EXTS.includes(ext)) throw new HttpError(400, ctx.t('Images are PNG, JPEG or WebP'));
     const bytes = await readBody(req, COVER_BODY_LIMIT);
-    sendJSON(res, 200, { ok: true, result: await ctx.library.setCoverBytes(bookId, ext, bytes) });
+    sendJSON(res, 200, { ok: true, result: await store(bookId, ext, bytes) });
   }
 
   // A manuscript the writer picked or dropped, parsed into chapters the way
@@ -491,7 +493,8 @@ function createApp(config, deps = {}) {
       if (!user) throw new HttpError(401, 'Sign in to continue');
       if (method === 'POST' && !isSameOrigin(req)) throw new HttpError(403, 'Cross-site request refused');
       const ctx = contextFor(user, req);
-      if (method === 'POST' && p === '/api/cover:upload') return handleCoverUpload(ctx, url, req, res);
+      if (method === 'POST' && p === '/api/cover:upload') return handleImageUpload(ctx, url, req, res, ctx.library.setCoverBytes);
+      if (method === 'POST' && p === '/api/map:upload') return handleImageUpload(ctx, url, req, res, ctx.library.setMapImage);
       if (method === 'POST' && p === '/api/import:upload') return handleImportUpload(ctx, url, req, res);
       if (method === 'POST' && p.startsWith('/api/')) return handleApi(ctx, p.slice(5), req, res);
       if (method === 'GET' && p === '/library.zip') return serveLibraryZip(ctx, res);

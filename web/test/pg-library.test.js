@@ -87,6 +87,11 @@ describe('PgLibrary', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is n
     await lib.removeCover(book.id);
     assert.equal(await lib.readCover(book.id, second), null);
     assert.deepEqual(await lib.readCover(book.id, art), Buffer.from('paint'), 'removing the cover leaves the painting');
+    const sheet = await lib.setMapImage(book.id, 'png', Buffer.from('world'));
+    assert.match(sheet, /^map-\d+\.png$/);
+    assert.deepEqual(await lib.readCover(book.id, sheet), Buffer.from('world'), 'the map map\'s sheet is served like a cover');
+    assert.equal(await lib.setMapImage(book.id, '', null), '');
+    assert.equal(await lib.readCover(book.id, sheet), null, 'and removed on request');
   });
 
   test('a writer\'s footprint is counted, and erase leaves no row behind', async () => {

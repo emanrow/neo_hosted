@@ -111,6 +111,8 @@ describe('the hosted server', () => {
     assert.equal((await call('GET', '/web/web-timeline.js')).status, 200);
     assert.ok(html.includes('/web/web-mindmap.js'));
     assert.equal((await call('GET', '/web/web-mindmap.js')).status, 200);
+    assert.ok(html.includes('/web/web-map.js'));
+    assert.equal((await call('GET', '/web/web-map.js')).status, 200);
     assert.match(html, /"feedback":false/, 'with email off, Send Feedback… stays off the menu');
     assert.match(html, /"welcome":""/);
     const feedback = await api('feedback:send', 'Hello?');
@@ -161,6 +163,17 @@ describe('the hosted server', () => {
     const map = { nodes: [{ id: 'n-1', text: 'Silo', x: 100, y: 80, chapterId: 'ch-1' }, { id: 'n-2', text: 'The lottery', x: 300, y: 80, chapterId: '' }], links: [{ from: 'n-1', to: 'n-2' }] };
     assert.equal((await api('json:write', book.id, 'mindmap', map)).ok, true);
     assert.deepEqual((await api('json:read', book.id, 'mindmap', { nodes: [], links: [] })).result, map);
+    // the map map's sheet uploads like a cover, is served like one, and can be removed
+    const sheet = Buffer.from([0x89, 0x50, 0x4e, 0x47, 9, 9]);
+    const sheetUp = await call('POST', `/api/map:upload?bookId=${book.id}&ext=png`, { raw: sheet, headers: { 'Content-Type': 'application/octet-stream' } });
+    const sheetName = (await sheetUp.json()).result;
+    assert.match(sheetName, /^map-\d+\.png$/);
+    const served = await call('GET', `/library/${book.id}/${sheetName}`);
+    assert.equal(served.status, 200);
+    assert.deepEqual(Buffer.from(await served.arrayBuffer()), sheet);
+    assert.equal((await call('POST', `/api/map:upload?bookId=${book.id}&ext=gif`, { raw: sheet, headers: { 'Content-Type': 'application/octet-stream' } })).status, 400);
+    assert.equal((await api('map:removeImage', book.id)).result, '');
+    assert.equal((await call('GET', `/library/${book.id}/${sheetName}`)).status, 404, 'the sheet is gone');
     assert.equal((await api('json:write', book.id, 'stickies', [{ a: 1 }])).result, true);
     assert.deepEqual((await api('json:read', book.id, 'stickies', null)).result, [{ a: 1 }]);
     assert.equal(typeof (await api('book:writeMeta', book.id, { ...book, title: 'Renamed' })).result, 'string');

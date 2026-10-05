@@ -33,7 +33,7 @@ const { checkBranchName, MAIN_BRANCH: MAIN } = require('./branches');
 const { dailyZip } = require('./backups');
 
 const COVER_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
-const COVER_FILE = /^(cover|art)-\d+\.(png|jpg|webp)$/;
+const COVER_FILE = /^(cover|art|map)-\d+\.(png|jpg|webp)$/;   // the images NEO made and serves: covers, paintings, the map map's sheet
 const IMAGE_EXT = /\.(png|jpe?g|webp)$/i;
 const BASE_PATHS = "(path = 'book.json' OR path LIKE 'chapters/%')";
 const TRASHED_PREFIX = 'Trash/';
@@ -204,6 +204,18 @@ function openPgLibrary({ db, userId, dir, t }) {
   async function removeCover(bookId) {
     await deleteFiles(bookId, 'cover-%');
     return true;
+  }
+
+  /** The map map's sheet (hosted only): one image per book as map-<ts>.<ext>, the earlier one replaced; '' removes it. Returns the file name. */
+  async function setMapImage(bookId, ext, bytes) {
+    if (!(await readBookMeta(bookId))) return null;
+    await deleteFiles(bookId, 'map-%');
+    if (!bytes) return '';
+    ext = String(ext || '').toLowerCase();
+    if (!COVER_EXTS.includes(ext)) return null;
+    const fname = 'map-' + Date.now() + '.' + (ext === 'jpeg' ? 'jpg' : ext);
+    await writeFile(bookId, fname, { bytes });
+    return fname;
   }
 
   /** The bytes of a cover or painting, or null when the name is not one NEO made or it is gone. */
@@ -414,7 +426,7 @@ function openPgLibrary({ db, userId, dir, t }) {
     createBook, readBookMeta, writeBookMeta, trashBook,
     chapterStamps, readChapter, writeChapter, deleteChapter,
     readAux, writeAux, readSidecar, writeSidecar,
-    setCoverBytes, removeCover, readCover, storePainting,
+    setCoverBytes, removeCover, readCover, setMapImage, storePainting,
     branches, dailyBackup, exportZip, isEmpty, importFolder, footprint, erase
   };
 }

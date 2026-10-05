@@ -136,6 +136,12 @@ describe('a writer\'s library', () => {
     const second = lib.setCoverBytes(book.id, 'png', Buffer.from('two'));
     assert.deepEqual(fs.readdirSync(path.join(dir, book.id)).filter((f) => f.startsWith('cover-')), [second]);
     assert.deepEqual(lib.readCover(book.id, second), Buffer.from('two'));
+    const sheet = lib.setMapImage(book.id, 'jpeg', Buffer.from('world'));
+    assert.match(sheet, /^map-\d+\.jpg$/);
+    assert.deepEqual(lib.readCover(book.id, sheet), Buffer.from('world'), 'the map map\'s sheet is served like a cover');
+    assert.equal(lib.setMapImage(book.id, 'gif', Buffer.from('x')), null);
+    assert.equal(lib.setMapImage(book.id, '', null), '');
+    assert.equal(lib.readCover(book.id, sheet), null, 'and removed on request');
     assert.equal(lib.readCover(book.id, 'book.json'), null, 'only cover-* and art-* images are served');
     lib.removeCover(book.id);
     assert.equal(lib.readCover(book.id, second), null);

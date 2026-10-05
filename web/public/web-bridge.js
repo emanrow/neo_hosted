@@ -195,6 +195,17 @@
       return body.result;
     },
     removeCover: (bookId) => rpc('cover:remove', bookId),
+    /* ---------- the map map's sheet (hosted only) ---------- */
+    uploadMapImage: async (bookId, file) => {
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      const res = await fetch('/api/map:upload?bookId=' + encodeURIComponent(bookId) + '&ext=' + encodeURIComponent(ext), {
+        method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }
+      });
+      const body = await res.json().catch(() => ({ ok: false }));
+      if (!body.ok) throw new Error(body.error || tr('Couldn’t save that image'));
+      return body.result;
+    },
+    removeMapImage: (bookId) => rpc('map:removeImage', bookId),
     readCover: async (bookId, fname) => {
       try {
         const res = await fetch('/library/' + encodeURIComponent(bookId) + '/' + encodeURIComponent(fname), { credentials: 'same-origin' });

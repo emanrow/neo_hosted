@@ -23,7 +23,7 @@ The server serves `app.js`, `styles.css`, `covers.js`, `i18n.js`, `fonts/` and `
 2. `contextFor(user, req)` builds the writer's context: their locale (saved choice, else `Accept-Language`), a translator bound to it, their library (rows in Postgres with `DATABASE_URL`, `web/lib/pg-library.js`; the folder `<data>/users/<id>/NEO Library` without, `web/lib/library.js`; one contract, every call awaited), their settings and secrets files, and an error logger that appends to their own `neo-errors.log`.
 3. `POST /api/<channel>` parses `{ args: [...] }`, calls the handler as `fn(ctx, ...args)`, and answers `{ ok: true, result }`. A thrown error answers `{ ok: false, error }` with status 500 and is logged for that writer; a refusal the handler meant (an `HttpError`, such as feedback with email off) keeps its own status and is not logged. The bridge rethrows, so `persistChapter` in `app.js` rolls back `savedHTML` and retries on the next flush, as on the desktop.
 4. `chapter:write` writes the chapter, then appends a row to the revision log (`lib/revisions.js`) when the words changed; a log failure is logged for the writer and never fails the save. The log lives in Postgres beside the accounts ([auth-and-users.md](auth-and-users.md#where-users-live)); without a database it is a no-op. `revision:list`, `revision:read` and `revision:verify` read it back for the History panel.
-5. Four routes are not channels because they move bytes: `POST /api/cover:upload` (raw image body), `POST /api/import:upload?name=` (a raw manuscript in, the parsed book out; the page then creates the book over the ordinary channels, nothing is written server-side), `GET /library/<book>/<cover-or-art-file>` (the shelf's images) and `GET /library.zip` (File → Download Library…: the whole library as the desktop folder).
+5. Five routes are not channels because they move bytes: `POST /api/cover:upload` and `POST /api/map:upload` (raw image bodies: the cover, the map map's sheet), `POST /api/import:upload?name=` (a raw manuscript in, the parsed book out; the page then creates the book over the ordinary channels, nothing is written server-side), `GET /library/<book>/<image-file>` (the shelf's covers and the map map's sheet) and `GET /library.zip` (File → Download Library…: the whole library as the desktop folder).
 
 ## Where a writer's words live
 
@@ -60,7 +60,7 @@ Without a database (a laptop, the tests), `lib/library.js` and `lib/branches.js`
       library.json  _catalog.txt          folder mode only, and the rest of this list
       Trash/<book-id>--<timestamp>/       a "deleted" book; there is no system trash on a server
       Trash/<book-id>--branch-<name>--<timestamp>/   a deleted branch
-      book-<slug>-<id>/ ...               the main draft (the desktop layout, plus timeline.json and mindmap.json for the rooms under View)
+      book-<slug>-<id>/ ...               the main draft (the desktop layout, plus timeline.json, mindmap.json, maps.json and map-<ts>.<ext> for the rooms under View)
         .branches/active                  names the branch the writer is in (absent or "main": the folder above)
         .branches/<name>/ ...             a whole alternate draft: the same layout, plus branch.json (hosted only)
         .branches/<name>/.base/           the chapters and book.json the branch started from (moved forward by each merge)
@@ -94,4 +94,4 @@ One piece is already shared rather than ported: `import-parse.js` at the reposit
 
 ## Security posture in one paragraph
 
-Scripts are `'self'` only, as on the desktop; styles allow inline because `index.html` already carries `style=""` attributes. Sessions are signed HttpOnly SameSite=Lax cookies; cross-site POSTs are refused by `Sec-Fetch-Site`. Every name the page sends passes `libName`; every static path is fenced to its root. Covers are served only by NEO's own `cover-*`/`art-*` names. Details and known gaps are in [auth-and-users.md](auth-and-users.md).
+Scripts are `'self'` only, as on the desktop; styles allow inline because `index.html` already carries `style=""` attributes. Sessions are signed HttpOnly SameSite=Lax cookies; cross-site POSTs are refused by `Sec-Fetch-Site`. Every name the page sends passes `libName`; every static path is fenced to its root. Images are served only by NEO's own `cover-*`, `art-*` and `map-*` names. Details and known gaps are in [auth-and-users.md](auth-and-users.md).
