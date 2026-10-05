@@ -9,7 +9,7 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 1. **Download my library**: a File menu item that zips the writer's whole `NEO Library` folder, so leaving is one click.
 2. **Off-site backups** of each writer's daily zip to an S3-compatible bucket, with the bucket named in the environment and nothing else.
 3. **Server-side PDF** for exports and the email snapshot, with a headless Chromium only if the image stays reasonable; otherwise keep the print view.
-4. **Password reset** by email, and with it the move of users to a real store ([auth-and-users.md](auth-and-users.md)).
+4. **Users in a real store** when [auth-and-users.md](auth-and-users.md#where-users-live-and-the-database-question)'s conditions arrive; the `JsonUserStore` methods are the contract. Waits on the owner's checkpoint on data management as a whole.
 5. **Translate the sign-in page** with the same `locales/` files.
 
 ## Rooms off the hallway
@@ -24,10 +24,11 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 
 ## Done
 
+- **Email** (2026-10-05): Resend behind `web/lib/mail.js`; new writers confirm their address, a forgotten password comes back by a link that works once. `RESEND_API_KEY`, `NEO_MAIL_FROM`, `NEO_PUBLIC_URL` turn it on.
+- **Checks on every PR** (2026-10-05): `.github/workflows/hosted.yml` runs the hosted suite, the lint, the parser tests and boots the Docker image.
 - **Import** .docx / .txt / .md (2026-10-03): the parser left `main.js` for a shared `import-parse.js`; the server exposes `POST /api/import:upload`; the bridge wires `importPick` and `importFiles`. One parser for both editions.
 
 ## Housekeeping
 
 - Lift `files.js` and `library.js` into a module `main.js` can `require`, ending the port-in-step rule in [architecture.md](architecture.md).
 - An admin surface for the owner: list accounts, remove one, see the volume's size.
-- Run `npm run test:web` and the lint in GitHub Actions on every PR.

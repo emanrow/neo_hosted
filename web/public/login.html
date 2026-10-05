@@ -13,10 +13,15 @@
     <h1>NEO</h1>
     <p class="tagline">A word processor for authors. Distraction-free by default.</p>
     <form id="login-form" autocomplete="on">
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" autocomplete="username" required autofocus />
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" minlength="8" required />
+      <p class="notice" id="notice" role="status" hidden></p>
+      <div id="email-row">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required autofocus />
+      </div>
+      <div id="password-row">
+        <label for="password" id="password-label">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" minlength="8" required />
+      </div>
       <div id="invite-row" hidden>
         <label for="invite">Invitation code</label>
         <input id="invite" name="invite" type="text" autocomplete="off" spellcheck="false" />
@@ -25,6 +30,7 @@
         <button type="submit" class="btn-gold" id="submit">Sign in</button>
         <button type="button" class="switch" id="switch">Create an account</button>
       </div>
+      <p class="links"><button type="button" class="switch" id="forgot">Forgot your password?</button></p>
       <p class="error" id="error" role="alert"></p>
     </form>
     <p class="credits">

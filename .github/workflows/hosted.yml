@@ -1,0 +1,54 @@
+# The hosted edition's checks on every pull request and every push to main:
+# the node:test suite, the lint, the shared manuscript parser's tests, and a
+# build of the Docker image Railway deploys, booted once to answer /healthz.
+# The owner has no local environment, so this is the only place these run
+# before a merge reaches Railway.
+
+name: Hosted edition
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install the hosted edition's runtime dependencies
+        run: cd web && npm ci --no-audit --no-fund
+      - name: Hosted suite
+        run: npm run test:web
+      - name: Shared manuscript parser
+        # lives beside upstream's tests and needs only JSZip from the root
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund jszip
+          node --test scripts/import-parse.test.js
+      - name: Lint
+        run: npx --yes oxlint@1 -c .oxlintrc.json web/server.js web/lib web/public web/test
+
+  image:
+    name: Docker image boots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image Railway deploys
+        run: docker build -t neo-hosted .
+      - name: Boot it and ask /healthz
+        run: |
+          docker run -d --name neo -p 8080:8080 -e NEO_DEV=1 -e NEO_SIGNUP=open neo-hosted
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8080/healthz; then echo; echo "healthy"; exit 0; fi
+            sleep 1
+          done
+          echo "::error::the image never answered /healthz"; docker logs neo; exit 1

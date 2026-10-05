@@ -67,5 +67,7 @@ body.hosted-login { display: flex; align-items: center; justify-content: center;
 .login-card .btn-gold { flex: 1; padding: 10px; border: 0; border-radius: 6px; background: var(--accent, #c9a86a); color: #1c1c1c; font-size: 15px; cursor: pointer; }
 .login-card .switch { all: unset; color: var(--muted, #8a8a8a); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .login-card .error { min-height: 20px; margin-top: 12px; color: #e0897f; font-size: 13px; text-align: center; }
+.login-card .notice { margin: 0 0 14px; padding: 10px 12px; border-radius: 6px; background: #2a2a24; color: #d8c9a3; font-size: 13px; line-height: 1.5; }
+.login-card .links { margin-top: 14px; text-align: center; }
 .login-card .credits { margin-top: 26px; font-size: 11px; line-height: 1.6; color: #6f6f6f; text-align: center; }
 .login-card .credits a { color: #9a9a9a; }

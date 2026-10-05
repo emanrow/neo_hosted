@@ -229,6 +229,13 @@ describe('the hosted server', () => {
     assert.equal(other.status, 429, 'the IP is throttled too, and a forwarded address is not believed without a trusted proxy');
   });
 
+  test('with email off, a forgotten password has nowhere to go', async () => {
+    assert.equal(app.mailer.enabled, false);
+    const res = await call('POST', '/auth/forgot', { body: { email: 'w@example.com' } });
+    assert.equal(res.status, 503);
+    assert.equal((await call('GET', '/auth/verify?token=junk')).headers.get('location'), '/login?notice=link-expired');
+  });
+
   test('signing out clears the cookie', async () => {
     const first = await call('POST', '/auth/signup', { body: { email: 'three@example.com', password: 'longenough', invite: 'come-in' } });
     cookie = first.headers.get('set-cookie').split(';')[0];

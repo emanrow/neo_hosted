@@ -2,7 +2,7 @@
 
 # Testing
 
-Two suites, one tool: `node:test`. None of it runs in CI yet (upstream's only CI is a Windows packaging smoke test on `v*` tags). Run it before every push.
+Two suites, one tool: `node:test`. The hosted suite, the lint, the shared parser's tests and a boot of the Docker image run in GitHub Actions on every pull request and every push to `main` (`.github/workflows/hosted.yml`); upstream's own workflow packages the desktop app on `v*` tags. Run the hosted suite before every push anyway: the owner has no local environment, so a red check is the first anyone hears of a break.
 
 ## The hosted suite
 
@@ -15,10 +15,11 @@ npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test
 | File | Covers |
 |---|---|
 | `web/test/library.test.js` | `libName`, durable writes, `.tmp`/`.bak` recovery, book layout, chapter stamps, `rebuildBookMeta`, lost `library.json`, Trash, covers, the daily zip |
-| `web/test/auth.test.js` | password hashes, session tokens (tamper, expiry, wrong secret), the throttle, the JSON user store, the secret box, config validation |
+| `web/test/auth.test.js` | password hashes, session tokens (tamper, expiry, wrong secret), the links in email (one purpose each, stamps, expiry), the mailer against a stub `fetch`, the throttle, the JSON user store and its confirmation state, the secret box, config validation including the email variables |
+| `web/test/email.test.js` | the real server with email on and a mailer that keeps what it would have sent: a new writer waits for the confirmation link, signing in resends it, the link signs them in, a forgotten password comes back by link that works once, the ration on email per address |
 | `web/test/page.test.js` | the `index.html` transform, script order, inline-JSON escaping, the loud failure on a moved marker, the CSP |
 | `web/test/spell.test.js` | the shared Hunspell with a writer's words laid on top, suggestions, the fallback when a dictionary cannot load |
-| `web/test/server.test.js` | the real server on a free port with a temporary data folder: health, static fencing, signup policy, CSRF refusal, the page, every channel's shape, cover upload and serving, manuscript upload (.txt, .md, a .docx built in the test), Trash, secrets, spellcheck, language, throttle, logout, the backup sweep |
+| `web/test/server.test.js` | the real server on a free port with a temporary data folder, email off: health, static fencing, signup policy, CSRF refusal, the page, every channel's shape, cover upload and serving, manuscript upload (.txt, .md, a .docx built in the test), Trash, secrets, spellcheck, language, throttle, password reset refused with no email, logout, the backup sweep |
 | `web/test/dockerfile.test.js` | the `Dockerfile` copies every root file the server serves or requires (`styles.css` once went missing from the image and nothing in the repository noticed), and names nothing that does not exist |
 | `scripts/import-parse.test.js` | the shared manuscript parser on its own: chapter and scene-break detection, titles, .docx italics and styles. Lives beside upstream's tests because `main.js` uses the same module; needs the root `npm install` (JSZip) |
 
