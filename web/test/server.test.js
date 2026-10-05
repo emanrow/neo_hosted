@@ -174,7 +174,7 @@ describe('the hosted server', () => {
       lanes: [{ id: 'ln-1', name: 'Winden, 1986', color: '#5fb3d9' }],
       characters: [{ id: 'ch-a', name: 'Jonas', color: '#c9a86a' }],
       sheets: [{ id: 'sh-1', name: 'The other world', color: '#8fd17a' }],
-      events: [{ id: 'ev-1', when: 'Day 1', title: 'The letter arrives', chapterId: 'ch-1', laneId: 'ln-1', characterIds: ['ch-a'], sheetId: 'sh-1' }],
+      events: [{ id: 'ev-1', when: 'Day 1', title: 'The letter arrives', chapterId: 'ch-1', endChapterId: 'ch-2', laneId: 'ln-1', characterIds: ['ch-a'], sheetId: 'sh-1' }],
     };
     assert.equal((await api('json:write', book.id, 'timeline', timeline)).ok, true, 'the timeline is a sidecar like any other');
     assert.deepEqual((await api('json:read', book.id, 'timeline', { events: [] })).result, timeline);
