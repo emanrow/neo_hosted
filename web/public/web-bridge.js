@@ -153,6 +153,10 @@
     chapterStamps: (bookId) => rpc('chapter:stamps', noting(bookId)),
     readChapter: (bookId, chId) => rpc('chapter:read', noting(bookId), chId),
     writeChapter: (bookId, chId, html) => rpc('chapter:write', noting(bookId), chId, html),
+    /* ---------- public pages (hosted only; web-share.js is the caller) ---------- */
+    listShares: (bookId) => rpc('share:list', bookId),
+    publishShare: (bookId, chapterId, title, html) => rpc('share:publish', bookId, chapterId, title, html),
+    removeShare: (token) => rpc('share:remove', token),
     /* ---------- history (hosted only; web-history.js is the reader) ---------- */
     listRevisions: (bookId, chId) => rpc('revision:list', bookId, chId),
     /* ---------- branches (hosted only; web-branches.js is the caller) ---------- */

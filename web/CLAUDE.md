@@ -20,6 +20,7 @@ web/
     pg-library.js       openPgLibrary({db, userId, dir, t}): the library AND its branches as rows (storage stage D), same contract as library.js + branches.js, every method a promise; exportZip, dailyBackup, importFolder, isEmpty
     backups.js          dailyZip({backupsDir, fill, copy}): today's zip once, 14 kept, copied off-site and retried until it lands; both libraries use it
     object-store.js     createObjectStore({bucket, endpoint, region, keys}): put(key, bytes) to an S3-compatible bucket, SigV4 over node:crypto and fetch; NO_OBJECT_STORE without one
+    share-store.js      JsonShareStore(dir) and PgShareStore(db), one contract: list, find, publish, remove; a published page is a snapshot of export HTML at an unguessable token, served at GET /s/<token>
     branches.js         openBranches({dir, logError}): activeBranch, folderFor (library.js's bookDirFor), list, create, switchTo, remove; readChapterOf/readMetaOf and the .base readers; moveBaseForward; checkBranchName
     merge.js            mergeChapter(base, ours, theirs, resolve): three-way merge at paragraph grain; merge3; blackline(from, to)
     branch-merge.js     createMerger({branches, library}): preview(bookId, name), apply(bookId, name, resolutions); mergeOrder
@@ -36,6 +37,7 @@ web/
     web-bridge.js       window.neo for the browser; rpc(channel, ...args) → POST /api/<channel>; neoHosted.downloadLibrary() fetches /library.zip
     web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10; flyouts open on tap too; neoHosted.menu.open/close/toggle for web-mobile.js
     web-branches.js     File → Branches: new, switch, delete, Compare & Merge… (the merge panel: chapter list, blackline, conflict choices); a switch or merge saves, tells the server, reloads and reopens the book
+    web-share.js        File → Share…: publish the book or the chapter the caret is in as a read-only page, copy the link, publish again, unpublish; the HTML comes from app.js's own buildHtml/bookExportData/chapterExportData
     web-mobile.js       a touch screen only ((hover: none)): the ☰ button that opens the menu bar, edge swipes for the chapter and notes panes; web.css's body.hosted-touch and max-width rules do the rest
     web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, restore by writing the draft back and calling the editor's refreshFromDisk
     web.css             menu bar and sign-in styles, on styles.css's tokens
@@ -61,6 +63,7 @@ The context (`ctx`) a handler receives:
 | `revisions` | this writer's slice of the revision log, keyed by the branch they are in: `record(bookId, chapterId, html)`, `list`, `read(id)`, `verify`; a no-op without Postgres |
 | `branches` | the library's branches (`library.branches` over rows, `openBranches()` over the folder): `list`, `create`, `switchTo`, `remove`, `activeBranch`, the `readXOf` readers, `moveBaseForward` |
 | `merger` | `createMerger()` over `branches` and `library`: `preview(bookId, name)`, `apply(bookId, name, resolutions)` |
+| `shares` | the share store (`share-store.js`); handlers pass `ctx.user.id` so a writer only ever lists or removes their own pages |
 | `secretsFile` | `<data>/users/<id>/secrets.json` |
 | `logError(source, err)` | appends to the writer's own `neo-errors.log` |
 | `setLanguage(code)` | saves `uiLanguage` in the writer's `settings.json` |
@@ -100,4 +103,5 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **A failed revision never fails a save.** `chapter:write` writes the file first and catches what `ctx.revisions.record` throws into the writer's error log. Keep that order if the handler changes.
 - **SQL lives in `db.js`, `user-store.js`, `revisions.js` and `pg-library.js` only.** A new table is a new entry appended to `MIGRATIONS`, never an edit to a deployed one, and a handler never sees a query.
 - **The bucket is optional and only the sweep knows it.** `createApp` builds `objectStore` from `config.backupBucket` (or takes one in `deps` for tests); `backupEveryone` hands each library a `copy` closure keyed by writer id, and `backups.js` owns the once-and-retry logic through the `.offsite` marker. Nothing else touches the bucket, and nothing ever deletes from it.
+- **A published page is a snapshot, built in the page.** `share:publish` takes finished HTML from the editor's exporter (`buildHtml`, a global of `app.js`) and only checks it is a whole document under the size limit; the server never renders a book itself, so the exporter stays upstream's and the words a stranger reads are exactly what the writer saw. `/s/<token>` answers with a `default-src 'none'` policy and `X-Robots-Tag: noindex`.
 - **Email is optional and the server must not care.** `mailer.enabled` is the only question `server.js` asks; with it off, signup signs in at once and `/auth/forgot` answers 503. Tests pass a stub mailer as `createApp(config, { mailer })` and read what it would have sent.

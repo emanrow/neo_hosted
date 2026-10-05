@@ -36,6 +36,7 @@ With `DATABASE_URL` set (the hosted site), a library is rows in Postgres (`lib/p
 | `branches` | one row per draft of a book, `main` included: where it came from and when; a deleted branch is renamed under `Trash/` and marked, so the name is free again |
 | `book_files` | every file of every draft, keyed by book, branch and path: `book.json`, `chapters/<id>.html`, `notes.html`, `darlings.json`, `cover-<ts>.png` (bytes) ...; `modified` answers `chapter:stamps` |
 | `branch_bases` | the chapters and `book.json` a branch started from, what a merge measures against |
+| `shares` | public pages (File → Share…): one row per published book or chapter, the export HTML as a snapshot, keyed by an unguessable token (`web/lib/share-store.js`); on a laptop these are `<data>/shares/<token>.json` and `.html` instead |
 
 Every read and write joins `books.active_branch`, so a channel reads and writes "the book" and lands on the draft the writer is in; the editor never learns which. A branch is made in one transaction: the rows copied, the base taken, the pointer moved. Trashing a book or a branch marks it; listings skip it, the rows stay, so words are never discarded. Covers and paintings are bytes in the same table for now ([backlog.md](backlog.md) moves images to object storage later).
 

@@ -96,6 +96,24 @@ const MIGRATIONS = [
         FOREIGN KEY (user_id, book_id, branch) REFERENCES branches(user_id, book_id, name) ON UPDATE CASCADE
       );
     `
+  },
+  {
+    // public pages (share-store.js): a snapshot of a book or a chapter at a
+    // link; chapter_id is '' for the whole book so the unique key holds
+    id: '004-shares',
+    sql: `
+      CREATE TABLE IF NOT EXISTS shares (
+        token      TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id),
+        book_id    TEXT NOT NULL,
+        chapter_id TEXT NOT NULL DEFAULT '',
+        title      TEXT NOT NULL DEFAULT '',
+        html       TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (user_id, book_id, chapter_id)
+      );
+    `
   }
 ];
 

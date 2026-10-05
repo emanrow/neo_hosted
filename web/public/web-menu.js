@@ -70,6 +70,7 @@
         ]),
         sep,
         item(t('History…'), () => hosted.openHistory && hosted.openHistory()),
+        item(t('Share…'), () => hosted.openShare && hosted.openShare()),
         sub(t('Branches'), branchItems()),
         item(t('Import Manuscripts…'), { type: 'import' }, { accel: MOD + (IS_MAC ? '⇧I' : 'Shift+I') }),
         item(t('Download Library…'), () => hosted.downloadLibrary()),

@@ -76,6 +76,17 @@ body.light .hh-list li:hover { background: rgba(0,0,0,.05); }
   .hh-list { width: auto; max-height: 160px; border-right: 0; border-bottom: 1px solid #333; }
 }
 
+/* ---------- share (File → Share…) ---------- */
+.hosted-share-modal { width: min(640px, 94vw); display: flex; flex-direction: column; max-height: 85vh; }
+.hs-lead { font-size: 13px; color: var(--muted, #8a8a8a); margin-bottom: 12px; line-height: 1.5; }
+.hs-list { list-style: none; margin: 0 0 12px; padding: 0; overflow-y: auto; min-height: 0; }
+.hs-list li { display: flex; flex-direction: column; gap: 4px; padding: 10px; margin-bottom: 8px; border: 1px solid #3a3a3a; border-radius: 8px; }
+.hs-label { font-size: 14px; }
+.hs-link { width: 100%; padding: 6px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font-size: 13px; font-family: inherit; }
+.hs-row, .hs-publish { display: flex; flex-wrap: wrap; gap: 8px; }
+body.light .hs-list li { border-color: #ddd8ce; }
+body.light .hs-link { background: #fff; color: #222; border-color: #ddd8ce; }
+
 /* ---------- compare & merge (File → Branches → Compare & Merge…) ---------- */
 .hosted-merge-modal { width: min(960px, 96vw); display: flex; flex-direction: column; max-height: 88vh; }
 .hm-lead { font-size: 13px; color: var(--muted, #8a8a8a); margin-bottom: 12px; }

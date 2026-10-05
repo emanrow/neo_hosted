@@ -8,7 +8,6 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 
 1. **Images to object storage**: covers and paintings are bytes in `book_files` since stage D; move them to a bucket when they outgrow the table.
 2. **Server-side PDF** for exports and the email snapshot, with a headless Chromium only if the image stays reasonable; otherwise keep the print view.
-3. **Public sharing** of an excerpt or a whole work as a read-only page, by the writer's choice only. Belongs after the storage stages below, which decide what a "version" to share is.
 
 ## Storage
 
@@ -31,6 +30,7 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 
 ## Done
 
+- **Public sharing** (2026-10-05): File → Share… (`web/public/web-share.js`) publishes the book, or the chapter the caret is in, as a read-only page at `/s/<token>` (`web/lib/share-store.js`, migration `004-shares`, files under `shares/` on a laptop). The page is the editor's own Web Page export, taken as a snapshot; publish again to update, Unpublish to take down. Still to come: an excerpt smaller than a chapter, and a share sheet on phones.
 - **The sign-in page in every language** (2026-10-05): `web/locales/<code>.json` carries the hosted edition's own strings per upstream language, laid over upstream's `locales/` by `web/lib/i18n.js`; `web/lib/login-page.js` renders `login.html` in the browser's language and the auth errors speak it too. The confirmation and reset emails are still English.
 - **Off-site backups** (2026-10-05): `web/lib/object-store.js`, a Signature Version 4 `PUT` over `node:crypto` and `fetch`; with `NEO_BACKUP_BUCKET` and the AWS SDK's four variables set, the hourly sweep copies each writer's daily zip into the bucket as `<writer id>/neo-backup-<date>.zip`, marks it `.offsite` on the volume, and retries a failed copy every sweep. Railway's own Postgres backups are a dashboard switch, not code.
 - **Mobile pass** (2026-10-05): a viewport meta slotted in by `web/lib/page.js`, `web/public/web-mobile.js` (a ☰ button for the menu bar, edge swipes for the panes, on `(hover: none)` screens only) and touch and narrow-width rules in `web.css`; flyouts open on tap. Sign Out and the rest of the menu are reachable on a phone.

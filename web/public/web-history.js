@@ -136,4 +136,5 @@
   }
 
   hosted.openHistory = openHistory;
+  hosted.chapterOnPage = chapterOnPage;   // web-share.js asks the same question
 })();
