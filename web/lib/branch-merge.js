@@ -9,6 +9,9 @@
 // is new. Notes, outline, stickies and darlings are not merged: this draft
 // keeps its own. A chapter deleted on the branch stays here; a chapter new
 // on the branch is added after the chapter it follows there.
+//
+// Every library call is awaited, so this works over the file library and
+// branches.js (synchronous) and over pg-library.js (promises) alike.
 
 const { mergeChapter, blackline } = require('./merge');
 
@@ -35,46 +38,52 @@ function mergeOrder(baseOrder, oursOrder, theirsOrder) {
  * @param {ReturnType<import('./library').openLibrary>} deps.library
  */
 function createMerger({ branches, library }) {
-  function gather(bookId, name) {
-    const active = branches.activeBranch(bookId);
+  async function gather(bookId, name) {
+    const active = await branches.activeBranch(bookId);
     if (name === active) throw new Error('That is the draft you are in');
-    const ours = library.readBookMeta(bookId) || { chapterOrder: [] };
-    const theirs = branches.readMetaOf(bookId, name);
-    const base = branches.readBaseMetaOf(bookId, name) || theirs;
+    const ours = (await library.readBookMeta(bookId)) || { chapterOrder: [] };
+    const theirs = await branches.readMetaOf(bookId, name);
+    const base = (await branches.readBaseMetaOf(bookId, name)) || theirs;
     const order = mergeOrder(base.chapterOrder || [], ours.chapterOrder || [], theirs.chapterOrder || []);
     return { active, ours, theirs, base, order };
   }
 
   /** What merging `name` into the current draft would do: a row per chapter, conflicts with both versions, a blackline for changed ones. */
-  function preview(bookId, name) {
-    const { active, ours, theirs, order } = gather(bookId, name);
-    const chapters = order.map((chapterId) => {
-      const oursHtml = library.readChapter(bookId, chapterId);
-      const theirsHtml = branches.readChapterOf(bookId, name, chapterId);
-      const baseHtml = branches.readBaseChapterOf(bookId, name, chapterId);
+  // the three versions of one chapter
+  async function sides(bookId, name, chapterId) {
+    return {
+      oursHtml: await library.readChapter(bookId, chapterId),
+      theirsHtml: await branches.readChapterOf(bookId, name, chapterId),
+      baseHtml: await branches.readBaseChapterOf(bookId, name, chapterId)
+    };
+  }
+
+  async function preview(bookId, name) {
+    const { active, ours, theirs, order } = await gather(bookId, name);
+    const chapters = [];
+    for (const chapterId of order) {
+      const { oursHtml, theirsHtml, baseHtml } = await sides(bookId, name, chapterId);
       const merged = mergeChapter(baseHtml, oursHtml, theirsHtml);
       const status = merged.html === oursHtml ? (oursHtml === theirsHtml ? 'same' : 'kept') : (oursHtml === '' ? 'added' : merged.conflicts.length ? 'conflict' : 'merged');
-      return {
+      chapters.push({
         id: chapterId,
         label: chapterLabel(status === 'added' ? theirs : ours, chapterId),
         status,
         conflicts: merged.conflicts,
         blackline: status === 'same' || status === 'kept' ? '' : blackline(oursHtml, merged.html)
-      };
-    });
+      });
+    }
     return { into: active, from: name, chapters };
   }
 
   /** Writes the merge. `resolutions` is { "<chapterId>:<conflict index>": 'ours' | 'theirs' | 'both' }. */
-  function apply(bookId, name, resolutions = {}) {
-    const { ours, theirs, base, order } = gather(bookId, name);
+  async function apply(bookId, name, resolutions = {}) {
+    const { ours, theirs, base, order } = await gather(bookId, name);
     const written = [];
     for (const chapterId of order) {
-      const oursHtml = library.readChapter(bookId, chapterId);
-      const theirsHtml = branches.readChapterOf(bookId, name, chapterId);
-      const baseHtml = branches.readBaseChapterOf(bookId, name, chapterId);
+      const { oursHtml, theirsHtml, baseHtml } = await sides(bookId, name, chapterId);
       const merged = mergeChapter(baseHtml, oursHtml, theirsHtml, (index) => resolutions[`${chapterId}:${index}`] || 'both');
-      if (merged.html !== oursHtml) { library.writeChapter(bookId, chapterId, merged.html); written.push({ id: chapterId, html: merged.html }); }
+      if (merged.html !== oursHtml) { await library.writeChapter(bookId, chapterId, merged.html); written.push({ id: chapterId, html: merged.html }); }
     }
     const meta = { ...ours, chapterOrder: order, chapterTitles: { ...(ours.chapterTitles || {}) } };
     for (const chapterId of order) {
@@ -83,9 +92,9 @@ function createMerger({ branches, library }) {
       const ourTitle = ours.chapterTitles && ours.chapterTitles[chapterId];
       if (theirTitle && theirTitle !== baseTitle && (ourTitle || '') === (baseTitle || '')) meta.chapterTitles[chapterId] = theirTitle;
     }
-    library.writeBookMeta(bookId, meta);
-    branches.moveBaseForward(bookId, name);
-    return { into: branches.activeBranch(bookId), from: name, written };
+    await library.writeBookMeta(bookId, meta);
+    await branches.moveBaseForward(bookId, name);
+    return { into: await branches.activeBranch(bookId), from: name, written };
   }
 
   return { preview, apply };

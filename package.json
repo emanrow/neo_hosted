@@ -19,7 +19,7 @@
     "package:linux": "electron-builder --linux",
     "package:all": "electron-builder --mac --win --linux",
     "start:web": "node web/server.js",
-    "test:web": "node --test \"web/test/*.test.js\""
+    "test:web": "node --test --test-concurrency=1 \"web/test/*.test.js\""
   },
   "build": {
     "appId": "com.hughhowey.neo",

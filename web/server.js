@@ -2,8 +2,9 @@
 
 // NEO, hosted. One node:http server that serves the desktop app's own page
 // and scripts, signs writers in, and answers the window.neo calls that
-// main.js answers on the desktop, against a plain-file NEO Library per
-// writer on a persistent volume. No framework, no bundler, no database.
+// main.js answers on the desktop, against a NEO Library per writer: rows in
+// Postgres when DATABASE_URL is set, a plain-file folder on the volume
+// otherwise. No framework, no bundler.
 //
 //   node web/server.js             (NEO_SESSION_SECRET set, or NEO_DEV=1)
 //
@@ -18,6 +19,7 @@
 //   POST /api/cover:upload?bookId=&ext=            raw image bytes → file name
 //   POST /api/import:upload?name=<file name>       raw .docx/.txt/.md bytes → the parsed book
 //   GET  /library/<bookId>/<cover-or-art file>     cover images for the shelf
+//   GET  /library.zip              the writer's whole library as the desktop folder
 //   GET  /healthz
 
 const fs = require('node:fs');
@@ -27,7 +29,7 @@ const crypto = require('node:crypto');
 const JSZip = require('jszip');                      // web/node_modules' copy, handed to the shared parser
 
 const { loadConfig } = require('./lib/config');
-const { HttpError, readBody, readJSONBody, sendJSON, sendHTML, sendText, redirect, serveFile, parseCookies, cookieHeader, isSameOrigin, clientAddress, isSecureRequest } = require('./lib/http');
+const { MIME, HttpError, readBody, readJSONBody, send, sendJSON, sendHTML, sendText, redirect, serveFile, parseCookies, cookieHeader, isSameOrigin, clientAddress, isSecureRequest } = require('./lib/http');
 const { hashPassword, verifyPassword, signSession, verifySession, signLink, verifyLink, linkStamp, LoginThrottle, SESSION_TTL_MS } = require('./lib/auth');
 const { JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified } = require('./lib/user-store');
 const { openDatabase } = require('./lib/db');
@@ -37,6 +39,7 @@ const { createMerger } = require('./lib/branch-merge');
 const { createMailer, confirmationMessage, resetMessage } = require('./lib/mail');
 const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
+const { openPgLibrary } = require('./lib/pg-library');
 const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
 const { buildHostedPage, PAGE_CSP } = require('./lib/page');
@@ -54,6 +57,7 @@ const IMPORT_BODY_LIMIT = 25 * 1024 * 1024;         // a whole manuscript as .do
 const AUTH_BODY_LIMIT = 16 * 1024;
 const MIN_PASSWORD = 8;
 const BACKUP_SWEEP_MS = 60 * 60 * 1000;
+const LIBRARY_FOLDER = 'NEO Library';
 
 const VERSIONS = {
   hosted: require('./package.json').version,
@@ -71,7 +75,7 @@ const ROOT_DIRS = ['/fonts/', '/locales/'];
  * from config.databaseUrl, or keeps users in users.json without one.
  *
  * Await `ready` before listening: with Postgres it runs the migrations and
- * imports a users.json left over from before, once.
+ * imports, once, a users.json and the library folders left over from before.
  */
 function createApp(config, deps = {}) {
   fs.mkdirSync(config.dataDir, { recursive: true });
@@ -79,19 +83,31 @@ function createApp(config, deps = {}) {
   const db = deps.db || (config.databaseUrl ? openDatabase(config.databaseUrl) : null);
   const users = db ? new PgUserStore(db) : new JsonUserStore(usersFile);
   const revisions = db ? new RevisionLog(db) : new NullRevisionLog();
-  const ready = db ? prepareDatabase() : Promise.resolve({ store: 'users.json', imported: 0 });
-
   // Migrate, then take over a users.json if one is there and the table is
-  // empty. The file is renamed, not deleted, so nothing is lost if the
-  // import turns out wrong; a later boot then leaves it alone.
+  // empty, and every writer's library folder whose rows are still empty.
+  // Files are renamed, not deleted, so nothing is lost if an import turns
+  // out wrong; a later boot then leaves them alone.
   async function prepareDatabase() {
     await db.migrate();
+    const stamp = new Date().toISOString().slice(0, 10);
     let imported = 0;
     if (fs.existsSync(usersFile)) {
       imported = await users.importFrom(new JsonUserStore(usersFile));
-      fs.renameSync(usersFile, `${usersFile}.imported-${new Date().toISOString().slice(0, 10)}`);
+      fs.renameSync(usersFile, `${usersFile}.imported-${stamp}`);
     }
-    return { store: 'postgres', imported };
+    let libraries = 0;
+    for (const id of await users.listIds()) {
+      const libraryDir = path.join(userRoot({ id }), LIBRARY_FOLDER);
+      if (!fs.existsSync(libraryDir)) continue;
+      const library = openPgLibrary({ db, userId: id, dir: libraryDir, t: i18n.translatorFor('en'), logError: (source, err) => logServerError(`${id} ${source}`, err) });
+      if (!(await library.isEmpty())) continue;
+      const counts = await library.importFolder(libraryDir);
+      if (!counts.books && !fs.existsSync(path.join(libraryDir, 'library.json'))) { await db.query('DELETE FROM libraries WHERE user_id = $1', [id]); continue; }
+      fs.renameSync(libraryDir, `${libraryDir}.imported-${stamp}`);
+      libraries++;
+      console.log(`[library] imported ${counts.books} books, ${counts.branches} branches, ${counts.files} files for one writer from the volume`);
+    }
+    return { store: 'postgres', imported, libraries };
   }
   const secretBox = createSecretBox(config.sessionSecret);
   const mailer = deps.mailer || createMailer(config.mail || {});
@@ -108,11 +124,22 @@ function createApp(config, deps = {}) {
   }
 
   const spell = new SpellService({ nodeModulesDir: path.join(__dirname, 'node_modules'), logError: logServerError });
+  const userRoot = (user) => path.join(config.dataDir, 'users', libName(user.id));
+  const ready = db ? prepareDatabase() : Promise.resolve({ store: 'users.json', imported: 0, libraries: 0 });
 
   // ---------------------------------------------------------------------
   // One writer's corner of the volume
   // ---------------------------------------------------------------------
-  const userRoot = (user) => path.join(config.dataDir, 'users', libName(user.id));
+
+  /** One writer's library and branches: rows in Postgres with a database, the desktop folder on the volume without. */
+  function openWriterLibrary({ userId, libraryDir, t, logError }) {
+    if (db) {
+      const library = openPgLibrary({ db, userId, dir: libraryDir, t, logError });
+      return { library, branches: library.branches };
+    }
+    const branches = openBranches({ dir: libraryDir, logError });
+    return { library: openLibrary({ dir: libraryDir, t, logError, bookDirFor: branches.folderFor }), branches };
+  }
 
   /** Everything a handler needs to act as this writer. */
   function contextFor(user, req) {
@@ -121,23 +148,22 @@ function createApp(config, deps = {}) {
     const settings = readJSON(settingsFile, {});
     const locale = i18n.pickLanguage({ saved: settings.uiLanguage, acceptLanguage: req.headers['accept-language'] });
     const t = i18n.translatorFor(locale);
-    const libraryDir = path.join(root, 'NEO Library');
+    const libraryDir = path.join(root, LIBRARY_FOLDER);
     const logError = (source, err) => {
       const line = `[${new Date().toISOString()}] [${source}] ${err && err.stack ? err.stack : String(err)}\n`;
       try { fs.mkdirSync(libraryDir, { recursive: true }); fs.appendFileSync(path.join(libraryDir, 'neo-errors.log'), line); } catch { logServerError(source, err); }
     };
-    const branches = openBranches({ dir: libraryDir, logError });
-    const library = openLibrary({ dir: libraryDir, t, logError, bookDirFor: branches.folderFor });
+    const { library, branches } = openWriterLibrary({ userId: user.id, libraryDir, t, logError });
     // this writer's slice of the revision log, keyed by the branch they are in; a no-op without a database
-    const onBranch = (bookId) => ({ userId: user.id, bookId, branch: branches.activeBranch(bookId) });
+    const onBranch = async (bookId) => ({ userId: user.id, bookId, branch: await branches.activeBranch(bookId) });
     return {
       user, req, locale, t, logError, branches, library,
       merger: createMerger({ branches, library }),
       revisions: {
-        record: (bookId, chapterId, html) => revisions.record({ ...onBranch(bookId), chapterId, html }),
-        list: (bookId, chapterId) => revisions.list({ ...onBranch(bookId), chapterId }),
+        record: async (bookId, chapterId, html) => revisions.record({ ...(await onBranch(bookId)), chapterId, html }),
+        list: async (bookId, chapterId) => revisions.list({ ...(await onBranch(bookId)), chapterId }),
         read: (id) => revisions.read({ userId: user.id, id }),
-        verify: (bookId, chapterId) => revisions.verify({ ...onBranch(bookId), chapterId })
+        verify: async (bookId, chapterId) => revisions.verify({ ...(await onBranch(bookId)), chapterId })
       },
       secretsFile: path.join(root, 'secrets.json'),
       setLanguage(code) {
@@ -334,7 +360,7 @@ function createApp(config, deps = {}) {
     const ext = String(url.searchParams.get('ext') || '').toLowerCase();
     if (!COVER_EXTS.includes(ext)) throw new HttpError(400, 'Covers are PNG, JPEG or WebP');
     const bytes = await readBody(req, COVER_BODY_LIMIT);
-    sendJSON(res, 200, { ok: true, result: ctx.library.setCoverBytes(bookId, ext, bytes) });
+    sendJSON(res, 200, { ok: true, result: await ctx.library.setCoverBytes(bookId, ext, bytes) });
   }
 
   // A manuscript the writer picked or dropped, parsed into chapters the way
@@ -352,10 +378,17 @@ function createApp(config, deps = {}) {
     }
   }
 
-  function serveCover(ctx, bookId, fname, res) {
-    const file = ctx.library.coverPath(bookId, fname);
-    if (!file) throw new HttpError(404, 'No such image');
-    serveFile(res, path.dirname(file), path.basename(file), { cache: 'private, max-age=31536000, immutable' });
+  async function serveCover(ctx, bookId, fname, res) {
+    const bytes = await ctx.library.readCover(bookId, fname);
+    if (!bytes) throw new HttpError(404, 'No such image');
+    send(res, 200, bytes, { 'Content-Type': MIME[path.extname(fname).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'private, max-age=31536000, immutable' });
+  }
+
+  // The writer's whole library as the desktop app's folder, zipped: the
+  // export that files became. Built in memory; a library is small.
+  async function serveLibraryZip(ctx, res) {
+    const zip = await ctx.library.exportZip();
+    send(res, 200, zip, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${LIBRARY_FOLDER}.zip"`, 'Cache-Control': 'no-store' });
   }
 
   // ---------------------------------------------------------------------
@@ -398,13 +431,14 @@ function createApp(config, deps = {}) {
       return servePage(contextFor(user, req), res);
     }
 
-    if (p.startsWith('/api/') || p.startsWith('/library/')) {
+    if (p.startsWith('/api/') || p.startsWith('/library/') || p === '/library.zip') {
       if (!user) throw new HttpError(401, 'Sign in to continue');
       if (method === 'POST' && !isSameOrigin(req)) throw new HttpError(403, 'Cross-site request refused');
       const ctx = contextFor(user, req);
       if (method === 'POST' && p === '/api/cover:upload') return handleCoverUpload(ctx, url, req, res);
       if (method === 'POST' && p === '/api/import:upload') return handleImportUpload(ctx, url, req, res);
       if (method === 'POST' && p.startsWith('/api/')) return handleApi(ctx, p.slice(5), req, res);
+      if (method === 'GET' && p === '/library.zip') return serveLibraryZip(ctx, res);
       if (method === 'GET' && p.startsWith('/library/')) {
         const [bookId, fname, ...rest] = p.slice(9).split('/');
         if (bookId && fname && !rest.length) return serveCover(ctx, bookId, fname, res);
@@ -432,17 +466,16 @@ function createApp(config, deps = {}) {
   // Daily backups, one zip per writer per day, swept hourly
   // ---------------------------------------------------------------------
   async function backupEveryone() {
-    const usersDir = path.join(config.dataDir, 'users');
     let ids = [];
-    try { ids = fs.readdirSync(usersDir); } catch { return; }
+    try { ids = db ? await users.listIds() : fs.readdirSync(path.join(config.dataDir, 'users')); } catch { return; }
     for (const id of ids) {
-      const root = path.join(usersDir, id);
+      const root = userRoot({ id });
       const settings = readJSON(path.join(root, 'settings.json'), {});
       const t = i18n.translatorFor(settings.uiLanguage || 'en');
-      const libraryDir = path.join(root, 'NEO Library');
-      if (!fs.existsSync(libraryDir)) continue;
+      const libraryDir = path.join(root, LIBRARY_FOLDER);
+      if (!db && !fs.existsSync(libraryDir)) continue;
       const logError = (source, err) => logServerError(`${id} ${source}`, err);
-      try { await openLibrary({ dir: libraryDir, t, logError }).dailyBackup(); } catch (err) { logError('backup', err); }
+      try { await openWriterLibrary({ userId: id, libraryDir, t, logError }).library.dailyBackup(); } catch (err) { logError('backup', err); }
     }
   }
   const timers = [];
@@ -465,10 +498,10 @@ if (require.main === module) {
   const app = createApp(config);
   process.on('uncaughtException', (err) => console.error('[main]', err));
   process.on('unhandledRejection', (err) => console.error('[main-promise]', err));
-  app.ready.then(({ store, imported }) => {
+  app.ready.then(({ store, imported, libraries }) => {
     app.server.listen(config.port, () => {
       console.log(`NEO hosted ${VERSIONS.hosted} (NEO ${VERSIONS.neo}) listening on :${config.port}`);
-      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
+      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${store}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
     });
     app.startBackups();
   }).catch((err) => {

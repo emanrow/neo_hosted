@@ -12,11 +12,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { libName, writeFileDurable, readJSON, writeJSON } = require('./files');
+const { dailyZip } = require('./backups');
 
 const COVER_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
 const COVER_FILE = /^(cover|art)-\d+\.(png|jpg|webp)$/;
 const SKIP_IN_BACKUP = new Set(['Backups', 'Exports', 'Trash']);
-const BACKUPS_KEPT = 14;
 
 /**
  * @param {object} deps
@@ -269,11 +269,10 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     return true;
   }
 
-  /** The on-disk path of a cover or painting, or null when the name is not one NEO made. */
-  function coverPath(bookId, fname) {
+  /** The bytes of a cover or painting by its file name, or null when the name is not one NEO made or the file is gone. */
+  function readCover(bookId, fname) {
     if (!COVER_FILE.test(String(fname))) return null;
-    const file = path.join(bookDir(bookId), fname);
-    return fs.existsSync(file) ? file : null;
+    try { return fs.readFileSync(path.join(bookDir(bookId), fname)); } catch { return null; }
   }
 
   /** Replaces the painting: older art-* files go, art.json records the brief. */
@@ -293,17 +292,9 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     fs.appendFileSync(path.join(dir, 'neo-errors.log'), line);
   }
 
-  // One zip of the whole library per day, keeping the last 14. Backups and
-  // exports stay out of the zip; so does the Trash, which is its own safety net.
-  async function dailyBackup() {
-    ensure();
-    const backupsDir = path.join(dir, 'Backups');
-    fs.mkdirSync(backupsDir, { recursive: true });
-    const today = new Date().toISOString().slice(0, 10);
-    const target = path.join(backupsDir, `neo-backup-${today}.zip`);
-    if (fs.existsSync(target)) return false;
-    const JSZip = require('jszip');
-    const zip = new JSZip();
+  // The whole folder into a zip. Backups and exports stay out; so does the
+  // Trash, which is its own safety net.
+  function fillZip(zip) {
     const missed = [];
     const walk = (folder, rel) => {
       let names = [];
@@ -326,10 +317,21 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
       zip.file('_left-out-of-this-backup.txt', missed.join('\n') + '\n');
       logError('backup', new Error('left out of today\'s backup: ' + missed.join(', ')));
     }
-    writeFileDurable(target, await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
-    const backups = fs.readdirSync(backupsDir).filter((f) => f.startsWith('neo-backup-')).sort();
-    while (backups.length > BACKUPS_KEPT) fs.unlinkSync(path.join(backupsDir, backups.shift()));
-    return true;
+  }
+
+  /** One zip of the whole library per day (backups.js keeps 14). */
+  function dailyBackup() {
+    ensure();
+    return dailyZip({ backupsDir: path.join(dir, 'Backups'), fill: fillZip });
+  }
+
+  /** The library as one zip, for the download. */
+  async function exportZip() {
+    ensure();
+    const JSZip = require('jszip');
+    const zip = new JSZip();
+    fillZip(zip);
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   }
 
   return {
@@ -338,8 +340,8 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     createBook, readBookMeta, writeBookMeta, trashBook,
     chapterStamps, readChapter, writeChapter, deleteChapter,
     readAux, writeAux, readSidecar, writeSidecar,
-    setCoverBytes, removeCover, coverPath, storePainting,
-    appendErrorLog, dailyBackup
+    setCoverBytes, removeCover, readCover, storePainting,
+    appendErrorLog, dailyBackup, exportZip
   };
 }
 

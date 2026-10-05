@@ -6,8 +6,8 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 
 ## Next
 
-1. **Download my library**: a File menu item that zips the writer's whole `NEO Library` folder, so leaving is one click.
-2. **Off-site backups** of each writer's daily zip to an S3-compatible bucket, with the bucket named in the environment and nothing else.
+1. **Off-site backups**: each writer's daily zip to an S3-compatible bucket, with the bucket named in the environment and nothing else, and Railway's own Postgres backups turned on.
+2. **Images to object storage**: covers and paintings are bytes in `book_files` since stage D; move them to a bucket when they outgrow the table.
 3. **Server-side PDF** for exports and the email snapshot, with a headless Chromium only if the image stays reasonable; otherwise keep the print view.
 4. **Translate the sign-in page** with the same `locales/` files.
 5. **Mobile pass**: the hosted edition is the only NEO on a phone. The menu bar needs a touch way in (there is no top edge to hover and no Alt), so Sign Out and everything else in it is reachable; the shelf and the page at narrow widths.
@@ -20,7 +20,7 @@ Decided 2026-10-05 with the owner: canonical text moves into Postgres by stages,
 - **A. Accounts in Postgres**: done, below.
 - **B. Revision log**: done, below, with the History panel. Still to come: a blackline between two revisions, in the same panel.
 - **C. Branches**: done, below, per book as the owner decided (2026-10-05): create, switch, delete, compare and merge. Not merged yet, and worth a look later: notes, outline, stickies and darlings (this draft keeps its own), and a way to see two branches side by side without merging.
-- **D. Flip canonical** to the database: files become an export, covers and images move to object storage, the daily zips give way to Postgres backups plus exports.
+- **D. Flip canonical**: done, below. Words are rows; the daily zip and File → Download Library… are the export. Still to come, above: images to object storage, off-site copies of the zips.
 
 ## Rooms off the hallway
 
@@ -34,6 +34,7 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 
 ## Done
 
+- **Words in Postgres** (2026-10-05): `web/lib/pg-library.js` and migration `003-library`; with `DATABASE_URL` every library call lands on rows laid out as the desktop folder, one per file, keyed by book and branch, and the first boot imports each writer's folder from the volume. `GET /library.zip` (File → Download Library…) and the daily zip write the folder back out. Storage stage D; the folder library stays for laptops and tests.
 - **Revision log** (2026-10-05): `web/lib/revisions.js`, the `revisions` table; every `chapter:write` that changed the words appends a snapshot or paragraph-grain diff, hash-chained with its timestamp. `revision:list`, `revision:read`, `revision:verify` answer. Storage stage B.
 - **Branches** (2026-10-05): File → Branches in the hosted menu; `web/lib/branches.js` keeps each as a copy of the book folder under `.branches/`, the library follows the active one, the revision log keys by it. Compare & Merge… (`web/lib/merge.js`, `web/lib/branch-merge.js`) brings a branch into the draft you are in with a three-way merge at paragraph grain, a blackline per chapter and a choice on each conflict. Storage stage C.
 - **History panel** (2026-10-05): File → History… in the hosted menu (`web/public/web-history.js`) lists the chapter's saves, previews one, restores one.- **Accounts in Postgres** (2026-10-05): `web/lib/db.js` and `PgUserStore`, chosen by `DATABASE_URL`; `users.json` is imported once on the first boot and kept beside the volume as `users.json.imported-<date>`. Storage stage A.

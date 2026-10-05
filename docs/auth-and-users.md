@@ -30,10 +30,10 @@ Email is on when `RESEND_API_KEY` is set (with `NEO_MAIL_FROM` and `NEO_PUBLIC_U
 
 Two stores, one contract (`web/lib/user-store.js`): `count`, `findByEmail`, `findById`, `create`, `setPasswordHash`, `markEmailVerified`, and `update` behind the last two. Every method may return a promise and `server.js` awaits them all. Ids are random (`u-<hex>`), so an email change never moves a library folder.
 
-- **`PgUserStore`**, when `DATABASE_URL` is set: a `users` table in Postgres, created by the migration runner in `web/lib/db.js` on boot (`schema_migrations` records what ran). The hosted site uses this. More than one server instance, thousands of writers, invitations, roles and an audit trail all fit here, and so will the revision log and branches planned in [backlog.md](backlog.md#storage).
+- **`PgUserStore`**, when `DATABASE_URL` is set: a `users` table in Postgres, created by the migration runner in `web/lib/db.js` on boot (`schema_migrations` records what ran). The hosted site uses this. More than one server instance, thousands of writers, invitations, roles and an audit trail all fit here; the revision log, the libraries and their branches are tables beside it ([architecture.md](architecture.md#where-a-writers-words-live)).
 - **`JsonUserStore`**, otherwise: `<NEO_DATA_DIR>/users.json`, right for a laptop or a household.
 
-**Moving from the file to the table** needs no step from the owner: on the first boot with `DATABASE_URL` set, an existing `users.json` is imported into an empty table with the same ids and password hashes, then renamed `users.json.imported-<date>` on the volume so a later boot leaves it alone. The deploy log says `users: postgres (N imported from users.json)`. If the table already has anyone, the file is renamed untouched and nothing moves. Libraries stay files on the volume for now; the database holds accounts, and later history ([backlog.md](backlog.md#storage)).
+**Moving from the file to the table** needs no step from the owner: on the first boot with `DATABASE_URL` set, an existing `users.json` is imported into an empty table with the same ids and password hashes, then renamed `users.json.imported-<date>` on the volume so a later boot leaves it alone. The deploy log says `users: postgres (N imported from users.json)`. If the table already has anyone, the file is renamed untouched and nothing moves. Each writer's library folder is imported the same way, once, on the first boot that finds their rows empty.
 
 ## API keys at rest
 

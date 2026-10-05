@@ -284,9 +284,23 @@
   // the browser says when full screen comes and goes, as the window does on the desktop
   document.addEventListener('fullscreenchange', () => { if (menuListener) menuListener({ type: 'fullScreen', value: !!document.fullscreenElement }); });
 
+  // File → Download Library…: the whole library as the desktop app's folder,
+  // zipped by the server. Saves first, so the zip has the words on the page.
+  async function downloadLibrary() {
+    if (typeof window.flushAllSaves === 'function') window.flushAllSaves();
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const a = document.createElement('a');
+    a.href = '/library.zip';
+    a.download = 'NEO Library.zip';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => a.remove(), 2000);
+  }
+
   window.neoHosted = {
     config,
     state,
-    sendMenu: (msg) => { if (menuListener) menuListener(msg); }
+    sendMenu: (msg) => { if (menuListener) menuListener(msg); },
+    downloadLibrary
   };
 })();
