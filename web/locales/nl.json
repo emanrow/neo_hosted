@@ -38,5 +38,13 @@
   "That email and password do not match": "Dat e-mailadres en wachtwoord horen niet bij elkaar",
   "Confirm your email first. We just sent you a new link.": "Bevestig eerst je e-mail. We hebben je net een nieuwe link gestuurd.",
   "That reset link has expired or was already used. Ask for a new one.": "Die herstellink is verlopen of al gebruikt. Vraag een nieuwe aan.",
-  "Password reset by email is not set up on this server": "Wachtwoordherstel per e-mail is op deze server niet ingesteld"
+  "Password reset by email is not set up on this server": "Wachtwoordherstel per e-mail is op deze server niet ingesteld",
+  "Confirm your email for NEO": "Bevestig je e-mailadres voor NEO",
+  "Welcome to NEO.": "Welkom bij NEO.",
+  "Open this link to confirm your email address and start writing:": "Open deze link om je e-mailadres te bevestigen en te beginnen met schrijven:",
+  "The link is good for one day. If you did not create an account, you can ignore this message.": "De link is één dag geldig. Als je geen account hebt aangemaakt, kun je dit bericht negeren.",
+  "Reset your NEO password": "Stel je NEO-wachtwoord opnieuw in",
+  "Someone asked to reset the password for this NEO account.": "Iemand heeft gevraagd het wachtwoord van dit NEO-account opnieuw in te stellen.",
+  "Open this link to choose a new one:": "Open deze link om een nieuw wachtwoord te kiezen:",
+  "The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.": "De link is één uur geldig en werkt één keer. Als jij dit niet hebt gevraagd, verandert er niets; je kunt dit bericht negeren."
 }

@@ -38,5 +38,13 @@
   "That email and password do not match": "Адрес и пароль не совпадают",
   "Confirm your email first. We just sent you a new link.": "Сначала подтвердите почту. Мы только что отправили вам новую ссылку.",
   "That reset link has expired or was already used. Ask for a new one.": "Эта ссылка для сброса пароля устарела или уже была использована. Запросите новую.",
-  "Password reset by email is not set up on this server": "Сброс пароля по почте на этом сервере не настроен"
+  "Password reset by email is not set up on this server": "Сброс пароля по почте на этом сервере не настроен",
+  "Confirm your email for NEO": "Подтвердите свой адрес электронной почты для NEO",
+  "Welcome to NEO.": "Добро пожаловать в NEO.",
+  "Open this link to confirm your email address and start writing:": "Откройте эту ссылку, чтобы подтвердить адрес электронной почты и начать писать:",
+  "The link is good for one day. If you did not create an account, you can ignore this message.": "Ссылка действует один день. Если вы не создавали учётную запись, просто не обращайте внимания на это письмо.",
+  "Reset your NEO password": "Сброс пароля NEO",
+  "Someone asked to reset the password for this NEO account.": "Кто-то запросил сброс пароля для этой учётной записи NEO.",
+  "Open this link to choose a new one:": "Откройте эту ссылку, чтобы выбрать новый пароль:",
+  "The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.": "Ссылка действует один час и работает только один раз. Если вы этого не запрашивали, ничего не изменится; просто не обращайте внимания на это письмо."
 }

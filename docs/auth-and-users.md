@@ -11,7 +11,7 @@ The desktop app has one writer and no sign-in. The hosted edition adds the small
 - **Throttle**: ten wrong passwords from one address or for one email close the door for fifteen minutes (`LoginThrottle`, in memory; a restart forgives). The client address comes from `X-Forwarded-For` only when `trustProxy` is on.
 - **CSRF**: `/auth/*` and `/api/*` POSTs must be same-origin by `Sec-Fetch-Site` (or `Origin` on older browsers). API bodies are JSON, which a cross-site form cannot send.
 - **Secure cookies** are set when the request is TLS or the trusted proxy says `X-Forwarded-Proto: https`.
-- **Language**: nobody is signed in yet, so the sign-in page and every `/auth/*` error follow the browser's `Accept-Language` when NEO speaks it, English otherwise (`visitorLanguage` in `server.js`, strings in `web/locales/`). The confirmation and reset emails are English for now.
+- **Language**: nobody is signed in yet, so the sign-in page and every `/auth/*` error follow the browser's `Accept-Language` when NEO speaks it, English otherwise (`visitorLanguage` in `server.js`, strings in `web/locales/`), and so do the confirmation and reset emails that request sends.
 
 ## Signup policy
 
@@ -25,7 +25,7 @@ Email is on when `RESEND_API_KEY` is set (with `NEO_MAIL_FROM` and `NEO_PUBLIC_U
 - **Resetting a password.** `POST /auth/forgot { email }` always answers ok, so the form cannot be used to find out who writes here; when the address has an account, a link to `/login?reset=<token>` goes out. The sign-in page opens in reset mode, and `POST /auth/reset { token, password }` sets the new password, confirms the address (opening the link proved it) and signs in.
 - **The links** are signed tokens like sessions, `purpose.userId.expiry.stamp.hmac`, with the HMAC key derived from the session secret per purpose by HKDF, so a confirmation link can never pass as a session or a reset. The stamp is a digest of the state the link should die with: for a reset, the password hash, so the link works once and a replay is refused. Confirmation links last a day, reset links an hour. Nothing is stored server-side.
 - **Ration.** Five emails to one address, twenty from one client, per fifteen minutes (`LoginThrottle` again). Past that, 429.
-- **Messages** are plain text with one link each; the writer's mail client renders them.
+- **Messages** are plain text with one link each; the writer's mail client renders them. They are written in the language of the browser that asked (`mail.js` takes `visitorLanguage(req).t`), English when NEO does not speak it. Feedback to the owner stays English.
 
 ## Where users live
 

@@ -37,32 +37,37 @@ function createMailer({ resendApiKey, from, fetchImpl = fetch } = {}) {
   };
 }
 
+// The messages speak the language of the browser that asked for them, through
+// the translator `t` the server passes (web/locales/<code>.json); without one
+// they are English. Keys are the English text, as everywhere in NEO.
+const english = (s) => s;
+
 /** The message a new writer gets; the link signs them in once and marks the address confirmed. */
-function confirmationMessage({ link }) {
+function confirmationMessage({ link, t = english }) {
   return {
-    subject: 'Confirm your email for NEO',
+    subject: t('Confirm your email for NEO'),
     text: [
-      'Welcome to NEO.',
+      t('Welcome to NEO.'),
       '',
-      'Open this link to confirm your email address and start writing:',
+      t('Open this link to confirm your email address and start writing:'),
       link,
       '',
-      'The link is good for one day. If you did not create an account, you can ignore this message.'
+      t('The link is good for one day. If you did not create an account, you can ignore this message.')
     ].join('\n')
   };
 }
 
 /** The message a writer who forgot their password gets; the link opens the sign-in page in reset mode. */
-function resetMessage({ link }) {
+function resetMessage({ link, t = english }) {
   return {
-    subject: 'Reset your NEO password',
+    subject: t('Reset your NEO password'),
     text: [
-      'Someone asked to reset the password for this NEO account.',
+      t('Someone asked to reset the password for this NEO account.'),
       '',
-      'Open this link to choose a new one:',
+      t('Open this link to choose a new one:'),
       link,
       '',
-      'The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.'
+      t('The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.')
     ].join('\n')
   };
 }

@@ -38,5 +38,13 @@
   "That email and password do not match": "E-mailul și parola nu se potrivesc",
   "Confirm your email first. We just sent you a new link.": "Confirmă-ți mai întâi e-mailul. Tocmai ți-am trimis un link nou.",
   "That reset link has expired or was already used. Ask for a new one.": "Linkul de resetare a expirat sau a fost deja folosit. Cere unul nou.",
-  "Password reset by email is not set up on this server": "Resetarea parolei prin e-mail nu este configurată pe acest server"
+  "Password reset by email is not set up on this server": "Resetarea parolei prin e-mail nu este configurată pe acest server",
+  "Confirm your email for NEO": "Confirmă-ți adresa de e-mail pentru NEO",
+  "Welcome to NEO.": "Bine ai venit în NEO.",
+  "Open this link to confirm your email address and start writing:": "Deschide acest link pentru a-ți confirma adresa de e-mail și a începe să scrii:",
+  "The link is good for one day. If you did not create an account, you can ignore this message.": "Linkul este valabil o zi. Dacă nu ți-ai creat un cont, poți ignora acest mesaj.",
+  "Reset your NEO password": "Resetează-ți parola NEO",
+  "Someone asked to reset the password for this NEO account.": "Cineva a cerut resetarea parolei pentru acest cont NEO.",
+  "Open this link to choose a new one:": "Deschide acest link pentru a alege una nouă:",
+  "The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.": "Linkul este valabil o oră și funcționează o singură dată. Dacă nu ai cerut tu asta, nimic nu se schimbă; poți ignora acest mesaj."
 }

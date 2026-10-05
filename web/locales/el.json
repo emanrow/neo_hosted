@@ -38,5 +38,13 @@
   "That email and password do not match": "Το email και ο κωδικός δεν ταιριάζουν",
   "Confirm your email first. We just sent you a new link.": "Επιβεβαιώστε πρώτα το email σας. Μόλις σας στείλαμε νέο σύνδεσμο.",
   "That reset link has expired or was already used. Ask for a new one.": "Ο σύνδεσμος επαναφοράς έληξε ή έχει ήδη χρησιμοποιηθεί. Ζητήστε νέο.",
-  "Password reset by email is not set up on this server": "Η επαναφορά κωδικού μέσω email δεν έχει ρυθμιστεί σε αυτόν τον διακομιστή"
+  "Password reset by email is not set up on this server": "Η επαναφορά κωδικού μέσω email δεν έχει ρυθμιστεί σε αυτόν τον διακομιστή",
+  "Confirm your email for NEO": "Επιβεβαίωσε το email σου για το NEO",
+  "Welcome to NEO.": "Καλώς ήρθες στο NEO.",
+  "Open this link to confirm your email address and start writing:": "Άνοιξε αυτόν τον σύνδεσμο για να επιβεβαιώσεις τη διεύθυνση email σου και να αρχίσεις να γράφεις:",
+  "The link is good for one day. If you did not create an account, you can ignore this message.": "Ο σύνδεσμος ισχύει για μία ημέρα. Αν δεν δημιούργησες λογαριασμό, μπορείς να αγνοήσεις αυτό το μήνυμα.",
+  "Reset your NEO password": "Επαναφορά του κωδικού σου στο NEO",
+  "Someone asked to reset the password for this NEO account.": "Κάποιος ζήτησε επαναφορά του κωδικού για αυτόν τον λογαριασμό NEO.",
+  "Open this link to choose a new one:": "Άνοιξε αυτόν τον σύνδεσμο για να επιλέξεις νέο κωδικό:",
+  "The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.": "Ο σύνδεσμος ισχύει για μία ώρα και λειτουργεί μία φορά. Αν δεν το ζήτησες εσύ, τίποτα δεν αλλάζει· μπορείς να αγνοήσεις αυτό το μήνυμα."
 }
