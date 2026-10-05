@@ -165,7 +165,11 @@ describe('the hosted server', () => {
     assert.equal((await api('aux:write', book.id, 'notes', '<p>n</p>')).result, true);
     assert.equal((await api('aux:read', book.id, 'notes')).result, '<p>n</p>');
     assert.deepEqual((await api('json:read', book.id, 'darlings', 'fb')).result, []);
-    const timeline = { events: [{ id: 'ev-1', when: 'Day 1', title: 'The letter arrives', chapterId: 'ch-1' }] };
+    const timeline = {
+      lanes: [{ id: 'ln-1', name: 'Winden, 1986', color: '#5fb3d9' }],
+      characters: [{ id: 'ch-a', name: 'Jonas', color: '#c9a86a' }],
+      events: [{ id: 'ev-1', when: 'Day 1', title: 'The letter arrives', chapterId: 'ch-1', laneId: 'ln-1', characterIds: ['ch-a'] }],
+    };
     assert.equal((await api('json:write', book.id, 'timeline', timeline)).ok, true, 'the timeline is a sidecar like any other');
     assert.deepEqual((await api('json:read', book.id, 'timeline', { events: [] })).result, timeline);
     const map = { nodes: [{ id: 'n-1', text: 'Silo', x: 100, y: 80, chapterId: 'ch-1' }, { id: 'n-2', text: 'The lottery', x: 300, y: 80, chapterId: '' }], links: [{ from: 'n-1', to: 'n-2' }] };
