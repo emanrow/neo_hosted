@@ -258,13 +258,13 @@ function createApp(config, deps = {}) {
   async function sendConfirmation(req, user) {
     const token = signLink({ purpose: 'verify', userId: user.id }, config.sessionSecret);
     const link = `${linkBase(req)}/auth/verify?token=${encodeURIComponent(token)}`;
-    await mailer.send({ to: user.email, ...confirmationMessage({ link }) });
+    await mailer.send({ to: user.email, ...confirmationMessage({ link, t: visitorLanguage(req).t }) });
   }
 
   async function sendReset(req, user) {
     const token = signLink({ purpose: 'reset', userId: user.id, stamp: linkStamp(user.passwordHash) }, config.sessionSecret);
     const link = `${linkBase(req)}/login?reset=${encodeURIComponent(token)}`;
-    await mailer.send({ to: user.email, ...resetMessage({ link }) });
+    await mailer.send({ to: user.email, ...resetMessage({ link, t: visitorLanguage(req).t }) });
   }
 
   /** Signs the writer in and tells the page so. */

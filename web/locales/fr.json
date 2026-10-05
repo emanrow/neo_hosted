@@ -38,5 +38,13 @@
   "That email and password do not match": "Cet e-mail et ce mot de passe ne correspondent pas",
   "Confirm your email first. We just sent you a new link.": "Confirmez d’abord votre e-mail. Nous venons de vous envoyer un nouveau lien.",
   "That reset link has expired or was already used. Ask for a new one.": "Ce lien de réinitialisation a expiré ou a déjà servi. Demandez-en un nouveau.",
-  "Password reset by email is not set up on this server": "La réinitialisation par e-mail n’est pas configurée sur ce serveur"
+  "Password reset by email is not set up on this server": "La réinitialisation par e-mail n’est pas configurée sur ce serveur",
+  "Confirm your email for NEO": "Confirmez votre e-mail pour NEO",
+  "Welcome to NEO.": "Bienvenue dans NEO.",
+  "Open this link to confirm your email address and start writing:": "Ouvrez ce lien pour confirmer votre adresse e-mail et commencer à écrire :",
+  "The link is good for one day. If you did not create an account, you can ignore this message.": "Le lien est valable un jour. Si vous n'avez pas créé de compte, vous pouvez ignorer ce message.",
+  "Reset your NEO password": "Réinitialisez votre mot de passe NEO",
+  "Someone asked to reset the password for this NEO account.": "Quelqu'un a demandé à réinitialiser le mot de passe de ce compte NEO.",
+  "Open this link to choose a new one:": "Ouvrez ce lien pour en choisir un nouveau :",
+  "The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.": "Le lien est valable une heure et ne fonctionne qu'une fois. Si vous n'avez rien demandé, rien ne change ; vous pouvez ignorer ce message."
 }

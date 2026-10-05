@@ -24,7 +24,7 @@ web/
     branches.js         openBranches({dir, logError}): activeBranch, folderFor (library.js's bookDirFor), list, create, switchTo, remove; readChapterOf/readMetaOf and the .base readers; moveBaseForward; checkBranchName
     merge.js            mergeChapter(base, ours, theirs, resolve): three-way merge at paragraph grain; merge3; blackline(from, to)
     branch-merge.js     createMerger({branches, library}): preview(bookId, name), apply(bookId, name, resolutions); mergeOrder
-    mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation, reset and feedback messages
+    mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation, reset and feedback messages (the first two take the visitor's translator)
     secrets.js          createSecretBox(masterSecret): read/write/has, AES-256-GCM per writer
     files.js            libName, writeFileDurable, readJSON, writeJSON  (port of main.js)
     library.js          openLibrary({dir, t, logError}): one writer's NEO Library as a folder (port of main.js); a laptop, the tests
@@ -44,7 +44,7 @@ web/
     web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, Show Changes (revision:compare: that save against the draft now, a blackline from merge.js), restore by writing the draft back and calling the editor's refreshFromDisk
     web.css             menu bar and sign-in styles, on styles.css's tokens
     login.html, login.js  sign in / create account / forgot / reset, one form in four modes; rendered through login-page.js, never served raw
-  locales/<code>.json   the hosted edition's own strings (sign-in page, auth errors) per language, laid over ../locales/<code>.json by lib/i18n.js; one file per upstream language, keys are the English text
+  locales/<code>.json   the hosted edition's own strings (sign-in page, auth errors, the emails) per language, laid over ../locales/<code>.json by lib/i18n.js; one file per upstream language, keys are the English text
   scripts/smoke.e2e.js  optional headless-Chromium run, see docs/testing.md
   docker-entrypoint.sh  starts as root, hands the mounted volume to `node`, drops privileges (docs/deployment.md)
   test/*.test.js        node:test; server.test.js boots the real server

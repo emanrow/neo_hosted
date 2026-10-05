@@ -38,5 +38,13 @@
   "That email and password do not match": "Bu e-posta ve parola eşleşmiyor",
   "Confirm your email first. We just sent you a new link.": "Önce e-postanı onayla. Az önce sana yeni bir bağlantı gönderdik.",
   "That reset link has expired or was already used. Ask for a new one.": "Bu sıfırlama bağlantısının süresi dolmuş ya da zaten kullanılmış. Yenisini iste.",
-  "Password reset by email is not set up on this server": "E-posta ile parola sıfırlama bu sunucuda ayarlanmamış"
+  "Password reset by email is not set up on this server": "E-posta ile parola sıfırlama bu sunucuda ayarlanmamış",
+  "Confirm your email for NEO": "NEO için e-postanı doğrula",
+  "Welcome to NEO.": "NEO'ya hoş geldin.",
+  "Open this link to confirm your email address and start writing:": "E-posta adresini doğrulamak ve yazmaya başlamak için bu bağlantıyı aç:",
+  "The link is good for one day. If you did not create an account, you can ignore this message.": "Bağlantı bir gün geçerlidir. Hesap oluşturmadıysan bu iletiyi yok sayabilirsin.",
+  "Reset your NEO password": "NEO şifreni sıfırla",
+  "Someone asked to reset the password for this NEO account.": "Birisi bu NEO hesabının şifresinin sıfırlanmasını istedi.",
+  "Open this link to choose a new one:": "Yeni bir şifre seçmek için bu bağlantıyı aç:",
+  "The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.": "Bağlantı bir saat geçerlidir ve yalnızca bir kez çalışır. Bunu sen istemediysen hiçbir şey değişmez; bu iletiyi yok sayabilirsin."
 }

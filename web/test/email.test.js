@@ -135,6 +135,19 @@ describe('with email on', () => {
     assert.equal(outbox.length, sent + 1);
   });
 
+  test('the emails speak the language of the browser that asked', async () => {
+    const res = await post('/auth/signup', { email: 'neu@example.com', password: 'longenough' }, { 'Accept-Language': 'de-DE,de;q=0.9' });
+    assert.equal(res.status, 200);
+    const welcome = outbox[outbox.length - 1];
+    assert.equal(welcome.subject, 'Bestätige deine E-Mail für NEO');
+    assert.match(welcome.text, /^Willkommen bei NEO\.\n\nÖffne diesen Link/);
+    assert.match(welcome.text, /https:\/\/neo\.example\.com\/auth\/verify\?token=/, 'the link is the same');
+    await post('/auth/forgot', { email: 'neu@example.com' }, { 'Accept-Language': 'fr' });
+    assert.equal(outbox[outbox.length - 1].subject, 'Réinitialisez votre mot de passe NEO');
+    await post('/auth/forgot', { email: 'neu@example.com' }, { 'Accept-Language': 'xx' });
+    assert.equal(outbox[outbox.length - 1].subject, 'Reset your NEO password', 'English when NEO does not speak the language');
+  });
+
   test('email is rationed per address', async () => {
     for (let i = 0; i < 5; i++) assert.equal((await post('/auth/forgot', { email: 'rationed@example.com' })).status, 200);
     const res = await post('/auth/forgot', { email: 'rationed@example.com' });

@@ -1,7 +1,7 @@
 {
   "_meta": {
     "name": "English",
-    "note": "The hosted edition's own strings (the sign-in page and its errors), laid over locales/<code>.json. Keys are the English text."
+    "note": "The hosted edition's own strings (the sign-in page, its errors and the emails), laid over locales/<code>.json. Keys are the English text."
   },
   "NEO — Sign in": "NEO — Sign in",
   "A word processor for authors. Distraction-free by default.": "A word processor for authors. Distraction-free by default.",
@@ -35,5 +35,13 @@
   "That email and password do not match": "That email and password do not match",
   "Confirm your email first. We just sent you a new link.": "Confirm your email first. We just sent you a new link.",
   "That reset link has expired or was already used. Ask for a new one.": "That reset link has expired or was already used. Ask for a new one.",
-  "Password reset by email is not set up on this server": "Password reset by email is not set up on this server"
+  "Password reset by email is not set up on this server": "Password reset by email is not set up on this server",
+  "Confirm your email for NEO": "Confirm your email for NEO",
+  "Welcome to NEO.": "Welcome to NEO.",
+  "Open this link to confirm your email address and start writing:": "Open this link to confirm your email address and start writing:",
+  "The link is good for one day. If you did not create an account, you can ignore this message.": "The link is good for one day. If you did not create an account, you can ignore this message.",
+  "Reset your NEO password": "Reset your NEO password",
+  "Someone asked to reset the password for this NEO account.": "Someone asked to reset the password for this NEO account.",
+  "Open this link to choose a new one:": "Open this link to choose a new one:",
+  "The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message.": "The link is good for one hour and works once. If you did not ask for this, nothing changes; you can ignore this message."
 }
