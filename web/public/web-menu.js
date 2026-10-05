@@ -36,6 +36,7 @@
       ...names,
       sep,
       item(t('New Branch…'), () => hosted.branches && hosted.branches.newBranch()),
+      item(t('Compare & Merge…'), () => hosted.branches && hosted.branches.mergeBranch()),
       item(t('Delete Branch…'), () => hosted.branches && hosted.branches.deleteBranch())
     ];
   }

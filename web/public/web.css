@@ -76,6 +76,22 @@ body.light .hh-list li:hover { background: rgba(0,0,0,.05); }
   .hh-list { width: auto; max-height: 160px; border-right: 0; border-bottom: 1px solid #333; }
 }
 
+/* ---------- compare & merge (File → Branches → Compare & Merge…) ---------- */
+.hosted-merge-modal { width: min(960px, 96vw); display: flex; flex-direction: column; max-height: 88vh; }
+.hm-lead { font-size: 13px; color: var(--muted, #8a8a8a); margin-bottom: 12px; }
+.hm-detail { flex: 1; overflow-y: auto; padding: 4px 8px; min-height: 240px; }
+.hm-has-conflict .hh-words { color: var(--accent, #c9a86a); }
+.hm-conflict { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px; margin-bottom: 14px; border: 1px solid #3a3a3a; border-radius: 8px; }
+.hm-side-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted, #8a8a8a); margin-bottom: 6px; }
+.hm-text, .hm-blackline { font-size: 15px; line-height: 1.6; }
+.hm-text p, .hm-blackline p { margin-bottom: 1em; }
+.hm-choice { grid-column: 1 / -1; display: flex; gap: 18px; font-size: 13px; }
+.hm-choice label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.hm-blackline ins.bl-ins { text-decoration: none; background: rgba(120, 200, 120, .18); display: block; }
+.hm-blackline del.bl-del { text-decoration: line-through; background: rgba(220, 110, 100, .18); display: block; opacity: .8; }
+body.light .hm-conflict { border-color: #ddd8ce; }
+@media (max-width: 640px) { .hm-conflict { grid-template-columns: 1fr; } }
+
 /* ---------- sign in ---------- */
 body.hosted-login { display: flex; align-items: center; justify-content: center; overflow: auto; }
 .login-card { width: min(380px, 92vw); padding: 36px 32px 28px; background: var(--pane, #202020); border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }

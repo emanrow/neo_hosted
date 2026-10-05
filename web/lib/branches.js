@@ -13,6 +13,10 @@
 // The revision log keys rows by branch name (revisions.js), so each branch
 // has its own history from the moment it is made.
 //
+// A branch also keeps .base/: the chapters and book.json as they were when
+// it was made (and again after each merge), the common ancestor a three-way
+// merge needs (branch-merge.js). Main has no base; it is nobody's branch.
+//
 // Gotchas:
 // - A branch is copied from the branch the writer is in, not from main.
 // - Deleting a branch moves it to the library's Trash; words are never discarded.
@@ -26,6 +30,7 @@ const { libName, writeFileDurable, readJSON, writeJSON } = require('./files');
 const MAIN = 'main';
 const BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$/;
 const BRANCHES_DIR = '.branches';
+const BASE_DIR = '.base';
 
 /** A branch name as the writer typed it, or a thrown reason. */
 function checkBranchName(name) {
@@ -34,12 +39,12 @@ function checkBranchName(name) {
   return libName(trimmed);
 }
 
-// main's folder holds the branches, so a copy of it must leave .branches out
-// (fs.cpSync refuses to copy a folder into itself, filter or no filter)
+// main's folder holds the branches and a branch holds its base, so a copy
+// must leave both out (fs.cpSync refuses to copy a folder into itself)
 function copyDraft(source, target) {
   fs.mkdirSync(target, { recursive: true });
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
-    if (entry.name === BRANCHES_DIR) continue;
+    if (entry.name === BRANCHES_DIR || entry.name === BASE_DIR) continue;
     const from = path.join(source, entry.name);
     const to = path.join(target, entry.name);
     if (entry.isDirectory()) copyDraft(from, to);
@@ -68,6 +73,27 @@ function openBranches({ dir, logError }) {
 
   /** Where the book's files are right now. library.js's bookDirFor. */
   const folderFor = (bookId) => branchFolder(bookId, activeBranch(bookId));
+  const baseFolder = (bookId, name) => path.join(branchFolder(bookId, name), BASE_DIR);
+
+  // reading another draft than the active one: the merge needs all three
+  const readHtml = (file) => { try { return fs.readFileSync(file, 'utf8'); } catch { return ''; } };
+  const readChapterOf = (bookId, name, chapterId) => readHtml(path.join(branchFolder(bookId, name), 'chapters', libName(chapterId) + '.html'));
+  const readMetaOf = (bookId, name) => readJSON(path.join(branchFolder(bookId, name), 'book.json'), { chapterOrder: [] }, () => {});
+  const readBaseChapterOf = (bookId, name, chapterId) => readHtml(path.join(baseFolder(bookId, name), 'chapters', libName(chapterId) + '.html'));
+  const readBaseMetaOf = (bookId, name) => readJSON(path.join(baseFolder(bookId, name), 'book.json'), null, () => {});
+
+  /** The branch's chapters and book.json as they stand become its base: what a later merge measures from. */
+  function moveBaseForward(bookId, name) {
+    if (name === MAIN) return;
+    const folder = branchFolder(bookId, name);
+    const base = baseFolder(bookId, name);
+    fs.rmSync(base, { recursive: true, force: true });
+    fs.mkdirSync(path.join(base, 'chapters'), { recursive: true });
+    try { fs.copyFileSync(path.join(folder, 'book.json'), path.join(base, 'book.json')); } catch { /* a draft with no book.json yet */ }
+    let names = [];
+    try { names = fs.readdirSync(path.join(folder, 'chapters')); } catch { /* no chapters yet */ }
+    for (const f of names) if (f.endsWith('.html')) fs.copyFileSync(path.join(folder, 'chapters', f), path.join(base, 'chapters', f));
+  }
 
   function list(bookId) {
     const branches = [{ name: MAIN, createdAt: null, from: null }];
@@ -92,6 +118,7 @@ function openBranches({ dir, logError }) {
     fs.mkdirSync(branchesDir(bookId), { recursive: true });
     copyDraft(source, target);
     writeJSON(path.join(target, 'branch.json'), { name: path.basename(target), from, createdAt: new Date().toISOString() });
+    moveBaseForward(bookId, path.basename(target));
     switchTo(bookId, path.basename(target));
     return list(bookId);
   }
@@ -122,7 +149,7 @@ function openBranches({ dir, logError }) {
     return list(bookId);
   }
 
-  return { MAIN, activeBranch, folderFor, list, create, switchTo, remove };
+  return { MAIN, activeBranch, folderFor, list, create, switchTo, remove, readChapterOf, readMetaOf, readBaseChapterOf, readBaseMetaOf, moveBaseForward };
 }
 
 module.exports = { openBranches, checkBranchName, MAIN_BRANCH: MAIN };
