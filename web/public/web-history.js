@@ -60,6 +60,7 @@
         </div>
         <div class="hh-actions">
           <span class="hh-note"></span>
+          <button class="hh-changes btn-quiet" disabled aria-pressed="false">${t('Show Changes')}</button>
           <button class="hh-close btn-quiet">${t('Close')}</button>
           <button class="hh-restore btn-gold" disabled>${t('Restore')}</button>
         </div>
@@ -71,6 +72,7 @@
     const preview = bd.querySelector('.hh-preview');
     const note = bd.querySelector('.hh-note');
     const restoreButton = bd.querySelector('.hh-restore');
+    const changesButton = bd.querySelector('.hh-changes');
     const close = () => { bd.remove(); open = null; };
     bd.querySelector('.hh-close').onclick = close;
     bd.addEventListener('click', (e) => { if (e.target === bd) close(); });
@@ -79,6 +81,28 @@
 
     let entries = [];
     let chosen = null;
+    let draftHtml = '';          // the chosen save's words, what Restore writes back
+    let showingChanges = false;  // the blackline of that save against the draft as saved now
+
+    /** Draws the chosen save as its words, or as what changed between it and now. */
+    const show = async () => {
+      const entry = chosen;
+      if (!entry) return;
+      preview.classList.toggle('hm-blackline', showingChanges);
+      changesButton.setAttribute('aria-pressed', String(showingChanges));
+      changesButton.textContent = showingChanges ? t('Show Draft') : t('Show Changes');
+      if (!showingChanges) { preview.innerHTML = draftHtml || '<p><br></p>'; return; }
+      preview.innerHTML = '';
+      try {
+        const { blackline, same } = await window.neo.compareRevision(bookId, chapterId, entry.id);
+        if (chosen !== entry || !showingChanges) return;
+        preview.innerHTML = blackline || '<p><br></p>';
+        note.textContent = same ? t('Nothing has changed since this save.') : t('Struck through: words this save had that the page no longer has. Highlighted: words written since.');
+      } catch (err) {
+        note.textContent = t('Could not load the history ({error})', { error: String((err && err.message) || err) });
+      }
+    };
+    changesButton.onclick = () => { showingChanges = !showingChanges; if (!showingChanges) note.textContent = ''; show(); };
     try {
       entries = await window.neo.listRevisions(bookId, chapterId);
     } catch (err) {
@@ -102,12 +126,15 @@
         li.setAttribute('aria-selected', 'true');
         chosen = entry;
         restoreButton.disabled = true;
+        changesButton.disabled = true;
         preview.innerHTML = '';
         try {
           const html = await window.neo.readRevision(entry.id);
           if (chosen !== entry) return;
-          preview.innerHTML = html || '<p><br></p>';
+          draftHtml = html || '';
           restoreButton.disabled = false;
+          changesButton.disabled = false;
+          await show();
         } catch (err) {
           note.textContent = t('Could not load the history ({error})', { error: String((err && err.message) || err) });
         }
@@ -124,7 +151,7 @@
       try {
         if (typeof window.flushAllSaves === 'function') window.flushAllSaves();
         await new Promise((resolve) => setTimeout(resolve, 800)); // the page's own save, if one was pending, is on its way
-        await window.neo.writeChapter(bookId, chapterId, preview.innerHTML);
+        await window.neo.writeChapter(bookId, chapterId, draftHtml);
         if (typeof window.refreshFromDisk === 'function') await window.refreshFromDisk();
         say(t('Restored the draft from {time}', { time: when(chosen.createdAt) }));
         close();

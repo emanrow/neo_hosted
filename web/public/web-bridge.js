@@ -167,6 +167,7 @@
     mergePreview: (bookId, name) => rpc('branch:mergePreview', bookId, name),
     mergeBranch: (bookId, name, resolutions) => rpc('branch:merge', bookId, name, resolutions),
     readRevision: (id) => rpc('revision:read', id),
+    compareRevision: (bookId, chId, id) => rpc('revision:compare', bookId, chId, id),
     deleteChapter: (bookId, chId) => rpc('chapter:delete', bookId, chId),
     readAux: (bookId, name) => rpc('aux:read', bookId, name),
     writeAux: (bookId, name, html) => rpc('aux:write', bookId, name, html),

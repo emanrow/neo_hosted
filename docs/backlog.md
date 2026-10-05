@@ -14,7 +14,7 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 Decided 2026-10-05 with the owner: canonical text moves into Postgres by stages, behind the same `library` interface `app.js` already talks to, so the editor stays upstream's. Branching (alternate drafts side by side) is the feature that decides this; proof of human work is a quiet property of the history, never a certificate; the desktop folder stops being the escape hatch and DOCX/PDF/EPUB exports take its place, with a plain-file folder export kept as a courtesy.
 
 - **A. Accounts in Postgres**: done, below.
-- **B. Revision log**: done, below, with the History panel. Still to come: a blackline between two revisions, in the same panel.
+- **B. Revision log**: done, below, with the History panel, which also shows what changed between any save and the draft as it is now (Show Changes, 2026-10-05).
 - **C. Branches**: done, below, per book as the owner decided (2026-10-05): create, switch, delete, compare and merge. Not merged yet, and worth a look later: notes, outline, stickies and darlings (this draft keeps its own), and a way to see two branches side by side without merging.
 - **D. Flip canonical**: done, below. Words are rows; the daily zip and File → Download Library… are the export. Still to come, above: images to object storage.
 

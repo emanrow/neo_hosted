@@ -9,6 +9,7 @@
 
 const path = require('node:path');
 const { SPELL_LANGUAGES, defaultSpellLanguage } = require('./spell');
+const { blackline } = require('./merge');
 
 const SECRET_NAME = /^[a-z0-9-]{1,32}$/;
 
@@ -79,6 +80,13 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   api.handle('revision:list', (ctx, bookId, chapterId) => ctx.revisions.list(bookId, chapterId));
   api.handle('revision:read', (ctx, id) => ctx.revisions.read(id));
   api.handle('revision:verify', (ctx, bookId, chapterId) => ctx.revisions.verify(bookId, chapterId));
+  // one save against the draft as saved now: what changed since then, as a blackline
+  api.handle('revision:compare', async (ctx, bookId, chapterId, id) => {
+    const then = await ctx.revisions.read(id);
+    if (then === null) throw new Error('No such revision');
+    const now = await ctx.library.readChapter(bookId, chapterId);
+    return { blackline: blackline(then, now || ''), same: then === (now || '') };
+  });
   api.handle('aux:read', (ctx, bookId, name) => ctx.library.readAux(bookId, name));
   api.handle('aux:write', (ctx, bookId, name, html) => ctx.library.writeAux(bookId, name, html));
   api.handle('json:read', (ctx, bookId, name, fallback) => ctx.library.readSidecar(bookId, name, fallback));

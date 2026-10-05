@@ -286,7 +286,7 @@ describe('the hosted server', () => {
     const ids = Object.fromEntries([...html.matchAll(/name="userId" value="([^"]+)"[\s\S]*?aria-label="type ([^ ]+) to confirm"/g)].map((m) => [m[2], m[1]]));
     assert.ok(ids['two@example.com'], 'the form names the account');
     const form = (body) => call('POST', '/admin/remove', { raw: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-    assert.equal((await form(`userId=${ids['two@example.com']}&confirm=someone@else.com`)).status, 400, 'the address must be typed back');
+    assert.equal((await form(`userId=${ids['two@example.com']}&confirm=wrong@example.com`)).status, 400, 'the address must be typed back');
     const me = (await call('GET', '/')).status === 200 && [...html.matchAll(/name="userId" value="([^"]+)"/g)].map((m) => m[1]).find((id) => id !== ids['two@example.com']);
     assert.ok(!me, 'the owner has no remove form of their own');
     const removed = await form(`userId=${ids['two@example.com']}&confirm=TWO%40example.com`);
