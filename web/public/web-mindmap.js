@@ -45,11 +45,18 @@
           <select class="mm-chapter" disabled></select>
           <button class="mm-go btn-quiet" hidden></button>
           <button class="mm-delete btn-quiet" disabled>${t('Delete')}</button>
+          <span class="mm-zoom">
+            <button class="mm-zoom-out btn-quiet" aria-label="${t('Zoom out')}">−</button>
+            <button class="mm-zoom-reset btn-quiet" aria-label="${t('Actual size')}">100%</button>
+            <button class="mm-zoom-in btn-quiet" aria-label="${t('Zoom in')}">+</button>
+          </span>
           <span class="mm-spacer"></span>
           <button class="mm-close btn-gold">${t('Close')}</button>
         </div>
         <div class="mm-canvas" tabindex="0">
-          <svg class="mm-links" xmlns="${SVG}" width="${CANVAS.width}" height="${CANVAS.height}"></svg>
+          <div class="mm-sheet">
+            <svg class="mm-links" xmlns="${SVG}" width="${CANVAS.width}" height="${CANVAS.height}"></svg>
+          </div>
         </div>
       </div>`;
     document.body.appendChild(bd);
@@ -57,13 +64,44 @@
     bd.querySelector('h2').textContent = t('Mind Map');
     const hint = bd.querySelector('.mm-hint');
     const canvas = bd.querySelector('.mm-canvas');
+    const sheet = bd.querySelector('.mm-sheet');
     const svg = bd.querySelector('.mm-links');
     const linkButton = bd.querySelector('.mm-link');
     const chapterSelect = bd.querySelector('.mm-chapter');
     const goButton = bd.querySelector('.mm-go');
     const deleteButton = bd.querySelector('.mm-delete');
-    canvas.style.setProperty('--mm-w', CANVAS.width + 'px');
-    canvas.style.setProperty('--mm-h', CANVAS.height + 'px');
+    sheet.style.width = CANVAS.width + 'px';
+    sheet.style.height = CANVAS.height + 'px';
+
+    // ---- zoom: the sheet is scaled as a whole; node positions stay in sheet pixels ----
+    const ZOOM = { min: 0.4, max: 2, step: 1.2 };
+    let zoom = 1;
+    const zoomLabel = bd.querySelector('.mm-zoom-reset');
+    /** Scales the sheet about a point of the canvas (its centre by default), keeping that point under the pointer. */
+    function setZoom(next, at) {
+      const z = Math.min(ZOOM.max, Math.max(ZOOM.min, Math.round(next * 100) / 100));
+      const px = at ? at.x : canvas.clientWidth / 2, py = at ? at.y : canvas.clientHeight / 2;
+      const sx = (canvas.scrollLeft + px) / zoom, sy = (canvas.scrollTop + py) / zoom;   // the sheet point under that spot
+      zoom = z;
+      sheet.style.transform = `scale(${zoom})`;
+      canvas.style.setProperty('--mm-w', CANVAS.width * zoom + 'px');
+      canvas.style.setProperty('--mm-h', CANVAS.height * zoom + 'px');
+      canvas.scrollLeft = sx * zoom - px;
+      canvas.scrollTop = sy * zoom - py;
+      zoomLabel.textContent = Math.round(zoom * 100) + '%';
+    }
+    /** A pointer's place in sheet pixels, whatever the zoom and scroll. */
+    const onSheet = (e) => { const r = sheet.getBoundingClientRect(); return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom }; };
+    bd.querySelector('.mm-zoom-in').onclick = () => setZoom(zoom * ZOOM.step);
+    bd.querySelector('.mm-zoom-out').onclick = () => setZoom(zoom / ZOOM.step);
+    zoomLabel.onclick = () => setZoom(1);
+    canvas.addEventListener('wheel', (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;   // a plain wheel scrolls, as everywhere; pinch on a trackpad arrives as ctrl+wheel
+      e.preventDefault();
+      const r = canvas.getBoundingClientRect();
+      setZoom(zoom * (e.deltaY < 0 ? ZOOM.step : 1 / ZOOM.step), { x: e.clientX - r.left, y: e.clientY - r.top });
+    }, { passive: false });
+    setZoom(1);
     const idle = () => { hint.textContent = t('Double-click the canvas for a node, drag to move, double-click a node to rename.'); };
     idle();
     const close = () => { flush(); bd.remove(); open = null; };
@@ -181,7 +219,7 @@
       el.innerHTML = '<span class="mm-text"></span><span class="mm-caption"></span>';
       el.querySelector('.mm-text').textContent = node.text || t('(untitled)');
       caption(node, el);
-      canvas.appendChild(el);
+      sheet.appendChild(el);
       elements.set(node.id, el);
 
       let drag = null;
@@ -201,13 +239,15 @@
           return;
         }
         select(node.id);
-        drag = { dx: e.clientX - node.x, dy: e.clientY - node.y, moved: false };
+        const at = onSheet(e);
+        drag = { dx: at.x - node.x, dy: at.y - node.y, moved: false };
         el.setPointerCapture(e.pointerId);
       });
       el.addEventListener('pointermove', (e) => {
         if (!drag) return;
-        node.x = Math.max(0, Math.min(CANVAS.width - el.offsetWidth, Math.round(e.clientX - drag.dx)));
-        node.y = Math.max(0, Math.min(CANVAS.height - el.offsetHeight, Math.round(e.clientY - drag.dy)));
+        const at = onSheet(e);
+        node.x = Math.max(0, Math.min(CANVAS.width - el.offsetWidth, Math.round(at.x - drag.dx)));
+        node.y = Math.max(0, Math.min(CANVAS.height - el.offsetHeight, Math.round(at.y - drag.dy)));
         drag.moved = true;
         el.style.left = node.x + 'px';
         el.style.top = node.y + 'px';
@@ -230,7 +270,7 @@
     }
 
     // ---- the toolbar ----
-    bd.querySelector('.mm-add').onclick = () => addNode(canvas.scrollLeft + canvas.clientWidth / 2 - 60, canvas.scrollTop + canvas.clientHeight / 2 - 20);
+    bd.querySelector('.mm-add').onclick = () => addNode((canvas.scrollLeft + canvas.clientWidth / 2) / zoom - 60, (canvas.scrollTop + canvas.clientHeight / 2) / zoom - 20);
     linkButton.onclick = () => { linking = !linking; hint.textContent = linking ? t('Now click the node to link it to (again to unlink). Esc cancels.') : ''; if (!linking) idle(); };
     chapterSelect.onchange = () => {
       const node = nodeById(selected);
@@ -253,7 +293,7 @@
       drawLinks();
     };
     deleteButton.onclick = removeSelected;
-    canvas.addEventListener('dblclick', (e) => { if (e.target === canvas || e.target === svg) addNode(e.offsetX - 60, e.offsetY - 20); });
+    canvas.addEventListener('dblclick', (e) => { if (e.target === canvas || e.target === sheet || e.target === svg) { const at = onSheet(e); addNode(at.x - 60, at.y - 20); } });
     canvas.addEventListener('pointerdown', (e) => { if (e.target === canvas || e.target === svg) select(null); });
     bd.addEventListener('keydown', (e) => {
       if (e.target.classList.contains('mm-edit')) return;

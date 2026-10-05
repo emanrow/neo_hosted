@@ -41,7 +41,7 @@ web/
     web-share.js        File → Share…: publish the book or the chapter the caret is in as a read-only page, copy the link (or the phone's share sheet where navigator.share exists), publish again, unpublish; the HTML comes from app.js's own buildHtml/bookExportData/chapterExportData
     web-feedback.js     Help → Send Feedback…: a note to the owner (feedback:send, emailed to NEO_ADMIN_EMAILS); the same panel opens once, unasked, as the welcome for a guest of honor (config.welcome, then welcome:seen)
     web-timeline.js     View → Timeline…: the book's events in story order (story-time, title, chapter link), drag to reorder; timeline.json through json:read/json:write, nothing server-side
-    web-mindmap.js      View → Mind Map…: nodes on a canvas (drag, link, tie to a chapter, jump to it); mindmap.json through json:read/json:write, nothing server-side
+    web-mindmap.js      View → Mind Map…: nodes on a canvas (drag, link, tie to a chapter, jump to it; zoom scales a .mm-sheet, positions stay in sheet pixels); mindmap.json through json:read/json:write, nothing server-side
     web-map.js          View → Map…: an uploaded sheet (POST /api/map:upload, map-<ts>.<ext> served with the covers) or a blank one, pins with a label, note and chapter; maps.json through json:read/json:write
     web-handwriting.js  View → Handwriting…: pages of strokes (pointer events, coalesced, pressure per point drawn as a ribbon; inks, widths, eraser, undo, Export SVG…), a title and chapter per page; handwriting.json through json:read/json:write, drawn as SVG
     web-mobile.js       a touch screen only ((hover: none)): the ☰ button that opens the menu bar, edge swipes for the chapter and notes panes; web.css's body.hosted-touch and max-width rules do the rest
