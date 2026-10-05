@@ -33,7 +33,7 @@ describe('PgLibrary', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is n
   const libraryFor = (userId) => openPgLibrary({ db, userId, dir: fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-pglib-')), t, logError: quiet });
 
   before(async () => {
-    await db.query('DROP TABLE IF EXISTS branch_bases, book_files, branches, books, libraries, revisions, users, schema_migrations');
+    await db.query('DROP TABLE IF EXISTS shares, branch_bases, book_files, branches, books, libraries, revisions, users, schema_migrations');
     await db.migrate();
     const users = new PgUserStore(db);
     writerId = (await users.create({ email: 'rows@example.com', passwordHash: 'h' })).id;

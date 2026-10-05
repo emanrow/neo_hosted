@@ -46,3 +46,4 @@ A writer's cover-art key (`secret:set` / `secret:has` / `cover:paint`) is stored
 - Turning email on does not ask existing accounts to confirm; they are trusted as they were.
 - The login and email throttles are per process; a restart clears them.
 - Rate limits exist only on sign-in and email. Everything else trusts a signed-in writer, as the desktop trusts its one user.
+- `GET /s/<token>` is the one page a stranger can read besides sign-in: a snapshot a writer chose to publish (File → Share…). The token is 16 random bytes, the response allows no script and asks search engines not to index, and the writer can take it down at any time; there is no listing of published pages.

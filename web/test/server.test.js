@@ -295,6 +295,35 @@ describe('the hosted server', () => {
     assert.match(out.headers.get('set-cookie'), /Max-Age=0/);
   });
 
+  test('a published page is served to anyone with the link, and only its owner can take it down', async () => {
+    const html = '<!doctype html><html><head><title>Wool</title></head><body><p>Once.</p></body></html>';
+    const bookId = 'book-shared';                    // a page is a snapshot; the book need not still be on the shelf
+    const share = (await api('share:publish', bookId, null, 'Wool', html)).result;
+    assert.match(share.token, /^[A-Za-z0-9_-]{22}$/);
+    assert.equal(share.chapterId, '');
+    const listed = (await api('share:list', bookId)).result;
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].token, share.token);
+    const saved = cookie;
+    cookie = '';
+    const page = await call('GET', '/s/' + share.token);
+    assert.equal(page.status, 200, 'no sign-in needed');
+    assert.equal(await page.text(), html);
+    assert.match(page.headers.get('content-security-policy'), /default-src 'none'/);
+    assert.equal(page.headers.get('x-robots-tag'), 'noindex');
+    assert.equal((await call('GET', '/s/' + share.token.slice(1) + 'x')).status, 404, 'a token off by one is nothing');
+    assert.equal((await call('GET', '/s/%2e%2e%2flogin')).status, 404, 'a token is letters and digits only');
+    cookie = saved;
+    const refused = await api('share:publish', bookId, null, 'Wool', '<p>not a page</p>');
+    assert.match(refused.error, /whole web page/);
+    const again = (await api('share:publish', bookId, 'ch-1', 'Holston', html.replace('Once.', 'Twice.'))).result;
+    assert.notEqual(again.token, share.token, 'a chapter has its own link');
+    assert.equal((await api('share:list', bookId)).result.length, 2);
+    assert.equal((await api('share:remove', share.token)).result, true);
+    assert.equal((await call('GET', '/s/' + share.token)).status, 404, 'taken down');
+    assert.equal((await api('share:remove', share.token)).result, false);
+  });
+
   test('the backup sweep zips every writer\'s library and sends each zip to the bucket', async () => {
     const put = bucketPuts;
     await app.backupEveryone();

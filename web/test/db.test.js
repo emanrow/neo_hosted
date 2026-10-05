@@ -22,7 +22,7 @@ describe('PgUserStore', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
   const store = new PgUserStore(db);
 
   before(async () => {
-    await db.query('DROP TABLE IF EXISTS branch_bases, book_files, branches, books, libraries, revisions, users, schema_migrations');
+    await db.query('DROP TABLE IF EXISTS shares, branch_bases, book_files, branches, books, libraries, revisions, users, schema_migrations');
   });
   after(() => db.close());
 
@@ -114,7 +114,7 @@ describe('RevisionLog', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
   let writer;
 
   before(async () => {
-    await db.query('DROP TABLE IF EXISTS branch_bases, book_files, branches, books, libraries, revisions, users, schema_migrations');
+    await db.query('DROP TABLE IF EXISTS shares, branch_bases, book_files, branches, books, libraries, revisions, users, schema_migrations');
     await db.migrate();
     writer = await new PgUserStore(db).create({ email: 'rev@example.com', passwordHash: 'h' });
   });

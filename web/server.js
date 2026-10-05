@@ -41,6 +41,7 @@ const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
 const { openPgLibrary } = require('./lib/pg-library');
 const { createObjectStore, NO_OBJECT_STORE } = require('./lib/object-store');
+const { JsonShareStore, PgShareStore, isToken } = require('./lib/share-store');
 const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
 const { buildHostedPage, PAGE_CSP } = require('./lib/page');
@@ -86,6 +87,7 @@ function createApp(config, deps = {}) {
   const users = db ? new PgUserStore(db) : new JsonUserStore(usersFile);
   const revisions = db ? new RevisionLog(db) : new NullRevisionLog();
   const objectStore = deps.objectStore || (config.backupBucket ? createObjectStore(config.backupBucket) : NO_OBJECT_STORE);
+  const shares = db ? new PgShareStore(db) : new JsonShareStore(path.join(config.dataDir, 'shares'));
   // Migrate, then take over a users.json if one is there and the table is
   // empty, and every writer's library folder whose rows are still empty.
   // Files are renamed, not deleted, so nothing is lost if an import turns
@@ -160,7 +162,7 @@ function createApp(config, deps = {}) {
     // this writer's slice of the revision log, keyed by the branch they are in; a no-op without a database
     const onBranch = async (bookId) => ({ userId: user.id, bookId, branch: await branches.activeBranch(bookId) });
     return {
-      user, req, locale, t, logError, branches, library,
+      user, req, locale, t, logError, branches, library, shares,
       merger: createMerger({ branches, library }),
       revisions: {
         record: async (bookId, chapterId, html) => revisions.record({ ...(await onBranch(bookId)), chapterId, html }),
@@ -411,6 +413,7 @@ function createApp(config, deps = {}) {
     const method = req.method;
 
     if (method === 'GET' && p === '/healthz') return sendText(res, 200, 'ok');
+    if (method === 'GET' && p.startsWith('/s/')) return servePublicPage(p.slice(3), res);
 
     // static: the app itself, public by design (it is MIT-licensed source)
     if (method === 'GET' || method === 'HEAD') {
@@ -473,6 +476,20 @@ function createApp(config, deps = {}) {
       sendJSON(res, status, { ok: false, error: status === 500 ? 'Something went wrong on the server' : err.message });
     }
   });
+
+  // ---------------------------------------------------------------------
+  // Public pages: a published snapshot, read-only, for anyone with the link
+  // ---------------------------------------------------------------------
+  // The HTML came from the editor's exporter: its own styles inline, fonts and
+  // the cover as data: URIs, no script. The policy says so, so that a page
+  // that somehow carried one still runs nothing. Not for search engines: the
+  // link is the writer's to hand out.
+  const PUBLIC_PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'";
+  async function servePublicPage(token, res) {
+    const share = isToken(token) ? await shares.find(token) : null;
+    if (!share) throw new HttpError(404, 'Not found');
+    send(res, 200, share.html, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store', 'Content-Security-Policy': PUBLIC_PAGE_CSP, 'X-Robots-Tag': 'noindex', 'Referrer-Policy': 'no-referrer' });
+  }
 
   // ---------------------------------------------------------------------
   // Daily backups, one zip per writer per day, swept hourly; a copy of each

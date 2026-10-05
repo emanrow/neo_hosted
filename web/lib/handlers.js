@@ -16,6 +16,8 @@ const SECRET_NAME = /^[a-z0-9-]{1,32}$/;
  * @param {{ handle: (channel: string, fn: Function) => void }} api
  * @param {{ spell: import('./spell').SpellService, secretBox: object, versions: { hosted: string, neo: string }, rootDir: string }} deps
  */
+const SHARE_HTML_LIMIT = 20 * 1024 * 1024;        // a book with its fonts and cover inlined
+
 function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   // ---------- library ----------
   api.handle('library:read', (ctx) => ctx.library.readLibrary());
@@ -61,6 +63,17 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
     }
     return info;
   });
+
+  // ---------- public pages (hosted only; web-share.js is the caller) ----------
+  // the page builds the HTML with the editor's own exporter; the server only keeps and serves it
+  api.handle('share:list', (ctx, bookId) => ctx.shares.list(ctx.user.id, bookId));
+  api.handle('share:publish', (ctx, bookId, chapterId, title, html) => {
+    if (typeof bookId !== 'string' || !bookId) throw new Error('A book is needed');
+    if (typeof html !== 'string' || !/^\s*<!doctype html/i.test(html)) throw new Error('A whole web page is needed');
+    if (html.length > SHARE_HTML_LIMIT) throw new Error('That page is too large to publish');
+    return ctx.shares.publish({ userId: ctx.user.id, bookId, chapterId: chapterId || '', title: String(title || '').slice(0, 300), html });
+  });
+  api.handle('share:remove', (ctx, token) => ctx.shares.remove(ctx.user.id, token));
 
   // ---------- history (hosted only; web-history.js is the reader) ----------
   api.handle('revision:list', (ctx, bookId, chapterId) => ctx.revisions.list(bookId, chapterId));
