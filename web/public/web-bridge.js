@@ -160,6 +160,8 @@
     createBranch: (bookId, name) => rpc('branch:create', bookId, name),
     switchBranch: (bookId, name) => rpc('branch:switch', bookId, name),
     deleteBranch: (bookId, name) => rpc('branch:delete', bookId, name),
+    mergePreview: (bookId, name) => rpc('branch:mergePreview', bookId, name),
+    mergeBranch: (bookId, name, resolutions) => rpc('branch:merge', bookId, name, resolutions),
     readRevision: (id) => rpc('revision:read', id),
     deleteChapter: (bookId, chId) => rpc('chapter:delete', bookId, chId),
     readAux: (bookId, name) => rpc('aux:read', bookId, name),

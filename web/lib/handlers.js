@@ -42,6 +42,15 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   api.handle('branch:list', (ctx, bookId) => ctx.branches.list(bookId));
   api.handle('branch:switch', (ctx, bookId, name) => ctx.branches.switchTo(bookId, name));
   api.handle('branch:delete', (ctx, bookId, name) => ctx.branches.remove(bookId, name));
+  api.handle('branch:mergePreview', (ctx, bookId, name) => ctx.merger.preview(bookId, name));
+  // the merged chapters go through chapter:write's path so the log keeps them
+  api.handle('branch:merge', async (ctx, bookId, name, resolutions) => {
+    const result = ctx.merger.apply(bookId, name, resolutions && typeof resolutions === 'object' ? resolutions : {});
+    for (const { id, html } of result.written) {
+      try { await ctx.revisions.record(bookId, id, html); } catch (err) { ctx.logError('revisions', err); }
+    }
+    return { into: result.into, from: result.from, chapters: result.written.length };
+  });
   // a new branch starts its history with where it branched from, chapter by chapter
   api.handle('branch:create', async (ctx, bookId, name) => {
     const info = ctx.branches.create(bookId, name);

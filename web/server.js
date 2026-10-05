@@ -33,6 +33,7 @@ const { JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified } = require(
 const { openDatabase } = require('./lib/db');
 const { RevisionLog, NullRevisionLog } = require('./lib/revisions');
 const { openBranches } = require('./lib/branches');
+const { createMerger } = require('./lib/branch-merge');
 const { createMailer, confirmationMessage, resetMessage } = require('./lib/mail');
 const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
@@ -126,11 +127,12 @@ function createApp(config, deps = {}) {
       try { fs.mkdirSync(libraryDir, { recursive: true }); fs.appendFileSync(path.join(libraryDir, 'neo-errors.log'), line); } catch { logServerError(source, err); }
     };
     const branches = openBranches({ dir: libraryDir, logError });
+    const library = openLibrary({ dir: libraryDir, t, logError, bookDirFor: branches.folderFor });
     // this writer's slice of the revision log, keyed by the branch they are in; a no-op without a database
     const onBranch = (bookId) => ({ userId: user.id, bookId, branch: branches.activeBranch(bookId) });
     return {
-      user, req, locale, t, logError, branches,
-      library: openLibrary({ dir: libraryDir, t, logError, bookDirFor: branches.folderFor }),
+      user, req, locale, t, logError, branches, library,
+      merger: createMerger({ branches, library }),
       revisions: {
         record: (bookId, chapterId, html) => revisions.record({ ...onBranch(bookId), chapterId, html }),
         list: (bookId, chapterId) => revisions.list({ ...onBranch(bookId), chapterId }),

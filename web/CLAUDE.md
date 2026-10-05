@@ -17,7 +17,9 @@ web/
     user-store.js       JsonUserStore (users.json) and PgUserStore (Postgres), one contract: count, findByEmail, findById, create, setPasswordHash, markEmailVerified, update; PgUserStore.importFrom; isEmailVerified
     db.js               openDatabase(DATABASE_URL): pool, query, migrate (MIGRATIONS applied once, recorded in schema_migrations), close
     revisions.js        RevisionLog(db): record, list, read, verify; makeDiff/applyDiff at paragraph grain; NullRevisionLog without a database
-    branches.js         openBranches({dir, logError}): activeBranch, folderFor (library.js's bookDirFor), list, create, switchTo, remove; checkBranchName
+    branches.js         openBranches({dir, logError}): activeBranch, folderFor (library.js's bookDirFor), list, create, switchTo, remove; readChapterOf/readMetaOf and the .base readers; moveBaseForward; checkBranchName
+    merge.js            mergeChapter(base, ours, theirs, resolve): three-way merge at paragraph grain; merge3; blackline(from, to)
+    branch-merge.js     createMerger({branches, library}): preview(bookId, name), apply(bookId, name, resolutions); mergeOrder
     mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation and reset messages
     secrets.js          createSecretBox(masterSecret): read/write/has, AES-256-GCM per writer
     files.js            libName, writeFileDurable, readJSON, writeJSON  (port of main.js)
@@ -29,7 +31,7 @@ web/
   public/
     web-bridge.js       window.neo for the browser; rpc(channel, ...args) → POST /api/<channel>
     web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10; File → History… opens web-history.js
-    web-branches.js     File → Branches: new, switch, delete; a switch saves, tells the server, reloads and reopens the book
+    web-branches.js     File → Branches: new, switch, delete, Compare & Merge… (the merge panel: chapter list, blackline, conflict choices); a switch or merge saves, tells the server, reloads and reopens the book
     web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, restore by writing the draft back and calling the editor's refreshFromDisk
     web.css             menu bar and sign-in styles, on styles.css's tokens
     login.html, login.js  sign in / create account / forgot / reset, one form in four modes (English only for now)
@@ -52,6 +54,7 @@ The context (`ctx`) a handler receives:
 | `library` | `openLibrary()` over `<data>/users/<id>/NEO Library` |
 | `revisions` | this writer's slice of the revision log, keyed by the branch they are in: `record(bookId, chapterId, html)`, `list`, `read(id)`, `verify`; a no-op without Postgres |
 | `branches` | `openBranches()` for this library: `list`, `create`, `switchTo`, `remove`, `activeBranch` |
+| `merger` | `createMerger()` over `branches` and `library`: `preview(bookId, name)`, `apply(bookId, name, resolutions)` |
 | `secretsFile` | `<data>/users/<id>/secrets.json` |
 | `logError(source, err)` | appends to the writer's own `neo-errors.log` |
 | `setLanguage(code)` | saves `uiLanguage` in the writer's `settings.json` |
@@ -84,6 +87,7 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **Every user-store call is awaited.** `JsonUserStore` is synchronous and `PgUserStore` is not; the contract says "may return a promise", so `currentUser`, `signupAllowed` and the `/auth/*` handlers are all async. A new call site that forgets `await` passes the JSON tests and breaks on Railway.
 - **`library.bookDir()` is the active branch, `bookRoot()` is the book.** Chapters, meta, sidecars and covers go through `bookDir`; `trashBook` and the branch folders themselves use the root. A new library method that touches the folder must pick the right one.
 - **Switching a branch reloads the page.** `refreshFromDisk` in `app.js` treats a changed file as another device's edit and would send the words it replaced to Darlings, which is right for a device and wrong for a branch. So `web-branches.js` saves, switches, reloads, and reopens the book through the editor's global `openBook`.
+- **`merge.js` is pure and `branch-merge.js` owns the files.** A change to how paragraphs are matched belongs in `merge.js` with a case in `merge.test.js`; what counts as a chapter's base, order or title belongs in `branch-merge.js`. `apply` writes through `library`, never to a branch folder directly, so the log and the catalog see it.
 - **A failed revision never fails a save.** `chapter:write` writes the file first and catches what `ctx.revisions.record` throws into the writer's error log. Keep that order if the handler changes.
 - **SQL lives in `db.js`, `PgUserStore` and `RevisionLog` only.** A new table is a new entry appended to `MIGRATIONS`, never an edit to a deployed one, and a handler never sees a query.
 - **Email is optional and the server must not care.** `mailer.enabled` is the only question `server.js` asks; with it off, signup signs in at once and `/auth/forgot` answers 503. Tests pass a stub mailer as `createApp(config, { mailer })` and read what it would have sent.
