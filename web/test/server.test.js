@@ -93,6 +93,9 @@ describe('the hosted server', () => {
     assert.equal((await call('GET', '/web/web-history.js')).status, 200);
     assert.ok(html.includes('/web/web-branches.js'));
     assert.equal((await call('GET', '/web/web-branches.js')).status, 200);
+    assert.ok(html.includes('/web/web-mobile.js'));
+    assert.equal((await call('GET', '/web/web-mobile.js')).status, 200);
+    assert.ok(html.includes('name="viewport"'));
     assert.match(res.headers.get('content-security-policy'), /connect-src 'self'/);
     const login = await call('GET', '/login');
     assert.equal(login.status, 302, 'a signed-in writer is sent to the room');

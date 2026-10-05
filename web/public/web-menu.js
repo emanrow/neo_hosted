@@ -206,6 +206,14 @@
         const chevron = document.createElement('span'); chevron.className = 'hm-chevron'; chevron.textContent = '▸';
         li.appendChild(chevron);
         renderItems(entry.submenu, li);
+        // a finger cannot hover: a tap on the parent opens its flyout (and closes its siblings')
+        li.addEventListener('click', (e) => {
+          if (e.target.closest('ul') !== list) return; // a tap inside the flyout is the item's
+          e.stopPropagation();
+          const open = li.classList.contains('hm-sub-open');
+          list.querySelectorAll('.hm-sub-open').forEach((el) => el.classList.remove('hm-sub-open'));
+          if (!open) li.classList.add('hm-sub-open');
+        });
       } else if (!entry.disabled) {
         li.tabIndex = -1;
         li.addEventListener('click', (e) => { e.stopPropagation(); activate(entry); });
@@ -245,7 +253,10 @@
   // ticks are read fresh each time the pointer comes to the bar (before any
   // click, so the button being pressed is never swapped out from under it)
   // and again after a choice closes the menus
-  for (const el of [hotzone, bar]) el.addEventListener('mouseenter', () => { if (!openMenu) build(); });
+  // (not on a touch screen: a tap's compatibility mouseenter would rebuild the
+  // bar under the finger, and the click would land on a button already gone)
+  const NO_HOVER = !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
+  for (const el of [hotzone, bar]) el.addEventListener('mouseenter', () => { if (!openMenu && !NO_HOVER) build(); });
   document.addEventListener('click', (e) => { if (!bar.contains(e.target)) closeAll(); });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && openMenu) { e.stopPropagation(); closeAll(); return; }
@@ -269,6 +280,14 @@
     bar.querySelector('.hm-title').focus();
   });
   bar.addEventListener('focusout', () => { setTimeout(() => { if (!bar.contains(document.activeElement) && !openMenu) bar.classList.remove('open'); }, 0); });
+
+  // for a screen with nothing to hover (web-mobile.js draws the button)
+  hosted.menu = {
+    isOpen: () => bar.classList.contains('open'),
+    open: () => { build(); bar.classList.add('open'); },
+    close: closeAll,
+    toggle: () => { if (bar.classList.contains('open')) closeAll(); else hosted.menu.open(); }
+  };
 
   // ---------------------------------------------------------------------
   // Accelerators the native menu used to catch. app.js already handles
