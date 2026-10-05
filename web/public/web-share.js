@@ -100,6 +100,16 @@
         remove.onclick = async () => {
           try { await window.neo.removeShare(share.token); say(t('Page taken down')); await refresh(); } catch (err) { note.textContent = String(err.message || err); }
         };
+        // a phone's own share sheet (Messages, Mail, AirDrop…), where the browser has one
+        if (typeof navigator.share === 'function') {
+          const sheet = document.createElement('button');
+          sheet.className = 'btn-quiet hs-sheet';
+          sheet.textContent = t('Share…');
+          sheet.onclick = async () => {
+            try { await navigator.share({ title: share.title, url: link.value }); } catch (err) { if (err && err.name !== 'AbortError') { try { await navigator.clipboard.writeText(link.value); say(t('Link copied')); } catch { link.select(); } } }
+          };
+          row.append(sheet);
+        }
         row.append(copy, update, remove);
         li.append(label, stamp, link, row);
         list.appendChild(li);
