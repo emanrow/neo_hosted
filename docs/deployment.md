@@ -66,6 +66,7 @@ NEO_DEV=1 NEO_SIGNUP=open npm run start:web      # http://localhost:8080
 Things the owner can do from a browser and the Railway dashboard:
 
 - `https://<domain>/healthz` answers `ok`.
+- View the page source: every `<script src>` and stylesheet `href` ends in `?v=<10 hex>`, and the hex changes when a served file changes. That is why a plain reload shows a deploy; static files are otherwise cached for an hour, so a browser that still shows the old behaviour after a deploy is told to hard-reload once (Ctrl+Shift+R, or Cmd+Shift+R on a Mac).
 - `https://<domain>/` redirects to `/login`; creating an account lands on the shelf and the first-run questions.
 - The editor is styled: the shelf has its paper background, not browser defaults. The image copies the desktop app's files by name, so a file missing from the `Dockerfile` shows up here first; `web/test/dockerfile.test.js` guards the list.
 - Railway → Deploy logs show `NEO hosted <version> (NEO <version>) listening on :8080`, then the data folder path, `users: postgres` (with `(N imported from users.json)` on the boot that moved them) or `users: users.json`, `libraries: volume` or `libraries: postgres` (with `(N imported from the volume)` on the boot that moved them, and a `[library] imported ...` line per writer), the signup mode, `email: on (Resend)` or `email: off`, and `backups: volume + bucket <name>` or `backups: volume only`. A boot that cannot reach Postgres or fails a migration exits with `could not open the user store` instead of listening.

@@ -109,6 +109,11 @@ describe('the hosted server', () => {
     assert.equal((await call('GET', '/web/web-feedback.js')).status, 200);
     assert.ok(html.includes('/web/web-timeline.js'));
     assert.equal((await call('GET', '/web/web-timeline.js')).status, 200);
+    const [, version] = html.match(/src="app\.js\?v=([0-9a-f]{10})"/) || [];
+    assert.ok(version, 'the page loads app.js with the deploy fingerprint');
+    assert.ok(html.includes(`"/web/web.css?v=${version}"`), 'the same fingerprint on every asset');
+    assert.equal((await call('GET', '/web/web.css?v=' + version)).status, 200, 'the query is ignored when serving the file');
+    assert.equal((await call('GET', '/app.js?v=' + version)).status, 200);
     assert.ok(html.includes('/web/web-mindmap.js'));
     assert.equal((await call('GET', '/web/web-mindmap.js')).status, 200);
     assert.ok(html.includes('/web/web-map.js'));

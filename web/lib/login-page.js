@@ -1,5 +1,7 @@
 'use strict';
 
+const { versionAssets } = require('./page');
+
 // The sign-in page in the visitor's language. login.html is upstream-free
 // and ours, so it is a plain template: every `{{English text}}` is replaced
 // by its translation, HTML-escaped, and the strings login.js needs at run
@@ -26,9 +28,9 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', 
 
 /**
  * @param {string} html   web/public/login.html
- * @param {{ locale: string, t: (key: string, vars?: object) => string }} language
+ * @param {{ locale: string, t: (key: string, vars?: object) => string, assetVersion?: string }} language  and the deploy's asset fingerprint (page.js)
  */
-function buildLoginPage(html, { locale, t }) {
+function buildLoginPage(html, { locale, t, assetVersion }) {
   const credits = [
     escapeHtml(t('NEO is the word processor for authors written by {author}, MIT licensed.')).replace('{author}', CREDIT_AUTHOR),
     escapeHtml(t('This is an independent {edition}, not affiliated with or endorsed by him.')).replace('{edition}', CREDIT_EDITION(escapeHtml(t('hosted edition')))),
@@ -37,7 +39,7 @@ function buildLoginPage(html, { locale, t }) {
   const strings = {};
   for (const key of PAGE_STRINGS) strings[key] = t(key);
   const json = JSON.stringify(strings).replace(/</g, '\\u003c');
-  return html
+  return versionAssets(html, assetVersion)
     .replace('<html lang="en">', `<html lang="${escapeHtml(locale)}">`)
     .replace('{{credits}}', credits)
     .replace('{{strings}}', `<script type="application/json" id="login-strings">${json}</script>`)

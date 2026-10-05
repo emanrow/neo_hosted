@@ -38,6 +38,12 @@ describe('web/locales', () => {
 });
 
 describe('buildLoginPage', () => {
+  test('its stylesheet and script carry the deploy fingerprint when given one', () => {
+    const page = buildLoginPage(html, { locale: 'en', t: i18n.translatorFor('en'), assetVersion: 'deadbeef00' });
+    assert.ok(page.includes('href="/web/web.css?v=deadbeef00"') && page.includes('src="/web/login.js?v=deadbeef00"'));
+    assert.ok(!buildLoginPage(html, { locale: 'en', t: i18n.translatorFor('en') }).includes('?v='), 'without one the URLs stay bare');
+  });
+
   test('renders German with every marker replaced and the run-time strings in a JSON block', () => {
     const page = buildLoginPage(html, { locale: 'de', t: i18n.translatorFor('de') });
     assert.match(page, /^<!DOCTYPE html>\n<html lang="de">/);

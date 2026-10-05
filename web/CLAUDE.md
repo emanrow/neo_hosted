@@ -31,9 +31,9 @@ web/
     handlers.js         registerHandlers(api, deps): one function per IPC channel
     spell.js            SpellService: shared Hunspell per language; SPELL_LANGUAGES; defaultSpellLanguage
     i18n.js             listLanguages, resolveLanguage, bundleFor, translatorFor, pickLanguage
-    page.js             buildHostedPage(indexHtml, i18n, hostedConfig), PAGE_CSP, MARKERS
+    page.js             buildHostedPage({indexHtml, i18n, hostedConfig, assetVersion}), assetVersionFor(files) and versionAssets(html, v): every script and stylesheet URL carries ?v=<fingerprint of the served files>, computed once at boot, so a plain reload sees a deploy; PAGE_CSP, MARKERS
     admin-page.js       buildAdminPage({me, writers, facts, volume, notice}): the owner's page, server-rendered, no script; server.js's isAdmin, adminView and handleAdminRemove drive it
-    login-page.js       buildLoginPage(loginHtml, {locale, t}): the sign-in page in the visitor's language; {{English text}} markers, the credits, a JSON block of strings for login.js
+    login-page.js       buildLoginPage(loginHtml, {locale, t, assetVersion}): the sign-in page in the visitor's language; {{English text}} markers, the credits, a JSON block of strings for login.js
   public/
     web-bridge.js       window.neo for the browser; rpc(channel, ...args) → POST /api/<channel>; neoHosted.downloadLibrary() fetches /library.zip
     web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10; flyouts open on tap too; neoHosted.menu.open/close/toggle for web-mobile.js
@@ -97,6 +97,7 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **Accelerators `app.js` already owns** (⌘; ⌘+ ⌘− ⌘/) are not in `web-menu.js`'s table; see [docs/parity.md](../docs/parity.md#accelerators).
 - **`index.html` markers** (`page.js` `MARKERS`): the CSP meta, the drag strip, the stylesheet link (the viewport meta goes before it) and the two script tags. A moved marker throws at boot.
 - **No hover rebuild on touch.** The bar redraws on `mouseenter` so its ticks are fresh; a tap's compatibility mouse events would redraw it under the finger and the click would land on a detached button, so `web-menu.js` skips that on `(hover: none)` screens and `hosted.menu.open()` builds instead.
+- **A new file the page loads must be in `assetVersion`'s list** (`server.js`: the root files, jszip and everything in `web/public/`), or a browser keeps its hour-old copy after a deploy. A file under `web/public/` is covered by the directory read.
 - **Static roots are allowlisted** (`ROOT_FILES`, `ROOT_DIRS` in `server.js`). `main.js`, `preload.js`, `package.json` are never served.
 - **New strings** in `web-bridge.js`, `web-menu.js` and `web-history.js` are scanned by `scripts/i18n.js`; run `node scripts/i18n.js template`. A string on the sign-in page or in an auth error instead goes in `web/locales/en.json` and every other `web/locales/<code>.json` (`login-page.test.js` fails on a missing one); upstream's `locales/` files are never edited here, so merges stay clean. The page's run-time strings are the `PAGE_STRINGS` list in `login-page.js`.
 - **The page's open book is not readable from outside `app.js`** (`book` and `currentChapterId` are top-level `let`s). The bridge notes the last book id it was asked about (`neoHosted.state.bookId`), and `web-history.js` finds the chapter from the DOM (`section.chapter[data-id]` holding the caret, else nearest the middle). A restore goes through `chapter:write` plus the editor's own `refreshFromDisk`, so replaced words land in Darlings exactly as an edit from another device would.
