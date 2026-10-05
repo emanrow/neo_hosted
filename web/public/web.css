@@ -222,3 +222,26 @@ body.light .ht-fields input, body.light .ht-fields select { background: #fff; co
   .ht-event { flex-wrap: wrap; }
   .ht-fields { grid-template-columns: 1fr; }
 }
+
+/* ---------- mind map (View → Mind Map…) ---------- */
+.hosted-mindmap-modal { width: min(1000px, 96vw); height: 85vh; display: flex; flex-direction: column; }
+.mm-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+.mm-head h2 { margin: 0; }
+.mm-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.mm-toolbar select { padding: 5px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 13px; max-width: 220px; }
+.mm-spacer { flex: 1; }
+.mm-canvas { position: relative; flex: 1; min-height: 0; overflow: auto; border: 1px solid #3a3a3a; border-radius: 8px; background: #141414; cursor: default; outline: none; }
+.mm-canvas::after { content: ''; display: block; width: var(--mm-w); height: var(--mm-h); }
+.mm-links { position: absolute; left: 0; top: 0; pointer-events: none; }
+.mm-line { stroke: #6a6a6a; stroke-width: 2; }
+.mm-node { position: absolute; min-width: 120px; max-width: 240px; padding: 8px 12px; border: 1px solid #4a4a4a; border-radius: 10px; background: #222; color: #ddd; font-size: 14px; line-height: 1.4; user-select: none; touch-action: none; cursor: grab; display: flex; flex-direction: column; gap: 2px; }
+.mm-node.mm-selected { border-color: var(--accent, #c9a86a); box-shadow: 0 0 0 1px var(--accent, #c9a86a); }
+.mm-node.mm-tied { border-style: solid; border-left: 4px solid var(--accent, #c9a86a); }
+.mm-text { white-space: pre-wrap; word-break: break-word; }
+.mm-caption { font-size: 11px; color: var(--muted, #8a8a8a); }
+.mm-caption:empty { display: none; }
+.mm-edit { width: 100%; padding: 2px 4px; border: 1px solid #3a3a3a; border-radius: 4px; background: #171717; color: #ddd; font: inherit; }
+body.light .mm-canvas { background: #faf8f4; border-color: #ddd8ce; }
+body.light .mm-node { background: #fff; color: #222; border-color: #ddd8ce; }
+body.light .mm-line { stroke: #b8b0a2; }
+body.light .mm-toolbar select, body.light .mm-edit { background: #fff; color: #222; border-color: #ddd8ce; }
