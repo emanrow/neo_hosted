@@ -285,7 +285,8 @@ body.light .mp-inspector input, body.light .mp-inspector select, body.light .mp-
 }
 
 /* ---------- handwriting (View → Handwriting…) ---------- */
-.hosted-handwriting-modal { width: min(1100px, 96vw); height: 88vh; display: flex; flex-direction: column; }
+.hosted-handwriting-modal { width: min(1100px, 96vw); height: 88vh; display: flex; flex-direction: column; -webkit-user-select: none; user-select: none; }
+.hosted-handwriting-modal input { -webkit-user-select: text; user-select: text; }
 .hw-body { display: flex; gap: 14px; flex: 1; min-height: 0; }
 .hw-side { width: 200px; flex: none; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 .hw-pages { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; border-right: 1px solid #333; }
@@ -298,9 +299,9 @@ body.light .mp-inspector input, body.light .mp-inspector select, body.light .mp-
 .hosted-handwriting-modal input.hw-title { flex: none; width: 150px; padding: 5px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 13px; }
 .hw-tools select { padding: 5px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 13px; max-width: 150px; }
 .hw-inks, .hw-widths { display: inline-flex; gap: 4px; align-items: center; }
-.hw-ink { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer; }
+.hosted-handwriting-modal .hw-ink { width: 22px; height: 22px; min-height: 0; min-width: 0; flex: none; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer; }
 .hw-ink.hw-on { border-color: #fff; box-shadow: 0 0 0 1px #1c1c1c; }
-.hw-width { width: 26px; height: 26px; border-radius: 6px; border: 1px solid transparent; background: none; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.hosted-handwriting-modal .hw-width { width: 26px; height: 26px; min-height: 0; min-width: 0; flex: none; border-radius: 6px; border: 1px solid transparent; background: none; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .hw-width span { display: block; border-radius: 50%; background: #bbb; }
 .hw-width.hw-on { border-color: var(--accent, #c9a86a); }
 .hw-eraser.hw-on { color: var(--accent, #c9a86a); }

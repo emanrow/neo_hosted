@@ -315,6 +315,8 @@
     svg.addEventListener('pointerdown', (e) => {
       if (!current) return;
       e.preventDefault();
+      if (document.activeElement && document.activeElement !== bd && bd.contains(document.activeElement)) document.activeElement.blur();   // drawing leaves the title box, so Escape closes
+      bd.focus();
       try { svg.setPointerCapture(e.pointerId); } catch { /* a pointer the browser is not tracking; the stroke still draws */ }
       if (erasing) { eraseAt(e); drawing = { erase: true }; return; }
       const stroke = { id: newId(), ink, width, points: [toSheet(e)] };
