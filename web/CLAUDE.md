@@ -24,7 +24,7 @@ web/
     branches.js         openBranches({dir, logError}): activeBranch, folderFor (library.js's bookDirFor), list, create, switchTo, remove; readChapterOf/readMetaOf and the .base readers; moveBaseForward; checkBranchName
     merge.js            mergeChapter(base, ours, theirs, resolve): three-way merge at paragraph grain; merge3; blackline(from, to)
     branch-merge.js     createMerger({branches, library}): preview(bookId, name), apply(bookId, name, resolutions); mergeOrder
-    mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation and reset messages
+    mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation, reset and feedback messages
     secrets.js          createSecretBox(masterSecret): read/write/has, AES-256-GCM per writer
     files.js            libName, writeFileDurable, readJSON, writeJSON  (port of main.js)
     library.js          openLibrary({dir, t, logError}): one writer's NEO Library as a folder (port of main.js); a laptop, the tests
@@ -39,6 +39,7 @@ web/
     web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10; flyouts open on tap too; neoHosted.menu.open/close/toggle for web-mobile.js
     web-branches.js     File → Branches: new, switch, delete, Compare & Merge… (the merge panel: chapter list, blackline, conflict choices); a switch or merge saves, tells the server, reloads and reopens the book
     web-share.js        File → Share…: publish the book or the chapter the caret is in as a read-only page, copy the link, publish again, unpublish; the HTML comes from app.js's own buildHtml/bookExportData/chapterExportData
+    web-feedback.js     Help → Send Feedback…: a note to the owner (feedback:send, emailed to NEO_ADMIN_EMAILS); the same panel opens once, unasked, as the welcome for a guest of honor (config.welcome, then welcome:seen)
     web-mobile.js       a touch screen only ((hover: none)): the ☰ button that opens the menu bar, edge swipes for the chapter and notes panes; web.css's body.hosted-touch and max-width rules do the rest
     web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, Show Changes (revision:compare: that save against the draft now, a blackline from merge.js), restore by writing the draft back and calling the editor's refreshFromDisk
     web.css             menu bar and sign-in styles, on styles.css's tokens

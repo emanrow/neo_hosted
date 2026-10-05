@@ -67,4 +67,22 @@ function resetMessage({ link }) {
   };
 }
 
-module.exports = { createMailer, confirmationMessage, resetMessage, RESEND_URL };
+/**
+ * What a writer typed into Help → Send Feedback…, for the owner's inbox. The
+ * message is quoted as written; `honored` marks a guest of honor so the owner
+ * knows who is talking. Reply-to is not set: the writer's address is in the text.
+ */
+function feedbackMessage({ from, honored, version, message }) {
+  return {
+    subject: `${honored ? 'Feedback from a guest of honor' : 'Feedback'} on NEO, from ${from}`,
+    text: [
+      `${from} wrote from the hosted edition (${version})${honored ? ', as a guest of honor' : ''}:`,
+      '',
+      message.trim(),
+      '',
+      'Sent through Help → Send Feedback… in the writing room.'
+    ].join('\n')
+  };
+}
+
+module.exports = { createMailer, confirmationMessage, resetMessage, feedbackMessage, RESEND_URL };

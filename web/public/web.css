@@ -194,3 +194,10 @@ body.hosted-touch button, body.hosted-touch .b-refresh, body.hosted-touch #nav-a
   #counters { gap: 8px; font-size: 11px; white-space: nowrap; }
   #pos-counter, #word-counter { display: none; }
 }
+
+/* ---------- feedback and the welcome (Help → Send Feedback…) ---------- */
+.hosted-feedback-modal { width: min(560px, 94vw); display: flex; flex-direction: column; max-height: 85vh; }
+.hf-lead { overflow-y: auto; min-height: 0; }
+.hf-lead p { font-size: 14px; line-height: 1.55; margin: 0 0 .8em; }
+.hf-text { width: 100%; min-height: 120px; padding: 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 14px; line-height: 1.5; resize: vertical; }
+body.light .hf-text { background: #fff; color: #222; border-color: #ddd8ce; }
