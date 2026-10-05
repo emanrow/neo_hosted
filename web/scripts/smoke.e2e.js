@@ -114,8 +114,13 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
     for (let i = 0; i < 2 && (await page.$(selector)); i++) { await page.keyboard.press('Escape'); await wait(300); }
     check(!(await page.$(selector)), what);
   };
-  await room('the timeline opens, takes an event, closes', () => window.neoHosted.openTimeline(), '.hosted-timeline-modal', async () => {
+  await room('the timeline opens, takes a place, a character and an event, draws them, closes', () => window.neoHosted.openTimeline(), '.hosted-timeline-modal', async () => {
+    await page.click('.ht-add-lane'); await page.keyboard.type('The lighthouse'); await page.keyboard.press('Tab');
+    await page.click('.ht-add-char'); await page.keyboard.type('Ada'); await page.keyboard.press('Tab');
     await page.click('.ht-add'); await page.keyboard.type('Dawn'); await page.keyboard.press('Tab');
+    await page.selectOption('.ht-event:last-child .ht-place', { index: 1 });
+    await page.click('.ht-event:last-child .ht-who button');
+    await page.waitForSelector('.ht-svg .ht-path', { state: 'attached', timeout: 2000 });
   });
   await room('the mind map opens, takes a node, closes', () => window.neoHosted.openMindMap(), '.hosted-mindmap-modal', async () => {
     await page.click('.mm-add'); await page.keyboard.type('A thought'); await page.keyboard.press('Enter'); await page.click('.mm-zoom-in');
@@ -144,7 +149,7 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
   const html = fs.readFileSync(path.join(lib, bookDir, 'chapters', chapters[0]), 'utf8');
   check(html.includes('dark and stormy night'), 'the typed sentence reached the chapter file');
   const sidecar = (name) => JSON.parse(fs.readFileSync(path.join(lib, bookDir, name + '.json'), 'utf8'));
-  check(sidecar('timeline').events.length === 1 && sidecar('mindmap').nodes.length === 1 && sidecar('maps').pins.length === 1 && sidecar('handwriting').pages[0].strokes.length === 1,
+  check(sidecar('timeline').events.length === 1 && sidecar('timeline').events[0].laneId === sidecar('timeline').lanes[0].id && sidecar('timeline').events[0].characterIds.length === 1 && sidecar('mindmap').nodes.length === 1 && sidecar('maps').pins.length === 1 && sidecar('handwriting').pages[0].strokes.length === 1,
     'each room left its sidecar beside the book');
   check(errors.length === 0, 'no console errors or failed requests' + (errors.length ? ': ' + errors.join('; ') : ''));
 
