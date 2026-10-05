@@ -140,6 +140,11 @@ class RevisionLog {
    * Recomputes every chain hash on a branch from the first row. True when
    * the chain is intact; the quiet proof that this history was not rewritten.
    */
+  /** Every revision of one writer, gone (an account being removed; the library was zipped first). */
+  async erase(userId) {
+    return (await this.db.query('DELETE FROM revisions WHERE user_id = $1', [userId])).rowCount;
+  }
+
   async verify({ userId, bookId, chapterId, branch = 'main' }) {
     const res = await this.db.query(
       'SELECT * FROM revisions WHERE user_id = $1 AND book_id = $2 AND chapter_id = $3 AND branch = $4 ORDER BY id',
@@ -155,6 +160,7 @@ class RevisionLog {
 
 /** Stands in when there is no database: saves still succeed, history is simply not kept. */
 class NullRevisionLog {
+  async erase() { return 0; }
   async record() { return null; }
   async list() { return []; }
   async read() { return null; }

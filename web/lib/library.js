@@ -325,6 +325,21 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     return dailyZip({ backupsDir: path.join(dir, 'Backups'), fill: fillZip, copy });
   }
 
+  /** Bytes under the library folder, Backups left out (they are counted apart). */
+  function footprint() {
+    const walk = (p) => {
+      let total = 0;
+      let entries = [];
+      try { entries = fs.readdirSync(p, { withFileTypes: true }); } catch { return 0; }
+      for (const e of entries) {
+        if (e.isDirectory()) { if (!(p === dir && e.name === 'Backups')) total += walk(path.join(p, e.name)); }
+        else if (e.isFile()) { try { total += fs.statSync(path.join(p, e.name)).size; } catch { /* gone between list and stat */ } }
+      }
+      return total;
+    };
+    return walk(dir);
+  }
+
   /** The library as one zip, for the download. */
   async function exportZip() {
     ensure();
@@ -341,7 +356,7 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     chapterStamps, readChapter, writeChapter, deleteChapter,
     readAux, writeAux, readSidecar, writeSidecar,
     setCoverBytes, removeCover, readCover, storePainting,
-    appendErrorLog, dailyBackup, exportZip
+    appendErrorLog, dailyBackup, exportZip, footprint
   };
 }
 

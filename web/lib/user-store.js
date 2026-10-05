@@ -5,8 +5,9 @@
 // table in Postgres (the hosted site). server.js picks one from the config
 // and nothing else knows how users are kept.
 //
-// The contract: count, listIds, findByEmail, findById, create, setPasswordHash,
-// markEmailVerified, update. Every method MAY return a promise, so callers
+// The contract: count, listIds, list, findByEmail, findById, create, setPasswordHash,
+// markEmailVerified, update, remove (the row alone; server.js empties what
+// hangs off a writer first). Every method MAY return a promise, so callers
 // always await; the JSON store happens to be synchronous. A user is
 // { id, email, passwordHash, createdAt, emailVerifiedAt }.
 //
@@ -47,6 +48,17 @@ class JsonUserStore {
   count() { return this.load().length; }
 
   listIds() { return this.load().map((u) => u.id); }
+
+  /** Everyone, oldest first, as stored (password hashes included: callers pick what to show). */
+  list() { return [...this.load()].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))); }
+
+  remove(id) {
+    const users = this.load();
+    const kept = users.filter((u) => u.id !== id);
+    if (kept.length === users.length) return false;
+    this.save(kept);
+    return true;
+  }
 
   findByEmail(email) {
     const wanted = normalizeEmail(email);
@@ -104,6 +116,14 @@ class PgUserStore {
 
   async listIds() {
     return (await this.db.query('SELECT id FROM users ORDER BY created_at')).rows.map((r) => r.id);
+  }
+
+  async list() {
+    return (await this.db.query('SELECT * FROM users ORDER BY created_at')).rows.map(rowToUser);
+  }
+
+  async remove(id) {
+    return (await this.db.query('DELETE FROM users WHERE id = $1', [String(id || '')])).rowCount > 0;
   }
 
   async findByEmail(email) {

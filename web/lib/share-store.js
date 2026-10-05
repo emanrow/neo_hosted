@@ -14,6 +14,8 @@
 //   find(token)                    → { token, userId, bookId, chapterId, title, html, updatedAt } | null
 //   publish({ userId, bookId, chapterId, title, html }) → { token, chapterId, title, updatedAt }
 //   remove(userId, token)          → true when something was removed
+//   removeAll(userId)              → how many pages went (an account being removed)
+//   countFor(userId)               → how many pages a writer has up
 //
 // A token is 16 random bytes, base64url: the link is the only key, so it
 // cannot be guessed, and it carries nothing about the writer.
@@ -62,6 +64,14 @@ class JsonShareStore {
     return publicFields(meta);
   }
 
+  removeAll(userId) {
+    const mine = this.all().filter((s) => s.userId === userId);
+    for (const s of mine) this.remove(userId, s.token);
+    return mine.length;
+  }
+
+  countFor(userId) { return this.all().filter((s) => s.userId === userId).length; }
+
   remove(userId, token) {
     if (!isToken(token)) return false;
     const meta = readJSON(this.metaFile(token), null);
@@ -95,6 +105,14 @@ class PgShareStore {
       DO UPDATE SET title = EXCLUDED.title, html = EXCLUDED.html, updated_at = now()
       RETURNING token, chapter_id, title, updated_at`, [newToken(), userId, bookId, chapterId, title, html]);
     return rowFields(res.rows[0]);
+  }
+
+  async removeAll(userId) {
+    return (await this.db.query('DELETE FROM shares WHERE user_id = $1', [userId])).rowCount;
+  }
+
+  async countFor(userId) {
+    return Number((await this.db.query('SELECT count(*)::int AS n FROM shares WHERE user_id = $1', [userId])).rows[0].n);
   }
 
   async remove(userId, token) {

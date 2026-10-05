@@ -46,7 +46,8 @@ const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
 const { buildHostedPage, PAGE_CSP } = require('./lib/page');
 const { buildLoginPage } = require('./lib/login-page');
-const { readJSON, writeJSON, libName } = require('./lib/files');
+const { buildAdminPage } = require('./lib/admin-page');
+const { readJSON, writeJSON, writeFileDurable, libName } = require('./lib/files');
 // the desktop's own manuscript parser, shared with main.js
 const { importBuffer, isImportable } = require('../import-parse');
 const i18n = require('./lib/i18n');
@@ -445,6 +446,14 @@ function createApp(config, deps = {}) {
       if (!user) return redirect(res, '/login');
       return servePage(contextFor(user, req), res);
     }
+    if (p === '/admin' || p === '/admin/remove') {
+      if (!user || !await isAdmin(user)) throw new HttpError(404, 'Not found');
+      if (method === 'GET' && p === '/admin') return sendHTML(res, 200, await adminView(user, url.searchParams.get('notice') || ''), { 'Content-Security-Policy': PAGE_CSP });
+      if (method === 'POST' && p === '/admin/remove') {
+        if (!isSameOrigin(req)) throw new HttpError(403, 'Cross-site request refused');
+        return handleAdminRemove(user, req, res);
+      }
+    }
 
     if (p.startsWith('/api/') || p.startsWith('/library/') || p === '/library.zip') {
       if (!user) throw new HttpError(401, 'Sign in to continue');
@@ -476,6 +485,90 @@ function createApp(config, deps = {}) {
       sendJSON(res, status, { ok: false, error: status === 500 ? 'Something went wrong on the server' : err.message });
     }
   });
+
+  // ---------------------------------------------------------------------
+  // The owner's page: /admin (lib/admin-page.js)
+  // ---------------------------------------------------------------------
+  // The owner is whoever NEO_ADMIN_EMAILS names, else the oldest account.
+  // Anyone else gets Not found, so the page gives nothing away.
+  const adminEmails = config.adminEmails || [];
+  async function isAdmin(user) {
+    if (adminEmails.length) return adminEmails.includes(normalizeEmail(user.email));
+    const [oldest] = await users.list();
+    return !!oldest && oldest.id === user.id;
+  }
+
+  const folderBytes = (p) => {
+    let total = 0;
+    let entries = [];
+    try { entries = fs.readdirSync(p, { withFileTypes: true }); } catch { return 0; }
+    for (const e of entries) {
+      if (e.isDirectory()) total += folderBytes(path.join(p, e.name));
+      else if (e.isFile()) { try { total += fs.statSync(path.join(p, e.name)).size; } catch { /* gone between list and stat */ } }
+    }
+    return total;
+  };
+
+  async function adminView(me, notice) {
+    const writers = [];
+    for (const u of await users.list()) {
+      const root = userRoot(u);
+      const libraryDir = path.join(root, LIBRARY_FOLDER);
+      const { library } = openWriterLibrary({ userId: u.id, libraryDir, t: i18n.translatorFor('en'), logError: (source, err) => logServerError(`${u.id} ${source}`, err) });
+      let books = 0;
+      let libraryBytes = 0;
+      try { books = (await library.listBooks()).length; libraryBytes = await library.footprint(); } catch (err) { logServerError(`${u.id} admin`, err); }
+      let backups = 0;
+      try { backups = fs.readdirSync(path.join(libraryDir, 'Backups')).filter((f) => f.endsWith('.zip')).length; } catch { /* none yet */ }
+      writers.push({ id: u.id, email: u.email, createdAt: u.createdAt, emailVerifiedAt: isEmailVerified(u) ? (u.emailVerifiedAt || u.createdAt) : null, books, libraryBytes, backups, shares: await shares.countFor(u.id) });
+    }
+    const facts = [
+      ['NEO hosted', `${VERSIONS.hosted} (NEO ${VERSIONS.neo})`],
+      ['Accounts', db ? 'Postgres' : 'users.json'],
+      ['Words', db ? 'Postgres (the volume keeps settings, keys, logs and zips)' : 'folders on the volume'],
+      ['Signup', config.signup],
+      ['Email', mailer.enabled ? 'on (Resend)' : 'off'],
+      ['Backups', objectStore.enabled ? `volume + bucket ${objectStore.bucket}` : 'volume only'],
+      ['Owner', adminEmails.length ? adminEmails.join(', ') : 'the oldest account (set NEO_ADMIN_EMAILS to name one)']
+    ];
+    const volume = [
+      ['Writers (users/)', folderBytes(path.join(config.dataDir, 'users'))],
+      ['Public pages (shares/)', folderBytes(path.join(config.dataDir, 'shares'))],
+      ['Removed accounts (removed/)', folderBytes(path.join(config.dataDir, 'removed'))],
+      ['Everything', folderBytes(config.dataDir)]
+    ];
+    return buildAdminPage({ me, writers, facts, volume, notice });
+  }
+
+  /**
+   * Removes an account: its library is zipped as the desktop folder under
+   * removed/ first, then its public pages, history and rows go, the folder
+   * on the volume moves under removed/, and the user row is deleted. The
+   * owner cannot remove themself; the address must be typed back.
+   */
+  async function handleAdminRemove(me, req, res) {
+    const form = new URLSearchParams((await readBody(req, AUTH_BODY_LIMIT)).toString('utf8'));
+    const target = await users.findById(form.get('userId') || '');
+    if (!target) throw new HttpError(404, 'No such account');
+    if (target.id === me.id) throw new HttpError(400, 'You cannot remove your own account from here');
+    if (normalizeEmail(form.get('confirm')) !== target.email) throw new HttpError(400, 'Type the address exactly to confirm');
+    const root = userRoot(target);
+    const libraryDir = path.join(root, LIBRARY_FOLDER);
+    const logError = (source, err) => logServerError(`${target.id} ${source}`, err);
+    const { library } = openWriterLibrary({ userId: target.id, libraryDir, t: i18n.translatorFor('en'), logError });
+    const removedDir = path.join(config.dataDir, 'removed');
+    fs.mkdirSync(removedDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const keep = path.join(removedDir, `${libName(target.id)}-${stamp}`);
+    if (db || fs.existsSync(libraryDir)) writeFileDurable(keep + '.zip', await library.exportZip());
+    await shares.removeAll(target.id);
+    await revisions.erase(target.id);
+    if (db) await library.erase();
+    if (fs.existsSync(root)) fs.renameSync(root, keep);
+    await users.remove(target.id);
+    logServerError('admin', new Error(`account ${target.id} removed by ${me.id}; library kept at ${path.basename(keep)}`));
+    redirect(res, '/admin?notice=' + encodeURIComponent(`Removed ${target.email}. Its library is under removed/ on the volume.`));
+  }
 
   // ---------------------------------------------------------------------
   // Public pages: a published snapshot, read-only, for anyone with the link

@@ -47,6 +47,8 @@ Without a database (a laptop, the tests), `lib/library.js` and `lib/branches.js`
 ```
 <NEO_DATA_DIR>/
   users.json                        who can sign in without Postgres (see auth-and-users.md)
+  shares/<token>.json, .html        public pages without Postgres (lib/share-store.js)
+  removed/<id>-<stamp>.zip, <id>-<stamp>/   an account the owner removed from /admin: its library zipped as the desktop folder, and its folder moved here
   neo-errors.log                    the server's own failures
   users/<id>/
     settings.json                   uiLanguage
