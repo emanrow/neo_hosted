@@ -3,10 +3,13 @@
 // The hosted edition, end to end in a real browser. Boots web/server.js with
 // a throwaway data folder, signs up in headless Chromium, walks the first-run
 // questions, opens a menu, changes the page theme through it, creates a book
-// and a chapter, types a sentence, and checks that the chapter HTML landed on
-// disk, with no console errors along the way.
+// and a chapter, types a sentence, opens each room off the hallway (Timeline,
+// Mind Map, Map, Handwriting, History, Share) and does one thing in it, and
+// checks that the chapter HTML landed on disk, with no console errors along
+// the way.
 //
-//   npm i -D playwright            (or CHROMIUM_PATH=/path/to/chrome)
+//   npm i -D playwright            (or CHROMIUM_PATH=/path/to/chrome, with
+//                                   playwright-core already in web/node_modules)
 //   node web/scripts/smoke.e2e.js
 //
 // Not part of npm test: it needs a browser. Run it after touching the bridge,
@@ -24,8 +27,10 @@ const shots = process.env.SMOKE_SHOTS || dataDir;
 
 let chromium;
 try { ({ chromium } = require('playwright')); } catch {
-  console.error('Playwright is not installed: npm i -D playwright');
-  process.exit(2);
+  try { ({ chromium } = require(path.join(ROOT, 'web', 'node_modules', 'playwright-core'))); } catch {
+    console.error('Playwright is not installed: npm i -D playwright');
+    process.exit(2);
+  }
 }
 
 const server = spawn('node', ['web/server.js'], {
@@ -98,6 +103,37 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
   check((await page.evaluate(() => (typeof focusLevel !== 'undefined' ? focusLevel : '?'))) !== 'off', 'an accelerator the menu bar owns reaches app.js');
   await page.screenshot({ path: path.join(shots, 'editor.png') });
 
+  // ---- the rooms off the hallway: each opens, takes one action, closes on Escape ----
+  const room = async (what, open, selector, act) => {
+    await page.evaluate(open);
+    await page.waitForSelector(selector, { timeout: 5000 });
+    await wait(400);
+    if (act) await act();
+    await page.screenshot({ path: path.join(shots, what.replace(/\W+/g, '-') + '.png') });
+    // one Escape leaves a field the action focused, the next closes the panel; app.js owns Escape once the panel is gone
+    for (let i = 0; i < 2 && (await page.$(selector)); i++) { await page.keyboard.press('Escape'); await wait(300); }
+    check(!(await page.$(selector)), what);
+  };
+  await room('the timeline opens, takes an event, closes', () => window.neoHosted.openTimeline(), '.hosted-timeline-modal', async () => {
+    await page.click('.ht-add'); await page.keyboard.type('Dawn'); await page.keyboard.press('Tab');
+  });
+  await room('the mind map opens, takes a node, closes', () => window.neoHosted.openMindMap(), '.hosted-mindmap-modal', async () => {
+    await page.click('.mm-add'); await page.keyboard.type('A thought'); await page.keyboard.press('Enter'); await page.click('.mm-zoom-in');
+  });
+  await room('the map opens with a blank sheet, takes a pin, closes', () => window.neoHosted.openMap(), '.hosted-map-modal', async () => {
+    const box = await (await page.$('.mp-sheet')).boundingBox();
+    await page.mouse.dblclick(box.x + 100, box.y + 80); await page.keyboard.type('Here'); await page.keyboard.press('Tab');
+  });
+  await room('the handwriting pad opens, takes a stroke, closes', () => window.neoHosted.openHandwriting(), '.hosted-handwriting-modal', async () => {
+    await page.click('.hw-new');
+    const box = await (await page.$('.hw-sheet')).boundingBox();
+    await page.mouse.move(box.x + 40, box.y + 40); await page.mouse.down(); await page.mouse.move(box.x + 200, box.y + 120, { steps: 5 }); await page.mouse.up();
+  });
+  await page.click('#chapters .chapter-body');
+  await room('the history panel opens on the chapter, closes', () => window.neoHosted.openHistory(), '.hosted-history-modal');
+  await room('the share panel opens, closes', () => window.neoHosted.openShare(), '.hosted-share-modal');
+  await wait(600); // past the rooms' save debounce
+
   const users = fs.readdirSync(path.join(dataDir, 'users'));
   const lib = path.join(dataDir, 'users', users[0], 'NEO Library');
   const libraryJson = JSON.parse(fs.readFileSync(path.join(lib, 'library.json'), 'utf8'));
@@ -107,6 +143,9 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
   const chapters = fs.readdirSync(path.join(lib, bookDir, 'chapters'));
   const html = fs.readFileSync(path.join(lib, bookDir, 'chapters', chapters[0]), 'utf8');
   check(html.includes('dark and stormy night'), 'the typed sentence reached the chapter file');
+  const sidecar = (name) => JSON.parse(fs.readFileSync(path.join(lib, bookDir, name + '.json'), 'utf8'));
+  check(sidecar('timeline').events.length === 1 && sidecar('mindmap').nodes.length === 1 && sidecar('maps').pins.length === 1 && sidecar('handwriting').pages[0].strokes.length === 1,
+    'each room left its sidecar beside the book');
   check(errors.length === 0, 'no console errors or failed requests' + (errors.length ? ': ' + errors.join('; ') : ''));
 
   console.log(`\nAll good. Screenshots in ${shots}`);
