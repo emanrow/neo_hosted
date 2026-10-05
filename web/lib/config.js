@@ -19,6 +19,10 @@
 //   NEO_PUBLIC_URL       Where the site lives, "https://neo.example.com", for the
 //                        links in email. Required with RESEND_API_KEY unless
 //                        NEO_DEV=1, which falls back to the request's own host.
+//   DATABASE_URL         Postgres, for accounts (Railway sets it when its Postgres
+//                        is referenced). Unset, accounts live in users.json. With
+//                        it set, an existing users.json is imported once, on boot.
+//                        NEO_DATABASE_URL is read too, for a hand-named variable.
 //
 // Whatever the signup setting, the very first account can always be created:
 // someone has to own a fresh deployment.
@@ -68,7 +72,8 @@ function loadConfig(env = process.env) {
     inviteCode: env.NEO_INVITE_CODE || '',
     trustProxy: env.NEO_TRUST_PROXY === '1' || (env.NEO_TRUST_PROXY !== '0' && !!env.RAILWAY_ENVIRONMENT),
     mail: mailFrom(env),
-    publicUrl: publicUrlFrom(env, dev)
+    publicUrl: publicUrlFrom(env, dev),
+    databaseUrl: String(env.DATABASE_URL || env.NEO_DATABASE_URL || '').trim()
   };
 }
 

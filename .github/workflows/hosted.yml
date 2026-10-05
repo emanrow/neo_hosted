@@ -18,6 +18,22 @@ jobs:
   test:
     name: Tests and lint
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        # the PgUserStore tests (web/test/db.test.js) run only when this URL is set
+        image: postgres:16
+        env:
+          POSTGRES_USER: neo
+          POSTGRES_PASSWORD: neo
+          POSTGRES_DB: neo_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U neo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NEO_TEST_DATABASE_URL: postgres://neo:neo@127.0.0.1:5432/neo_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

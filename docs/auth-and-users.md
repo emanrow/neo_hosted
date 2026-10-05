@@ -26,17 +26,14 @@ Email is on when `RESEND_API_KEY` is set (with `NEO_MAIL_FROM` and `NEO_PUBLIC_U
 - **Ration.** Five emails to one address, twenty from one client, per fifteen minutes (`LoginThrottle` again). Past that, 429.
 - **Messages** are plain text with one link each; the writer's mail client renders them.
 
-## Where users live, and the database question
+## Where users live
 
-Users are one JSON file, `<NEO_DATA_DIR>/users.json`, behind `JsonUserStore` (`web/lib/user-store.js`): `count`, `findByEmail`, `findById`, `create`, `setPasswordHash`, `markEmailVerified`, and `update(id, change)` behind the last two. Ids are random (`u-<hex>`), so an email change never moves a library folder. That is right for a household or a writing group.
+Two stores, one contract (`web/lib/user-store.js`): `count`, `findByEmail`, `findById`, `create`, `setPasswordHash`, `markEmailVerified`, and `update` behind the last two. Every method may return a promise and `server.js` awaits them all. Ids are random (`u-<hex>`), so an email change never moves a library folder.
 
-Reach for Postgres when one of these becomes true:
+- **`PgUserStore`**, when `DATABASE_URL` is set: a `users` table in Postgres, created by the migration runner in `web/lib/db.js` on boot (`schema_migrations` records what ran). The hosted site uses this. More than one server instance, thousands of writers, invitations, roles and an audit trail all fit here, and so will the revision log and branches planned in [backlog.md](backlog.md#storage).
+- **`JsonUserStore`**, otherwise: `<NEO_DATA_DIR>/users.json`, right for a laptop or a household.
 
-- more than one server instance behind the proxy (the JSON file is not shared);
-- thousands of writers (every lookup reads the file);
-- invitations per person, roles, or an audit trail, which want transactions and history.
-
-The swap is a second class with the same methods, chosen in `server.js`. Libraries stay files either way; a database would hold accounts, never manuscripts. The owner wants a checkpoint on data management as a whole before this moves ([backlog.md](backlog.md)).
+**Moving from the file to the table** needs no step from the owner: on the first boot with `DATABASE_URL` set, an existing `users.json` is imported into an empty table with the same ids and password hashes, then renamed `users.json.imported-<date>` on the volume so a later boot leaves it alone. The deploy log says `users: postgres (N imported from users.json)`. If the table already has anyone, the file is renamed untouched and nothing moves. Libraries stay files on the volume for now; the database holds accounts, and later history ([backlog.md](backlog.md#storage)).
 
 ## API keys at rest
 
@@ -44,7 +41,7 @@ A writer's cover-art key (`secret:set` / `secret:has` / `cover:paint`) is stored
 
 ## Known gaps
 
-- No way to change the email on an account, and no admin surface: the owner edits `users.json` on the volume to remove an account.
+- No way to change the email on an account, and no admin surface: the owner removes an account in Railway's Postgres data view (or `users.json` on a laptop).
 - Turning email on does not ask existing accounts to confirm; they are trusted as they were.
 - The login and email throttles are per process; a restart clears them.
 - Rate limits exist only on sign-in and email. Everything else trusts a signed-in writer, as the desktop trusts its one user.

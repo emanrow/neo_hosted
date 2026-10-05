@@ -64,7 +64,7 @@ describe('with email on', () => {
     assert.match(cookie, /^neo_session=/);
     const room = await get('/', { Cookie: cookie });
     assert.equal(room.status, 200, 'the writing room opens');
-    const stored = app.users.findByEmail('new@example.com');
+    const stored = await app.users.findByEmail('new@example.com');
     assert.equal(typeof stored.emailVerifiedAt, 'string');
 
     const signedIn = await post('/auth/login', { email: 'new@example.com', password: 'longenough' });

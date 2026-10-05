@@ -29,7 +29,8 @@ const JSZip = require('jszip');                      // web/node_modules' copy, 
 const { loadConfig } = require('./lib/config');
 const { HttpError, readBody, readJSONBody, sendJSON, sendHTML, sendText, redirect, serveFile, parseCookies, cookieHeader, isSameOrigin, clientAddress, isSecureRequest } = require('./lib/http');
 const { hashPassword, verifyPassword, signSession, verifySession, signLink, verifyLink, linkStamp, LoginThrottle, SESSION_TTL_MS } = require('./lib/auth');
-const { JsonUserStore, normalizeEmail, isEmailVerified } = require('./lib/user-store');
+const { JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified } = require('./lib/user-store');
+const { openDatabase } = require('./lib/db');
 const { createMailer, confirmationMessage, resetMessage } = require('./lib/mail');
 const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
@@ -63,10 +64,31 @@ const ROOT_DIRS = ['/fonts/', '/locales/'];
 /**
  * The whole server, not yet listening. `deps.mailer` lets a test catch the
  * email the server would send; production builds one from config.mail.
+ * `deps.db` is an opened database (db.js) for a test; production opens one
+ * from config.databaseUrl, or keeps users in users.json without one.
+ *
+ * Await `ready` before listening: with Postgres it runs the migrations and
+ * imports a users.json left over from before, once.
  */
 function createApp(config, deps = {}) {
   fs.mkdirSync(config.dataDir, { recursive: true });
-  const users = new JsonUserStore(path.join(config.dataDir, 'users.json'));
+  const usersFile = path.join(config.dataDir, 'users.json');
+  const db = deps.db || (config.databaseUrl ? openDatabase(config.databaseUrl) : null);
+  const users = db ? new PgUserStore(db) : new JsonUserStore(usersFile);
+  const ready = db ? prepareDatabase() : Promise.resolve({ store: 'users.json', imported: 0 });
+
+  // Migrate, then take over a users.json if one is there and the table is
+  // empty. The file is renamed, not deleted, so nothing is lost if the
+  // import turns out wrong; a later boot then leaves it alone.
+  async function prepareDatabase() {
+    await db.migrate();
+    let imported = 0;
+    if (fs.existsSync(usersFile)) {
+      imported = await users.importFrom(new JsonUserStore(usersFile));
+      fs.renameSync(usersFile, `${usersFile}.imported-${new Date().toISOString().slice(0, 10)}`);
+    }
+    return { store: 'postgres', imported };
+  }
   const secretBox = createSecretBox(config.sessionSecret);
   const mailer = deps.mailer || createMailer(config.mail || {});
   const throttle = new LoginThrottle();
@@ -119,7 +141,7 @@ function createApp(config, deps = {}) {
   // ---------------------------------------------------------------------
   // Sessions
   // ---------------------------------------------------------------------
-  function currentUser(req) {
+  async function currentUser(req) {
     const userId = verifySession(parseCookies(req)[SESSION_COOKIE], config.sessionSecret);
     return userId ? users.findById(userId) : null;
   }
@@ -127,8 +149,8 @@ function createApp(config, deps = {}) {
   const sessionCookie = (req, user) => cookieHeader(SESSION_COOKIE, signSession(user.id, config.sessionSecret), { maxAge: SESSION_TTL_MS / 1000, secure: isSecureRequest(req, config.trustProxy) });
   const clearedCookie = (req) => cookieHeader(SESSION_COOKIE, '', { maxAge: 0, secure: isSecureRequest(req, config.trustProxy) });
 
-  function signupAllowed(invite) {
-    if (users.count() === 0) return true; // the first writer owns a fresh deployment
+  async function signupAllowed(invite) {
+    if (await users.count() === 0) return true; // the first writer owns a fresh deployment
     if (config.signup === 'open') return true;
     if (config.signup !== 'invite' || !config.inviteCode) return false;
     const a = Buffer.from(String(invite || ''));
@@ -182,16 +204,16 @@ function createApp(config, deps = {}) {
   // lost email is not a lost account. With email off, signup signs in.
   async function handleSignup(req, res) {
     const { email, password, invite } = await readJSONBody(req, AUTH_BODY_LIMIT);
-    if (!signupAllowed(invite)) throw new HttpError(403, config.signup === 'closed' ? 'New accounts are not being created here' : 'That invitation code is not right');
+    if (!await signupAllowed(invite)) throw new HttpError(403, config.signup === 'closed' ? 'New accounts are not being created here' : 'That invitation code is not right');
     checkCredentials({ email, password });
-    const waiting = users.findByEmail(email);
+    const waiting = await users.findByEmail(email);
     if (waiting && mailer.enabled && !isEmailVerified(waiting) && verifyPassword(password, waiting.passwordHash)) {
       allowMail(req, email);
       await sendConfirmation(req, waiting);
       return sendJSON(res, 200, { ok: true, confirm: true });
     }
     let user;
-    try { user = users.create({ email, passwordHash: hashPassword(password), emailVerified: !mailer.enabled }); } catch (err) { throw new HttpError(409, err.message); }
+    try { user = await users.create({ email, passwordHash: hashPassword(password), emailVerified: !mailer.enabled }); } catch (err) { throw new HttpError(409, err.message); }
     if (!mailer.enabled) return signIn(req, res, user);
     allowMail(req, email);
     await sendConfirmation(req, user);
@@ -202,7 +224,7 @@ function createApp(config, deps = {}) {
     const { email, password } = await readJSONBody(req, AUTH_BODY_LIMIT);
     const keys = [clientAddress(req, config.trustProxy), 'email:' + normalizeEmail(email)];
     if (!keys.every((k) => throttle.allowed(k))) throw new HttpError(429, 'Too many attempts. Try again in a few minutes.');
-    const user = users.findByEmail(email);
+    const user = await users.findByEmail(email);
     if (!user || !verifyPassword(password, user.passwordHash)) {
       keys.forEach((k) => throttle.failed(k));
       throw new HttpError(401, 'That email and password do not match');
@@ -217,11 +239,11 @@ function createApp(config, deps = {}) {
     signIn(req, res, user);
   }
 
-  function handleVerify(url, req, res) {
+  async function handleVerify(url, req, res) {
     const link = verifyLink(url.searchParams.get('token'), 'verify', config.sessionSecret);
-    const user = link && users.findById(link.userId);
+    const user = link && await users.findById(link.userId);
     if (!user) return redirect(res, '/login?notice=link-expired');
-    users.markEmailVerified(user.id);
+    await users.markEmailVerified(user.id);
     res.setHeader('Set-Cookie', sessionCookie(req, user));
     redirect(res, '/');
   }
@@ -232,7 +254,7 @@ function createApp(config, deps = {}) {
     const { email } = await readJSONBody(req, AUTH_BODY_LIMIT);
     if (!mailer.enabled) throw new HttpError(503, 'Password reset by email is not set up on this server');
     allowMail(req, email);
-    const user = users.findByEmail(email);
+    const user = await users.findByEmail(email);
     if (user) await sendReset(req, user);
     sendJSON(res, 200, { ok: true });
   }
@@ -244,13 +266,13 @@ function createApp(config, deps = {}) {
   async function handleReset(req, res) {
     const { token, password } = await readJSONBody(req, AUTH_BODY_LIMIT);
     const link = verifyLink(token, 'reset', config.sessionSecret);
-    const user = link && users.findById(link.userId);
+    const user = link && await users.findById(link.userId);
     if (!user || link.stamp !== linkStamp(user.passwordHash)) throw new HttpError(400, 'That reset link has expired or was already used. Ask for a new one.');
     if (typeof password !== 'string' || password.length < MIN_PASSWORD) throw new HttpError(400, `A password needs at least ${MIN_PASSWORD} characters`);
-    users.setPasswordHash(user.id, hashPassword(password));
-    users.markEmailVerified(user.id);
+    await users.setPasswordHash(user.id, hashPassword(password));
+    await users.markEmailVerified(user.id);
     throttle.clear('email:' + user.email);
-    signIn(req, res, users.findById(user.id));
+    signIn(req, res, await users.findById(user.id));
   }
 
   function handleLogout(req, res) {
@@ -351,7 +373,7 @@ function createApp(config, deps = {}) {
     }
     if (method === 'GET' && p === '/auth/verify') return handleVerify(url, req, res);
 
-    const user = currentUser(req);
+    const user = await currentUser(req);
 
     if (method === 'GET' && p === '/login') {
       if (user && !url.searchParams.has('reset')) return redirect(res, '/');
@@ -416,8 +438,11 @@ function createApp(config, deps = {}) {
   }
 
   return {
-    server, users, spell, mailer, config, backupEveryone, startBackups,
-    close: () => new Promise((resolve) => { timers.forEach(clearTimeout); server.close(() => resolve()); })
+    server, users, db, ready, spell, mailer, config, backupEveryone, startBackups,
+    close: async () => {
+      await new Promise((resolve) => { timers.forEach(clearTimeout); server.close(() => resolve()); });
+      if (db && !deps.db) await db.close();
+    }
   };
 }
 
@@ -426,11 +451,16 @@ if (require.main === module) {
   const app = createApp(config);
   process.on('uncaughtException', (err) => console.error('[main]', err));
   process.on('unhandledRejection', (err) => console.error('[main-promise]', err));
-  app.server.listen(config.port, () => {
-    console.log(`NEO hosted ${VERSIONS.hosted} (NEO ${VERSIONS.neo}) listening on :${config.port}`);
-    console.log(`library volume: ${config.dataDir}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
+  app.ready.then(({ store, imported }) => {
+    app.server.listen(config.port, () => {
+      console.log(`NEO hosted ${VERSIONS.hosted} (NEO ${VERSIONS.neo}) listening on :${config.port}`);
+      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
+    });
+    app.startBackups();
+  }).catch((err) => {
+    console.error('[main] could not open the user store:', err.message);
+    process.exit(1);
   });
-  app.startBackups();
 }
 
 module.exports = { createApp, VERSIONS, ROOT_FILES, ROOT_DIRS };
