@@ -73,7 +73,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 ```bash
 cd web && npm install && cd ..   # the hosted edition's runtime deps (no Electron)
 npm run start:web                # NEO_DEV=1 NEO_SIGNUP=open for a laptop; http://localhost:8080
-npm run test:web                 # node --test web/test/*.test.js  (must be green before pushing)
+npm run test:web                 # node --test web/test/*.test.js, one file at a time  (must be green before pushing)
 npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test
 node scripts/i18n.js template    # after adding a writer-visible string (t() / tr())
 node web/scripts/smoke.e2e.js    # optional: headless Chromium end to end (needs Playwright)

@@ -22,7 +22,7 @@ describe('PgUserStore', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
   const store = new PgUserStore(db);
 
   before(async () => {
-    await db.query('DROP TABLE IF EXISTS revisions, users, schema_migrations');
+    await db.query('DROP TABLE IF EXISTS branch_bases, book_files, branches, books, libraries, revisions, users, schema_migrations');
   });
   after(() => db.close());
 
@@ -80,7 +80,7 @@ describe('PgUserStore', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
     new JsonUserStore(path.join(dataDir, 'users.json')).create({ email: 'first@example.com', passwordHash: hashPassword('longenough') });
 
     const app = createApp({ dev: false, dataDir, sessionSecret: 's'.repeat(40), signup: 'open', inviteCode: '', trustProxy: false, port: 0, publicUrl: '', mail: {} }, { db });
-    assert.deepEqual(await app.ready, { store: 'postgres', imported: 1 });
+    assert.deepEqual(await app.ready, { store: 'postgres', imported: 1, libraries: 0 });
     assert.ok(!fs.existsSync(path.join(dataDir, 'users.json')), 'the file was renamed out of the way');
     assert.ok(fs.readdirSync(dataDir).some((f) => f.startsWith('users.json.imported-')), 'but kept');
     await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
@@ -114,7 +114,7 @@ describe('RevisionLog', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
   let writer;
 
   before(async () => {
-    await db.query('DROP TABLE IF EXISTS revisions, users, schema_migrations');
+    await db.query('DROP TABLE IF EXISTS branch_bases, book_files, branches, books, libraries, revisions, users, schema_migrations');
     await db.migrate();
     writer = await new PgUserStore(db).create({ email: 'rev@example.com', passwordHash: 'h' });
   });

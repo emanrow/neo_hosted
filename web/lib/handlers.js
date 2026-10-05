@@ -4,7 +4,8 @@
 // ipcMain.handle it stands in for, so main.js and this file read side by
 // side; web-bridge.js posts to /api/<channel> with the same arguments
 // preload.js would have passed. ctx is one request's writer: their library,
-// settings, secrets file and translator.
+// settings, secrets file and translator. ctx.library may be the file
+// library or the Postgres one, so every call on it is awaited.
 
 const path = require('node:path');
 const { SPELL_LANGUAGES, defaultSpellLanguage } = require('./spell');
@@ -33,7 +34,7 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   api.handle('chapter:read', (ctx, bookId, chapterId) => ctx.library.readChapter(bookId, chapterId));
   // the file first, then the history; a log that cannot be written never costs a save
   api.handle('chapter:write', async (ctx, bookId, chapterId, html) => {
-    const saved = ctx.library.writeChapter(bookId, chapterId, html);
+    const saved = await ctx.library.writeChapter(bookId, chapterId, html);
     try { await ctx.revisions.record(bookId, chapterId, html); } catch (err) { ctx.logError('revisions', err); }
     return saved;
   });
@@ -45,7 +46,7 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   api.handle('branch:mergePreview', (ctx, bookId, name) => ctx.merger.preview(bookId, name));
   // the merged chapters go through chapter:write's path so the log keeps them
   api.handle('branch:merge', async (ctx, bookId, name, resolutions) => {
-    const result = ctx.merger.apply(bookId, name, resolutions && typeof resolutions === 'object' ? resolutions : {});
+    const result = await ctx.merger.apply(bookId, name, resolutions && typeof resolutions === 'object' ? resolutions : {});
     for (const { id, html } of result.written) {
       try { await ctx.revisions.record(bookId, id, html); } catch (err) { ctx.logError('revisions', err); }
     }
@@ -53,10 +54,10 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   });
   // a new branch starts its history with where it branched from, chapter by chapter
   api.handle('branch:create', async (ctx, bookId, name) => {
-    const info = ctx.branches.create(bookId, name);
-    const meta = ctx.library.readBookMeta(bookId);
+    const info = await ctx.branches.create(bookId, name);
+    const meta = await ctx.library.readBookMeta(bookId);
     for (const chapterId of (meta && meta.chapterOrder) || []) {
-      try { await ctx.revisions.record(bookId, chapterId, ctx.library.readChapter(bookId, chapterId)); } catch (err) { ctx.logError('revisions', err); }
+      try { await ctx.revisions.record(bookId, chapterId, await ctx.library.readChapter(bookId, chapterId)); } catch (err) { ctx.logError('revisions', err); }
     }
     return info;
   });
@@ -90,14 +91,14 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
       const provider = (options && options.provider) || 'openai';
       const apiKey = secretBox.read(ctx.secretsFile, secretName(provider));
       if (!apiKey) return { error: ctx.t('No API key for {provider} — add one under File → Cover Art…', { provider }) };
-      if (!ctx.library.readBookMeta(bookId)) return { error: ctx.t('Book folder is missing') };
+      if (!(await ctx.library.readBookMeta(bookId))) return { error: ctx.t('Book folder is missing') };
       try {
         const art = require(path.join(rootDir, 'art.js'));
         const out = await art.paintCover({
           provider, apiKey, text: String(text || ''),
           textModel: options && options.textModel, imageModel: options && options.imageModel, quality: options && options.quality
         });
-        const file = ctx.library.storePainting(bookId, { buffer: out.buffer, ext: out.ext, brief: out.brief, provider, textModel: out.textModel, imageModel: out.imageModel });
+        const file = await ctx.library.storePainting(bookId, { buffer: out.buffer, ext: out.ext, brief: out.brief, provider, textModel: out.textModel, imageModel: out.imageModel });
         return { file, brief: out.brief };
       } catch (err) {
         ctx.logError('paint', err);
@@ -112,16 +113,12 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   // ---------- spellcheck ----------
   // the dictionary picked in Edit → Spellcheck Language (saved by the page in
   // library.json) wins; until then it follows the interface language
-  const spellLanguageFor = (ctx) => {
-    const lib = ctx.library.readLibrary();
-    return SPELL_LANGUAGES[lib.spellLanguage] ? lib.spellLanguage : defaultSpellLanguage(ctx.locale);
-  };
-  api.handle('spell:check', (ctx, words) => {
-    const lib = ctx.library.readLibrary();
-    const code = SPELL_LANGUAGES[lib.spellLanguage] ? lib.spellLanguage : defaultSpellLanguage(ctx.locale);
-    return spell.check(code, Array.isArray(words) ? words : [], lib.customWords || []);
+  const spellLanguageOf = (lib, ctx) => (SPELL_LANGUAGES[lib.spellLanguage] ? lib.spellLanguage : defaultSpellLanguage(ctx.locale));
+  api.handle('spell:check', async (ctx, words) => {
+    const lib = await ctx.library.readLibrary();
+    return spell.check(spellLanguageOf(lib, ctx), Array.isArray(words) ? words : [], lib.customWords || []);
   });
-  api.handle('spell:suggest', (ctx, word) => spell.suggest(spellLanguageFor(ctx), String(word || '')));
+  api.handle('spell:suggest', async (ctx, word) => spell.suggest(spellLanguageOf(await ctx.library.readLibrary(), ctx), String(word || '')));
   // the page keeps customWords in library.json itself; nothing to do but agree
   api.handle('spell:learn', () => true);
   api.handle('spell:setLanguage', async (_ctx, code) => {

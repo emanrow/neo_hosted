@@ -45,6 +45,57 @@ const MIGRATIONS = [
       );
       CREATE INDEX IF NOT EXISTS revisions_head ON revisions (user_id, book_id, chapter_id, branch, id DESC);
     `
+  },
+  {
+    // A writer's library as rows: the folder layout of the desktop app, one
+    // row per file, keyed by book and branch (pg-library.js). The daily zip
+    // is written from these rows; nothing reads the volume for words.
+    id: '003-library',
+    sql: `
+      CREATE TABLE IF NOT EXISTS libraries (
+        user_id  TEXT PRIMARY KEY REFERENCES users(id),
+        data     JSONB NOT NULL,
+        modified TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS books (
+        user_id       TEXT NOT NULL REFERENCES users(id),
+        id            TEXT NOT NULL,
+        active_branch TEXT NOT NULL DEFAULT 'main',
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        trashed_at    TIMESTAMPTZ,
+        PRIMARY KEY (user_id, id)
+      );
+      CREATE TABLE IF NOT EXISTS branches (
+        user_id      TEXT NOT NULL,
+        book_id      TEXT NOT NULL,
+        name         TEXT NOT NULL,
+        created_from TEXT,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        trashed_at   TIMESTAMPTZ,
+        PRIMARY KEY (user_id, book_id, name),
+        FOREIGN KEY (user_id, book_id) REFERENCES books(user_id, id)
+      );
+      CREATE TABLE IF NOT EXISTS book_files (
+        user_id  TEXT NOT NULL,
+        book_id  TEXT NOT NULL,
+        branch   TEXT NOT NULL,
+        path     TEXT NOT NULL,
+        body     TEXT,
+        bytes    BYTEA,
+        modified TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, book_id, branch, path),
+        FOREIGN KEY (user_id, book_id, branch) REFERENCES branches(user_id, book_id, name) ON UPDATE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS branch_bases (
+        user_id TEXT NOT NULL,
+        book_id TEXT NOT NULL,
+        branch  TEXT NOT NULL,
+        path    TEXT NOT NULL,
+        body    TEXT NOT NULL,
+        PRIMARY KEY (user_id, book_id, branch, path),
+        FOREIGN KEY (user_id, book_id, branch) REFERENCES branches(user_id, book_id, name) ON UPDATE CASCADE
+      );
+    `
   }
 ];
 
@@ -82,7 +133,23 @@ function openDatabase(connectionString, { max = 5 } = {}) {
     return applied;
   }
 
-  return { pool, query, migrate, close: () => pool.end() };
+  /** Runs `work(client)` inside BEGIN/COMMIT on one connection, rolling back when it throws. */
+  async function transaction(work) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await work(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  return { pool, query, transaction, migrate, close: () => pool.end() };
 }
 
 module.exports = { openDatabase, MIGRATIONS };

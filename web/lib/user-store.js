@@ -5,7 +5,7 @@
 // table in Postgres (the hosted site). server.js picks one from the config
 // and nothing else knows how users are kept.
 //
-// The contract: count, findByEmail, findById, create, setPasswordHash,
+// The contract: count, listIds, findByEmail, findById, create, setPasswordHash,
 // markEmailVerified, update. Every method MAY return a promise, so callers
 // always await; the JSON store happens to be synchronous. A user is
 // { id, email, passwordHash, createdAt, emailVerifiedAt }.
@@ -45,6 +45,8 @@ class JsonUserStore {
   }
 
   count() { return this.load().length; }
+
+  listIds() { return this.load().map((u) => u.id); }
 
   findByEmail(email) {
     const wanted = normalizeEmail(email);
@@ -98,6 +100,10 @@ class PgUserStore {
 
   async count() {
     return Number((await this.db.query('SELECT count(*)::int AS n FROM users')).rows[0].n);
+  }
+
+  async listIds() {
+    return (await this.db.query('SELECT id FROM users ORDER BY created_at')).rows.map((r) => r.id);
   }
 
   async findByEmail(email) {

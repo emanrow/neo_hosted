@@ -45,7 +45,7 @@ describe('merging a branch into the current draft', () => {
     assert.ok(!fs.existsSync(path.join(dir, bookId, '.branches', 'alt 2', '.base', '.base')), 'a base is not copied into the next branch');
   });
 
-  test('preview, then apply: one-sided edits land, conflicts are settled by the writer, titles and new chapters come along', () => {
+  test('preview, then apply: one-sided edits land, conflicts are settled by the writer, titles and new chapters come along', async () => {
     const { branches, library, merger, bookId } = setup();
     branches.create(bookId, 'alt');
     // on the branch: edit ch-1 paragraph two, add a chapter, retitle ch-2
@@ -57,8 +57,8 @@ describe('merging a branch into the current draft', () => {
     library.writeChapter(bookId, 'ch-1', p('One.', 'Two, on main.', 'Three.'));
     library.writeChapter(bookId, 'ch-2', p('Alpha, revised.', 'Beta.'));
 
-    assert.throws(() => merger.preview(bookId, 'main'), /draft you are in/);
-    const preview = merger.preview(bookId, 'alt');
+    await assert.rejects(merger.preview(bookId, 'main'), /draft you are in/);
+    const preview = await merger.preview(bookId, 'alt');
     assert.equal(preview.into, 'main');
     assert.deepEqual(preview.chapters.map((c) => [c.id, c.status, c.conflicts.length]), [['ch-1', 'conflict', 1], ['ch-2', 'kept', 0], ['ch-3', 'added', 0]]);
     assert.equal(preview.chapters[0].label, 'Opening');
@@ -67,7 +67,7 @@ describe('merging a branch into the current draft', () => {
     assert.match(preview.chapters[0].blackline, /<ins class="bl-ins"><p>Two, on the branch.<\/p><\/ins>/);
     assert.match(preview.chapters[2].blackline, /^<ins class="bl-ins"><p>A new chapter.<\/p><\/ins>$/);
 
-    const result = merger.apply(bookId, 'alt', { 'ch-1:0': 'theirs' });
+    const result = await merger.apply(bookId, 'alt', { 'ch-1:0': 'theirs' });
     assert.deepEqual(result.written.map((w) => w.id), ['ch-1', 'ch-3']);
     assert.equal(library.readChapter(bookId, 'ch-1'), p('One.', 'Two, on the branch.', 'Three.'));
     assert.equal(library.readChapter(bookId, 'ch-2'), p('Alpha, revised.', 'Beta.'), 'untouched on the branch, so ours stays');
@@ -77,19 +77,19 @@ describe('merging a branch into the current draft', () => {
     assert.equal(meta.chapterTitles['ch-2'], 'Second', 'a title given on the branch comes along');
 
     // the base moved forward: merging again changes nothing
-    const again = merger.preview(bookId, 'alt');
+    const again = await merger.preview(bookId, 'alt');
     assert.ok(again.chapters.every((c) => c.status === 'same' || c.status === 'kept'), JSON.stringify(again.chapters.map((c) => c.status)));
-    assert.equal(merger.apply(bookId, 'alt').written.length, 0);
+    assert.equal((await merger.apply(bookId, 'alt')).written.length, 0);
   });
 
-  test('keeping both is the default, and a deletion on the branch leaves this draft alone', () => {
+  test('keeping both is the default, and a deletion on the branch leaves this draft alone', async () => {
     const { branches, library, merger, bookId } = setup();
     branches.create(bookId, 'cut');
     library.writeChapter(bookId, 'ch-1', p('One.', 'Three.'));
     library.writeBookMeta(bookId, { ...library.readBookMeta(bookId), chapterOrder: ['ch-1'] });
     branches.switchTo(bookId, 'main');
     library.writeChapter(bookId, 'ch-1', p('One.', 'Two, kept and polished.', 'Three.'));
-    const result = merger.apply(bookId, 'cut');
+    const result = await merger.apply(bookId, 'cut');
     assert.equal(result.written.length, 0, 'ours plus nothing is ours: no chapter rewritten');
     assert.equal(library.readChapter(bookId, 'ch-1'), p('One.', 'Two, kept and polished.', 'Three.'), 'our edit against their deletion: ours stays (both = ours + nothing)');
     assert.deepEqual(library.readBookMeta(bookId).chapterOrder, ['ch-1', 'ch-2'], 'the chapter they dropped stays here');

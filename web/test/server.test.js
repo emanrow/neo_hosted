@@ -169,6 +169,21 @@ describe('the hosted server', () => {
     assert.equal((await call('GET', `/library/${book.id}/${fname}`)).status, 404);
   });
 
+  test('the whole library downloads as the desktop folder, zipped', async () => {
+    const res = await call('GET', '/library.zip');
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'application/zip');
+    assert.match(res.headers.get('content-disposition'), /attachment; filename="NEO Library.zip"/);
+    const JSZip = require('jszip');
+    const zip = await JSZip.loadAsync(Buffer.from(await res.arrayBuffer()));
+    assert.ok(zip.file('library.json'), 'library.json is in it');
+    assert.ok(Object.keys(zip.files).some((n) => /^book-hosted-book-.*\/chapters\/ch-1\.html$/.test(n)), 'and the chapters');
+    const signedIn = cookie;
+    cookie = '';
+    assert.equal((await call('GET', '/library.zip')).status, 401);
+    cookie = signedIn;
+  });
+
   test('manuscripts upload as raw bytes and come back split into chapters', async () => {
     const upload = async (name, bytes) => {
       const res = await call('POST', '/api/import:upload?name=' + encodeURIComponent(name), { raw: bytes, headers: { 'Content-Type': 'application/octet-stream' } });

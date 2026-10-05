@@ -135,10 +135,10 @@ describe('a writer\'s library', () => {
     assert.match(first, /^cover-\d+\.jpg$/);
     const second = lib.setCoverBytes(book.id, 'png', Buffer.from('two'));
     assert.deepEqual(fs.readdirSync(path.join(dir, book.id)).filter((f) => f.startsWith('cover-')), [second]);
-    assert.equal(lib.coverPath(book.id, second), path.join(dir, book.id, second));
-    assert.equal(lib.coverPath(book.id, 'book.json'), null, 'only cover-* and art-* images are served');
+    assert.deepEqual(lib.readCover(book.id, second), Buffer.from('two'));
+    assert.equal(lib.readCover(book.id, 'book.json'), null, 'only cover-* and art-* images are served');
     lib.removeCover(book.id);
-    assert.equal(lib.coverPath(book.id, second), null);
+    assert.equal(lib.readCover(book.id, second), null);
   });
 
   test('the daily backup zips the library once a day and leaves Trash and Backups out', async () => {
@@ -155,5 +155,7 @@ describe('a writer\'s library', () => {
     const names = Object.keys(zip.files);
     assert.ok(names.includes(`${book.id}/chapters/c.html`));
     assert.ok(!names.some((n) => n.startsWith('Trash/') || n.startsWith('Backups/')));
+    const download = await JSZip.loadAsync(await lib.exportZip());
+    assert.equal(await download.file(`${book.id}/chapters/c.html`).async('string'), '<p>safe</p>', 'the download is the same folder');
   });
 });

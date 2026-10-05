@@ -72,6 +72,7 @@
         item(t('History…'), () => hosted.openHistory && hosted.openHistory()),
         sub(t('Branches'), branchItems()),
         item(t('Import Manuscripts…'), { type: 'import' }, { accel: MOD + (IS_MAC ? '⇧I' : 'Shift+I') }),
+        item(t('Download Library…'), () => hosted.downloadLibrary()),
         item(t('Reshelve a Book…'), { type: 'reshelve' }),
         sep,
         { label: config.email || '', disabled: true },
