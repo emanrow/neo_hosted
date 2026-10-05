@@ -2,7 +2,7 @@
 
 # Parity with the desktop
 
-What a writer gets in a browser compared with desktop NEO. ✔ same code, same files. ◐ works, with a browser-shaped difference. ✘ not yet. — does not apply.
+What a writer gets in a browser compared with desktop NEO. ✔ same code, same files. ◐ works, with a browser-shaped difference. + hosted only. ✘ not yet. — does not apply.
 
 | Desktop | Hosted | Notes |
 |---|---|---|
@@ -18,6 +18,7 @@ What a writer gets in a browser compared with desktop NEO. ✔ same code, same f
 | Menus and shortcuts | ✔ | a hover-revealed bar at the top edge, Alt or F10 for the keyboard; same labels, same messages |
 | Interface language, 10 languages | ✔ | saved per writer; the sign-in page is English for now |
 | Full screen | ✔ | the browser's Fullscreen API |
+| History (File → History…) | + | hosted only: every save of a chapter is kept in the revision log; the panel previews any one and restores it, the replaced words going to Darlings. [architecture.md](architecture.md#a-writers-corner-of-the-volume) |
 | Auto-update, Check for Update | — | the site is always current; the item is gone from the menu |
 | Library Folder… | — | the server chooses the folder |
 | Other Font… (local font picker) | — | left out of the menu; `queryLocalFonts` is Chrome-only and needs a permission prompt |

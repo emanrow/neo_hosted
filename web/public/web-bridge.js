@@ -17,7 +17,9 @@
   const say = (msg, ms) => { if (typeof window.toast === 'function') window.toast(msg, ms); else console.log(msg); };
 
   // the Format and View menus' tick marks, as main.js keeps them
-  const state = { poetry: false, flush: false, typewriter: false, vim: false, uiZoom: 1, view: { focus: 'off', pageTheme: 'night', uiBright: false }, writingStyle: 'pantser' };
+  const state = { poetry: false, flush: false, typewriter: false, vim: false, uiZoom: 1, view: { focus: 'off', pageTheme: 'night', uiBright: false }, writingStyle: 'pantser', bookId: null };
+  // app.js keeps the open book to itself; the book it last asked about is the one on the page (web-history.js)
+  const noting = (bookId) => { state.bookId = bookId || null; return bookId; };
   let menuListener = null;
   let signedOutShown = false;
 
@@ -133,7 +135,7 @@
 
     /* ---------- books ---------- */
     createBook: (meta) => rpc('book:create', meta),
-    readBookMeta: (bookId) => rpc('book:readMeta', bookId),
+    readBookMeta: (bookId) => rpc('book:readMeta', noting(bookId)),
     writeBookMeta: (bookId, meta) => rpc('book:writeMeta', bookId, meta),
     // the page has already asked; the folder moves to the library's Trash, never the void
     deleteBook: async (bookId, title) => {
@@ -144,9 +146,12 @@
     },
 
     /* ---------- chapters and sidecars ---------- */
-    chapterStamps: (bookId) => rpc('chapter:stamps', bookId),
-    readChapter: (bookId, chId) => rpc('chapter:read', bookId, chId),
-    writeChapter: (bookId, chId, html) => rpc('chapter:write', bookId, chId, html),
+    chapterStamps: (bookId) => rpc('chapter:stamps', noting(bookId)),
+    readChapter: (bookId, chId) => rpc('chapter:read', noting(bookId), chId),
+    writeChapter: (bookId, chId, html) => rpc('chapter:write', noting(bookId), chId, html),
+    /* ---------- history (hosted only; web-history.js is the reader) ---------- */
+    listRevisions: (bookId, chId) => rpc('revision:list', bookId, chId),
+    readRevision: (id) => rpc('revision:read', id),
     deleteChapter: (bookId, chId) => rpc('chapter:delete', bookId, chId),
     readAux: (bookId, name) => rpc('aux:read', bookId, name),
     writeAux: (bookId, name, html) => rpc('aux:write', bookId, name, html),

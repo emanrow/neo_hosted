@@ -45,7 +45,7 @@ function buildHostedPage({ indexHtml, i18n, hostedConfig }) {
     '  <script src="/jszip.min.js"></script>\n' +
     '  <script src="i18n.js"></script>\n' +
     '  <script src="/web/web-bridge.js"></script>');
-  html = html.replace(MARKERS.appScript, '<script src="app.js"></script>\n  <script src="/web/web-menu.js"></script>');
+  html = html.replace(MARKERS.appScript, '<script src="app.js"></script>\n  <script src="/web/web-menu.js"></script>\n  <script src="/web/web-history.js"></script>');
   return html;
 }
 

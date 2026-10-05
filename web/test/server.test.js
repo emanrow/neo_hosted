@@ -89,6 +89,8 @@ describe('the hosted server', () => {
     assert.ok(html.includes('id="neo-hosted-config"'));
     assert.ok(html.includes('"email":"w@example.com"'));
     assert.ok(html.includes('/web/web-menu.js'));
+    assert.ok(html.includes('/web/web-history.js'));
+    assert.equal((await call('GET', '/web/web-history.js')).status, 200);
     assert.match(res.headers.get('content-security-policy'), /connect-src 'self'/);
     const login = await call('GET', '/login');
     assert.equal(login.status, 302, 'a signed-in writer is sent to the room');

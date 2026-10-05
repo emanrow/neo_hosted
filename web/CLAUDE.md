@@ -27,7 +27,8 @@ web/
     page.js             buildHostedPage(indexHtml, i18n, hostedConfig), PAGE_CSP, MARKERS
   public/
     web-bridge.js       window.neo for the browser; rpc(channel, ...args) → POST /api/<channel>
-    web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10
+    web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10; File → History… opens web-history.js
+    web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, restore by writing the draft back and calling the editor's refreshFromDisk
     web.css             menu bar and sign-in styles, on styles.css's tokens
     login.html, login.js  sign in / create account / forgot / reset, one form in four modes (English only for now)
   scripts/smoke.e2e.js  optional headless-Chromium run, see docs/testing.md
@@ -75,7 +76,8 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **Accelerators `app.js` already owns** (⌘; ⌘+ ⌘− ⌘/) are not in `web-menu.js`'s table; see [docs/parity.md](../docs/parity.md#accelerators).
 - **`index.html` markers** (`page.js` `MARKERS`): the CSP meta, the drag strip, and the two script tags. A moved marker throws at boot.
 - **Static roots are allowlisted** (`ROOT_FILES`, `ROOT_DIRS` in `server.js`). `main.js`, `preload.js`, `package.json` are never served.
-- **New strings** in `web-bridge.js` and `web-menu.js` are scanned by `scripts/i18n.js`; run `node scripts/i18n.js template`.
+- **New strings** in `web-bridge.js`, `web-menu.js` and `web-history.js` are scanned by `scripts/i18n.js`; run `node scripts/i18n.js template`.
+- **The page's open book is not readable from outside `app.js`** (`book` and `currentChapterId` are top-level `let`s). The bridge notes the last book id it was asked about (`neoHosted.state.bookId`), and `web-history.js` finds the chapter from the DOM (`section.chapter[data-id]` holding the caret, else nearest the middle). A restore goes through `chapter:write` plus the editor's own `refreshFromDisk`, so replaced words land in Darlings exactly as an edit from another device would.
 - **Every user-store call is awaited.** `JsonUserStore` is synchronous and `PgUserStore` is not; the contract says "may return a promise", so `currentUser`, `signupAllowed` and the `/auth/*` handlers are all async. A new call site that forgets `await` passes the JSON tests and breaks on Railway.
 - **A failed revision never fails a save.** `chapter:write` writes the file first and catches what `ctx.revisions.record` throws into the writer's error log. Keep that order if the handler changes.
 - **SQL lives in `db.js`, `PgUserStore` and `RevisionLog` only.** A new table is a new entry appended to `MIGRATIONS`, never an edit to a deployed one, and a handler never sees a query.

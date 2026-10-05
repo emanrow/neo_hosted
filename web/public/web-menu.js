@@ -55,6 +55,7 @@
           radio(t('Outline First'), st.writingStyle === 'plotter', { type: 'writingStyle', value: 'plotter' })
         ]),
         sep,
+        item(t('History…'), () => hosted.openHistory && hosted.openHistory()),
         item(t('Import Manuscripts…'), { type: 'import' }, { accel: MOD + (IS_MAC ? '⇧I' : 'Shift+I') }),
         item(t('Reshelve a Book…'), { type: 'reshelve' }),
         sep,
