@@ -24,12 +24,12 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 
 7. **Mind map**: `mindmap.json`, a canvas of nodes that can link to chapters and placeholders.
 8. **Map map**: a place to draw the world, an image or a blank sheet with pins that link to chapters and notes (`maps.json`, images beside it).
-9. **Timelines**: `timeline.json`, events with story-time and chapter references, drawn on one line, dragged to reorder.
 10. **Handwritten notes**: a stylus pad that saves strokes as SVG beside the stickies, never OCR'd into the manuscript unless asked.
 11. **AI throughout**, only ever at the writer's request and never while typing: ask a question of the manuscript, name a placeholder, continue a scene into Darlings (never onto the page), paint covers as today. Keys per writer, encrypted as today. Upstream NEO is firm that it has no generative tools; this fork adds them as opt-in rooms off the hallway, not squiggles on the page.
 
 ## Done
 
+- **Timeline** (2026-10-05), the first room off the hallway: View → Timeline… (`web/public/web-timeline.js`) lists the book's events in story order, each with a time in the story, a title and the chapter it is told in; drag or nudge to reorder, a chapter's name jumps to it. The events are `timeline.json` beside `darlings.json`, read and written through the desktop's own `json:read` / `json:write` channels, so branches, backups and the zip carry it and the server learned nothing new. Still to come: drawing it as a line with the chapters along it, and events that span chapters.
 - **The owner's page** (2026-10-05): `/admin` (`web/lib/admin-page.js`) for the oldest account or `NEO_ADMIN_EMAILS`: every account with its books, library size, zips and public pages, the server's settings, the volume's size, and Remove with the address typed back; the library is zipped under `removed/` first.
 - **Public sharing** (2026-10-05): File → Share… (`web/public/web-share.js`) publishes the book, or the chapter the caret is in, as a read-only page at `/s/<token>` (`web/lib/share-store.js`, migration `004-shares`, files under `shares/` on a laptop). The page is the editor's own Web Page export, taken as a snapshot; publish again to update, Unpublish to take down. Still to come: an excerpt smaller than a chapter, and a share sheet on phones.
 - **The sign-in page in every language** (2026-10-05): `web/locales/<code>.json` carries the hosted edition's own strings per upstream language, laid over upstream's `locales/` by `web/lib/i18n.js`; `web/lib/login-page.js` renders `login.html` in the browser's language and the auth errors speak it too. The confirmation and reset emails followed on 2026-10-05: `mail.js` takes the same translator, keyed to the browser that asked.

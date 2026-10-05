@@ -60,7 +60,7 @@ Without a database (a laptop, the tests), `lib/library.js` and `lib/branches.js`
       library.json  _catalog.txt          folder mode only, and the rest of this list
       Trash/<book-id>--<timestamp>/       a "deleted" book; there is no system trash on a server
       Trash/<book-id>--branch-<name>--<timestamp>/   a deleted branch
-      book-<slug>-<id>/ ...               the main draft
+      book-<slug>-<id>/ ...               the main draft (the desktop layout, plus timeline.json for View → Timeline…)
         .branches/active                  names the branch the writer is in (absent or "main": the folder above)
         .branches/<name>/ ...             a whole alternate draft: the same layout, plus branch.json (hosted only)
         .branches/<name>/.base/           the chapters and book.json the branch started from (moved forward by each merge)
