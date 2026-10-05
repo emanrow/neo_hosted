@@ -94,6 +94,8 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir, feedback }
 
   // ---------- covers (the upload itself is a raw route in server.js) ----------
   api.handle('cover:remove', (ctx, bookId) => ctx.library.removeCover(bookId));
+  // the map map's sheet (hosted only; the upload is POST /api/map:upload, web-map.js is the caller)
+  api.handle('map:removeImage', (ctx, bookId) => ctx.library.setMapImage(bookId, '', null));
 
   // ---------- API keys, encrypted outside the library ----------
   const secretName = (name) => {

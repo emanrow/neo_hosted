@@ -132,6 +132,7 @@
         sep,
         item(t('Timeline…'), () => hosted.openTimeline && hosted.openTimeline()),
         item(t('Mind Map…'), () => hosted.openMindMap && hosted.openMindMap()),
+        item(t('Map…'), () => hosted.openMap && hosted.openMap()),
         sep,
         sub(t('Page'), [
           radio(t('Night'), L.pageTheme !== 'paper' && L.pageTheme !== 'light', { type: 'pageTheme', value: 'night' }),

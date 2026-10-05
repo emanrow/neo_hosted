@@ -15,7 +15,7 @@ const { libName, writeFileDurable, readJSON, writeJSON } = require('./files');
 const { dailyZip } = require('./backups');
 
 const COVER_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
-const COVER_FILE = /^(cover|art)-\d+\.(png|jpg|webp)$/;
+const COVER_FILE = /^(cover|art|map)-\d+\.(png|jpg|webp)$/;   // the images NEO made and serves: covers, paintings, the map map's sheet
 const SKIP_IN_BACKUP = new Set(['Backups', 'Exports', 'Trash']);
 
 /**
@@ -269,6 +269,19 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     return true;
   }
 
+  /** The map map's sheet (hosted only): one image per book as map-<ts>.<ext>, the earlier one replaced; '' removes it. Returns the file name. */
+  function setMapImage(bookId, ext, bytes) {
+    const folder = bookDir(bookId);
+    if (!fs.existsSync(folder)) return null;
+    for (const f of fs.readdirSync(folder)) if (/^map-\d+\./.test(f)) fs.unlinkSync(path.join(folder, f));
+    if (!bytes) return '';
+    ext = String(ext || '').toLowerCase();
+    if (!COVER_EXTS.includes(ext)) return null;
+    const fname = 'map-' + Date.now() + '.' + (ext === 'jpeg' ? 'jpg' : ext);
+    writeFileDurable(path.join(folder, fname), bytes);
+    return fname;
+  }
+
   /** The bytes of a cover or painting by its file name, or null when the name is not one NEO made or the file is gone. */
   function readCover(bookId, fname) {
     if (!COVER_FILE.test(String(fname))) return null;
@@ -354,7 +367,7 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     readLibrary, writeLibrary, listBooks,
     createBook, readBookMeta, writeBookMeta, trashBook,
     chapterStamps, readChapter, writeChapter, deleteChapter,
-    readAux, writeAux, readSidecar, writeSidecar,
+    readAux, writeAux, readSidecar, writeSidecar, setMapImage,
     setCoverBytes, removeCover, readCover, storePainting,
     appendErrorLog, dailyBackup, exportZip, footprint
   };

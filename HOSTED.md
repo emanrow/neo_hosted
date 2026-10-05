@@ -27,7 +27,7 @@ The desktop app is a page, a doorway (`window.neo`) and a main process that owns
 | Understand the shape before changing code | [docs/architecture.md](docs/architecture.md), then [web/CLAUDE.md](web/CLAUDE.md) |
 | Know how sign-in works and when a database would be warranted | [docs/auth-and-users.md](docs/auth-and-users.md) |
 | Run or add tests | [docs/testing.md](docs/testing.md) |
-| See what is planned (map map, handwriting, opt-in AI) | [docs/backlog.md](docs/backlog.md) |
+| See what is planned (handwriting, opt-in AI) | [docs/backlog.md](docs/backlog.md) |
 
 ## Quick start
 
