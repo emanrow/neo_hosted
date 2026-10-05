@@ -23,6 +23,17 @@
 //                        is referenced). Unset, accounts live in users.json. With
 //                        it set, an existing users.json is imported once, on boot.
 //                        NEO_DATABASE_URL is read too, for a hand-named variable.
+//   NEO_BACKUP_BUCKET    An S3-compatible bucket that gets a copy of every daily
+//                        zip. Unset, the zips stay on the volume only. With it:
+//   AWS_ENDPOINT_URL     The service's address, "https://storage.railway.app".
+//   AWS_REGION           "auto" on Railway and R2, "us-east-1" and friends on AWS.
+//   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY   The bucket's keys.
+//                        These four are the names the AWS SDK reads, so Railway's
+//                        "AWS SDK" preset on a Storage Bucket fills them in; each
+//                        is also read as NEO_BACKUP_ENDPOINT, NEO_BACKUP_REGION,
+//                        NEO_BACKUP_ACCESS_KEY_ID, NEO_BACKUP_SECRET_ACCESS_KEY.
+//   NEO_BACKUP_PREFIX    Optional folder inside the bucket. NEO_BACKUP_PATH_STYLE=1
+//                        for a service that wants the bucket on the path (MinIO).
 //
 // Whatever the signup setting, the very first account can always be created:
 // someone has to own a fresh deployment.
@@ -50,6 +61,25 @@ function mailFrom(env) {
   return { resendApiKey: env.RESEND_API_KEY, from: env.NEO_MAIL_FROM };
 }
 
+function backupBucket(env) {
+  const bucket = String(env.NEO_BACKUP_BUCKET || '').trim();
+  if (!bucket) return null;
+  const pick = (ours, theirs) => String(env[ours] || env[theirs] || '').trim();
+  const store = {
+    bucket,
+    endpoint: pick('NEO_BACKUP_ENDPOINT', 'AWS_ENDPOINT_URL'),
+    region: pick('NEO_BACKUP_REGION', 'AWS_REGION') || 'auto',
+    accessKeyId: pick('NEO_BACKUP_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID'),
+    secretAccessKey: pick('NEO_BACKUP_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY'),
+    prefix: String(env.NEO_BACKUP_PREFIX || '').trim(),
+    pathStyle: env.NEO_BACKUP_PATH_STYLE === '1'
+  };
+  if (!store.endpoint) throw new Error('NEO_BACKUP_BUCKET needs AWS_ENDPOINT_URL (or NEO_BACKUP_ENDPOINT), the service address such as https://storage.railway.app');
+  if (!/^https?:\/\//.test(store.endpoint)) throw new Error('AWS_ENDPOINT_URL must start with http:// or https://');
+  if (!store.accessKeyId || !store.secretAccessKey) throw new Error('NEO_BACKUP_BUCKET needs AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (or the NEO_BACKUP_ names)');
+  return store;
+}
+
 function loadConfig(env = process.env) {
   const dev = env.NEO_DEV === '1';
   let sessionSecret = env.NEO_SESSION_SECRET;
@@ -73,7 +103,8 @@ function loadConfig(env = process.env) {
     trustProxy: env.NEO_TRUST_PROXY === '1' || (env.NEO_TRUST_PROXY !== '0' && !!env.RAILWAY_ENVIRONMENT),
     mail: mailFrom(env),
     publicUrl: publicUrlFrom(env, dev),
-    databaseUrl: String(env.DATABASE_URL || env.NEO_DATABASE_URL || '').trim()
+    databaseUrl: String(env.DATABASE_URL || env.NEO_DATABASE_URL || '').trim(),
+    backupBucket: backupBucket(env)
   };
 }
 

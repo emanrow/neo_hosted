@@ -336,7 +336,8 @@ function openPgLibrary({ db, userId, dir, t }) {
     return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   }
 
-  const dailyBackup = () => dailyZip({ backupsDir: path.join(dir, 'Backups'), fill: fillZip });
+  /** One zip of the whole library per day on the volume (backups.js keeps 14); `copy(name, bytes)` sends it off-site. */
+  const dailyBackup = (copy) => dailyZip({ backupsDir: path.join(dir, 'Backups'), fill: fillZip, copy });
 
   /** True when this writer has no rows yet, so a folder may be imported. */
   const isEmpty = async () => !(await one('SELECT 1 FROM libraries WHERE user_id = $1 UNION SELECT 1 FROM books WHERE user_id = $1', [userId]));

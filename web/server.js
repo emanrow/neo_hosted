@@ -40,6 +40,7 @@ const { createMailer, confirmationMessage, resetMessage } = require('./lib/mail'
 const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
 const { openPgLibrary } = require('./lib/pg-library');
+const { createObjectStore, NO_OBJECT_STORE } = require('./lib/object-store');
 const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
 const { buildHostedPage, PAGE_CSP } = require('./lib/page');
@@ -83,6 +84,7 @@ function createApp(config, deps = {}) {
   const db = deps.db || (config.databaseUrl ? openDatabase(config.databaseUrl) : null);
   const users = db ? new PgUserStore(db) : new JsonUserStore(usersFile);
   const revisions = db ? new RevisionLog(db) : new NullRevisionLog();
+  const objectStore = deps.objectStore || (config.backupBucket ? createObjectStore(config.backupBucket) : NO_OBJECT_STORE);
   // Migrate, then take over a users.json if one is there and the table is
   // empty, and every writer's library folder whose rows are still empty.
   // Files are renamed, not deleted, so nothing is lost if an import turns
@@ -463,8 +465,10 @@ function createApp(config, deps = {}) {
   });
 
   // ---------------------------------------------------------------------
-  // Daily backups, one zip per writer per day, swept hourly
+  // Daily backups, one zip per writer per day, swept hourly; a copy of each
+  // goes to the bucket when one is configured (lib/object-store.js)
   // ---------------------------------------------------------------------
+  const offsiteCopyFor = (id) => (objectStore.enabled ? (name, bytes) => objectStore.put(`${id}/${name}`, bytes, 'application/zip') : undefined);
   async function backupEveryone() {
     let ids = [];
     try { ids = db ? await users.listIds() : fs.readdirSync(path.join(config.dataDir, 'users')); } catch { return; }
@@ -475,7 +479,7 @@ function createApp(config, deps = {}) {
       const libraryDir = path.join(root, LIBRARY_FOLDER);
       if (!db && !fs.existsSync(libraryDir)) continue;
       const logError = (source, err) => logServerError(`${id} ${source}`, err);
-      try { await openWriterLibrary({ userId: id, libraryDir, t, logError }).library.dailyBackup(); } catch (err) { logError('backup', err); }
+      try { await openWriterLibrary({ userId: id, libraryDir, t, logError }).library.dailyBackup(offsiteCopyFor(id)); } catch (err) { logError('backup', err); }
     }
   }
   const timers = [];
@@ -485,7 +489,7 @@ function createApp(config, deps = {}) {
   }
 
   return {
-    server, users, db, revisions, ready, spell, mailer, config, backupEveryone, startBackups,
+    server, users, db, revisions, ready, spell, mailer, objectStore, config, backupEveryone, startBackups,
     close: async () => {
       await new Promise((resolve) => { timers.forEach(clearTimeout); server.close(() => resolve()); });
       if (db && !deps.db) await db.close();
@@ -501,7 +505,7 @@ if (require.main === module) {
   app.ready.then(({ store, imported, libraries }) => {
     app.server.listen(config.port, () => {
       console.log(`NEO hosted ${VERSIONS.hosted} (NEO ${VERSIONS.neo}) listening on :${config.port}`);
-      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${store}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
+      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${store}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}  backups: ${app.objectStore.enabled ? `volume + bucket ${app.objectStore.bucket}` : 'volume only'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
     });
     app.startBackups();
   }).catch((err) => {

@@ -18,7 +18,8 @@ web/
     db.js               openDatabase(DATABASE_URL): pool, query, migrate (MIGRATIONS applied once, recorded in schema_migrations), close
     revisions.js        RevisionLog(db): record, list, read, verify; makeDiff/applyDiff at paragraph grain; NullRevisionLog without a database
     pg-library.js       openPgLibrary({db, userId, dir, t}): the library AND its branches as rows (storage stage D), same contract as library.js + branches.js, every method a promise; exportZip, dailyBackup, importFolder, isEmpty
-    backups.js          dailyZip({backupsDir, fill}): today's zip once, 14 kept; both libraries use it
+    backups.js          dailyZip({backupsDir, fill, copy}): today's zip once, 14 kept, copied off-site and retried until it lands; both libraries use it
+    object-store.js     createObjectStore({bucket, endpoint, region, keys}): put(key, bytes) to an S3-compatible bucket, SigV4 over node:crypto and fetch; NO_OBJECT_STORE without one
     branches.js         openBranches({dir, logError}): activeBranch, folderFor (library.js's bookDirFor), list, create, switchTo, remove; readChapterOf/readMetaOf and the .base readers; moveBaseForward; checkBranchName
     merge.js            mergeChapter(base, ours, theirs, resolve): three-way merge at paragraph grain; merge3; blackline(from, to)
     branch-merge.js     createMerger({branches, library}): preview(bookId, name), apply(bookId, name, resolutions); mergeOrder
@@ -96,4 +97,5 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **`merge.js` is pure and `branch-merge.js` owns the files.** A change to how paragraphs are matched belongs in `merge.js` with a case in `merge.test.js`; what counts as a chapter's base, order or title belongs in `branch-merge.js`. `apply` writes through `library`, never to a branch folder directly, so the log and the catalog see it.
 - **A failed revision never fails a save.** `chapter:write` writes the file first and catches what `ctx.revisions.record` throws into the writer's error log. Keep that order if the handler changes.
 - **SQL lives in `db.js`, `user-store.js`, `revisions.js` and `pg-library.js` only.** A new table is a new entry appended to `MIGRATIONS`, never an edit to a deployed one, and a handler never sees a query.
+- **The bucket is optional and only the sweep knows it.** `createApp` builds `objectStore` from `config.backupBucket` (or takes one in `deps` for tests); `backupEveryone` hands each library a `copy` closure keyed by writer id, and `backups.js` owns the once-and-retry logic through the `.offsite` marker. Nothing else touches the bucket, and nothing ever deletes from it.
 - **Email is optional and the server must not care.** `mailer.enabled` is the only question `server.js` asks; with it off, signup signs in at once and `/auth/forgot` answers 503. Tests pass a stub mailer as `createApp(config, { mailer })` and read what it would have sent.
