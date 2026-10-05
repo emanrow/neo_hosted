@@ -214,6 +214,12 @@
         const chevron = document.createElement('span'); chevron.className = 'hm-chevron'; chevron.textContent = '▸';
         li.appendChild(chevron);
         renderItems(entry.submenu, li);
+        // a flyout that would run off the right edge of the window opens to the left instead
+        li.addEventListener('mouseenter', () => {
+          li.classList.remove('hm-flip');
+          const sub = li.querySelector(':scope > ul');
+          if (sub && sub.getBoundingClientRect().right > window.innerWidth - 4) li.classList.add('hm-flip');
+        });
         // a finger cannot hover: a tap on the parent opens its flyout (and closes its siblings')
         li.addEventListener('click', (e) => {
           if (e.target.closest('ul') !== list) return; // a tap inside the flyout is the item's
