@@ -45,7 +45,7 @@ const { createObjectStore, NO_OBJECT_STORE } = require('./lib/object-store');
 const { JsonShareStore, PgShareStore, isToken } = require('./lib/share-store');
 const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
-const { buildHostedPage, PAGE_CSP } = require('./lib/page');
+const { buildHostedPage, assetVersionFor, PAGE_CSP } = require('./lib/page');
 const { buildLoginPage } = require('./lib/login-page');
 const { buildAdminPage } = require('./lib/admin-page');
 const { readJSON, writeJSON, writeFileDurable, libName } = require('./lib/files');
@@ -125,6 +125,12 @@ function createApp(config, deps = {}) {
   const mailPerAddress = new LoginThrottle({ limit: 5 });   // emails to one address per window
   const mailPerClient = new LoginThrottle({ limit: 20 });   // emails asked for from one client per window (a writing group shares an address)
   const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  // everything the two pages load by URL: a changed file changes every asset URL on the next deploy
+  const assetVersion = assetVersionFor([
+    ...[...ROOT_FILES].map((p) => path.join(ROOT, p.slice(1))),
+    path.join(__dirname, 'node_modules', 'jszip', 'dist', 'jszip.min.js'),
+    ...fs.readdirSync(PUBLIC).sort().map((f) => path.join(PUBLIC, f)),
+  ]);
   const languages = i18n.listLanguages();
 
   function logServerError(source, err) {
@@ -381,7 +387,7 @@ function createApp(config, deps = {}) {
   }
 
   function servePage(ctx, res) {
-    const html = buildHostedPage({ indexHtml, i18n: i18n.bundleFor(ctx.locale), hostedConfig: hostedConfig(ctx) });
+    const html = buildHostedPage({ indexHtml, i18n: i18n.bundleFor(ctx.locale), hostedConfig: hostedConfig(ctx), assetVersion });
     sendHTML(res, 200, html, { 'Content-Security-Policy': PAGE_CSP });
   }
 
@@ -473,7 +479,7 @@ function createApp(config, deps = {}) {
 
     if (method === 'GET' && p === '/login') {
       if (user && !url.searchParams.has('reset')) return redirect(res, '/');
-      const html = buildLoginPage(fs.readFileSync(path.join(PUBLIC, 'login.html'), 'utf8'), visitorLanguage(req));
+      const html = buildLoginPage(fs.readFileSync(path.join(PUBLIC, 'login.html'), 'utf8'), { ...visitorLanguage(req), assetVersion });
       return sendHTML(res, 200, html, { 'Content-Security-Policy': PAGE_CSP, Vary: 'Accept-Language' });
     }
     if (method === 'GET' && p === '/') {

@@ -1,5 +1,8 @@
 'use strict';
 
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+
 // The writing room's page is the desktop index.html, served with the hosted
 // edition's pieces slotted in: the interface language and the deployment's
 // facts as inline data (not script, so CSP stays script-src 'self'), the
@@ -24,12 +27,35 @@ function inlineJSON(value) {
 }
 
 /**
+ * A short fingerprint of the files the page loads, computed once at boot. Every script and
+ * stylesheet URL carries it as ?v=, so a deploy that changes a file changes the URL and a
+ * browser that cached the old one (static files are cached for an hour) fetches the new one
+ * on a plain reload; no more hard reloads after a deploy. A missing file is skipped rather
+ * than fatal, so a test that serves a partial tree still boots.
+ * @param {string[]} files  absolute paths
+ */
+function assetVersionFor(files) {
+  const hash = crypto.createHash('sha256');
+  for (const file of files) {
+    try { hash.update(file).update(fs.readFileSync(file)); } catch { /* not served, nothing to fingerprint */ }
+  }
+  return hash.digest('hex').slice(0, 10);
+}
+
+/** Appends ?v=<version> to every script and stylesheet the markup loads from this site. */
+function versionAssets(html, version) {
+  if (!version) return html;
+  return html.replace(/\b(src|href)="([^"?#]+\.(?:js|css))"/g, (m, attr, url) => `${attr}="${url}?v=${version}"`);
+}
+
+/**
  * @param {object} parts
  * @param {string} parts.indexHtml     the desktop index.html
  * @param {object} parts.i18n          { locale, dict, base } for this writer
  * @param {object} parts.hostedConfig  what web-bridge.js and web-menu.js need to know
+ * @param {string} [parts.assetVersion]  from assetVersionFor; omitted, URLs are left bare
  */
-function buildHostedPage({ indexHtml, i18n, hostedConfig }) {
+function buildHostedPage({ indexHtml, i18n, hostedConfig, assetVersion }) {
   let html = indexHtml;
   for (const [name, marker] of Object.entries(MARKERS)) {
     const present = typeof marker === 'string' ? html.includes(marker) : marker.test(html);
@@ -49,7 +75,7 @@ function buildHostedPage({ indexHtml, i18n, hostedConfig }) {
     '  <script src="i18n.js"></script>\n' +
     '  <script src="/web/web-bridge.js"></script>');
   html = html.replace(MARKERS.appScript, '<script src="app.js"></script>\n  <script src="/web/web-menu.js"></script>\n  <script src="/web/web-history.js"></script>\n  <script src="/web/web-branches.js"></script>\n  <script src="/web/web-share.js"></script>\n  <script src="/web/web-feedback.js"></script>\n  <script src="/web/web-timeline.js"></script>\n  <script src="/web/web-mindmap.js"></script>\n  <script src="/web/web-map.js"></script>\n  <script src="/web/web-handwriting.js"></script>\n  <script src="/web/web-mobile.js"></script>');
-  return html;
+  return versionAssets(html, assetVersion);
 }
 
 // What the page may load. Styles need 'unsafe-inline' for the style=""
@@ -69,4 +95,4 @@ const PAGE_CSP = [
   "form-action 'self'"
 ].join('; ');
 
-module.exports = { buildHostedPage, inlineJSON, PAGE_CSP, MARKERS };
+module.exports = { buildHostedPage, inlineJSON, assetVersionFor, versionAssets, PAGE_CSP, MARKERS };
