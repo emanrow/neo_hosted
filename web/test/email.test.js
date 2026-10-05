@@ -16,7 +16,7 @@ const { createApp } = require('../server');
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-email-'));
 const outbox = [];
 const mailer = { enabled: true, async send(message) { outbox.push(message); return 'msg-' + outbox.length; } };
-const app = createApp({ dev: false, dataDir, sessionSecret: 's'.repeat(40), signup: 'open', inviteCode: '', trustProxy: false, port: 0, publicUrl: 'https://neo.example.com', mail: { resendApiKey: 'unused', from: 'NEO <neo@example.com>' } }, { mailer });
+const app = createApp({ dev: false, dataDir, sessionSecret: 's'.repeat(40), signup: 'open', inviteCode: '', trustProxy: false, port: 0, publicUrl: 'https://neo.example.com', mail: { resendApiKey: 'unused', from: 'NEO <neo@example.com>' }, adminEmails: ['owner@example.com'], guestsOfHonor: ['guest@example.com'] }, { mailer });
 let base = '';
 
 const post = (p, body, headers = {}) => fetch(base + p, {
@@ -105,6 +105,34 @@ describe('with email on', () => {
     assert.equal(replay.status, 400, 'the same link a second time is refused');
     assert.match((await replay.json()).error, /expired or was already used/);
     assert.equal((await post('/auth/reset', { token: 'reset.u-x.9999999999999.s.sig', password: 'yetanotherone' })).status, 400);
+  });
+
+  test('a guest of honor is welcomed once, and feedback reaches the owner', async () => {
+    await post('/auth/signup', { email: 'guest@example.com', password: 'longenough' });
+    const opened = await get(lastLink());
+    const cookie = opened.headers.get('set-cookie').split(';')[0];
+    const api = async (channel, ...args) => {
+      const res = await post('/api/' + channel, { args }, { Cookie: cookie });
+      return { status: res.status, ...(await res.json()) };
+    };
+    const pageConfig = async () => JSON.parse((await (await get('/', { Cookie: cookie })).text()).match(/id="neo-hosted-config"[^>]*>([^<]*)</)[1]);
+
+    assert.equal((await pageConfig()).welcome, 'honored', 'the page is told to open the welcome');
+    assert.equal((await pageConfig()).feedback, true, 'and Send Feedback… is on the Help menu');
+    assert.deepEqual(await api('welcome:seen'), { status: 200, ok: true, result: true });
+    assert.equal((await pageConfig()).welcome, '', 'once');
+
+    const sent = outbox.length;
+    assert.deepEqual(await api('feedback:send', '  The margins are perfect.  '), { status: 200, ok: true, result: true });
+    assert.equal(outbox.length, sent + 1);
+    const mail = outbox[outbox.length - 1];
+    assert.equal(mail.to, 'owner@example.com');
+    assert.match(mail.subject, /guest of honor.*guest@example\.com/);
+    assert.match(mail.text, /as a guest of honor:\n\nThe margins are perfect\.\n/, 'the note, trimmed, with who wrote it');
+
+    assert.equal((await api('feedback:send', '   ')).status, 400, 'an empty note is not sent');
+    assert.equal((await api('feedback:send', 'x'.repeat(5001))).status, 400, 'nor a novel');
+    assert.equal(outbox.length, sent + 1);
   });
 
   test('email is rationed per address', async () => {

@@ -24,7 +24,11 @@
 //                        it set, an existing users.json is imported once, on boot.
 //                        NEO_DATABASE_URL is read too, for a hand-named variable.
 //   NEO_ADMIN_EMAILS     Who may open /admin (comma-separated addresses). Unset,
-//                        the oldest account is the owner.
+//                        the oldest account is the owner. Help → Send Feedback…
+//                        emails these addresses too (with RESEND_API_KEY).
+//   NEO_GUESTS_OF_HONOR  Addresses (comma-separated) that get a one-time welcome
+//                        and thank-you when they first open the writing room:
+//                        for the author of NEO, should he ever sign up.
 //   NEO_BACKUP_BUCKET    An S3-compatible bucket that gets a copy of every daily
 //                        zip. Unset, the zips stay on the volume only. With it:
 //   AWS_ENDPOINT_URL     The service's address, "https://storage.railway.app".
@@ -82,6 +86,9 @@ function backupBucket(env) {
   return store;
 }
 
+/** A comma-separated list of addresses, trimmed and lowercased, as the user store normalizes them. */
+const addressList = (value) => String(value || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+
 function loadConfig(env = process.env) {
   const dev = env.NEO_DEV === '1';
   let sessionSecret = env.NEO_SESSION_SECRET;
@@ -107,7 +114,8 @@ function loadConfig(env = process.env) {
     publicUrl: publicUrlFrom(env, dev),
     databaseUrl: String(env.DATABASE_URL || env.NEO_DATABASE_URL || '').trim(),
     backupBucket: backupBucket(env),
-    adminEmails: String(env.NEO_ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+    adminEmails: addressList(env.NEO_ADMIN_EMAILS),
+    guestsOfHonor: addressList(env.NEO_GUESTS_OF_HONOR)
   };
 }
 

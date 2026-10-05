@@ -105,6 +105,13 @@ describe('the hosted server', () => {
     assert.ok(html.includes('/web/web-mobile.js'));
     assert.equal((await call('GET', '/web/web-mobile.js')).status, 200);
     assert.ok(html.includes('name="viewport"'));
+    assert.ok(html.includes('/web/web-feedback.js'));
+    assert.equal((await call('GET', '/web/web-feedback.js')).status, 200);
+    assert.match(html, /"feedback":false/, 'with email off, Send Feedback… stays off the menu');
+    assert.match(html, /"welcome":""/);
+    const feedback = await api('feedback:send', 'Hello?');
+    assert.equal(feedback.status, 503);
+    assert.match(feedback.error, /not set up/);
     assert.match(res.headers.get('content-security-policy'), /connect-src 'self'/);
     const login = await call('GET', '/login');
     assert.equal(login.status, 302, 'a signed-in writer is sent to the room');

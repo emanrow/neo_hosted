@@ -23,6 +23,7 @@ What a writer gets in a browser compared with desktop NEO. ✔ same code, same f
 | Full screen | ✔ | the browser's Fullscreen API |
 | History (File → History…) | + | hosted only: every save of a chapter is kept in the revision log; the panel previews any one, shows what changed between it and the draft now as a blackline (Show Changes), and restores it, the replaced words going to Darlings. [architecture.md](architecture.md#a-writers-corner-of-the-volume) |
 | Branches (File → Branches) | + | hosted only: whole alternate drafts of a book, made from the draft you are in, switched with a reload; each keeps its own history. Compare & Merge… brings one into the draft you are in, paragraph by paragraph, with a blackline and a choice on each place changed in both. [architecture.md](architecture.md#a-writers-corner-of-the-volume) |
+| Send Feedback… (Help menu) | + | hosted only, when email and `NEO_ADMIN_EMAILS` are set: a note typed in the writing room goes to the owner's inbox (`web/public/web-feedback.js`, `feedback:send`). An address in `NEO_GUESTS_OF_HONOR` gets the same panel once, unasked, as a welcome and thank-you |
 | Auto-update, Check for Update | — | the site is always current; the item is gone from the menu |
 | Library Folder… | — | the server keeps the library (rows in Postgres, or a folder on the volume); Download Library… is the way out |
 | Other Font… (local font picker) | — | left out of the menu; `queryLocalFonts` is Chrome-only and needs a permission prompt |

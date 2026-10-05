@@ -36,7 +36,7 @@ const { openDatabase } = require('./lib/db');
 const { RevisionLog, NullRevisionLog } = require('./lib/revisions');
 const { openBranches } = require('./lib/branches');
 const { createMerger } = require('./lib/branch-merge');
-const { createMailer, confirmationMessage, resetMessage } = require('./lib/mail');
+const { createMailer, confirmationMessage, resetMessage, feedbackMessage } = require('./lib/mail');
 const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
 const { openPgLibrary } = require('./lib/pg-library');
@@ -59,6 +59,7 @@ const API_BODY_LIMIT = 24 * 1024 * 1024;            // a whole library.json or o
 const COVER_BODY_LIMIT = 12 * 1024 * 1024;
 const IMPORT_BODY_LIMIT = 25 * 1024 * 1024;         // a whole manuscript as .docx, pictures and all
 const AUTH_BODY_LIMIT = 16 * 1024;
+const FEEDBACK_LIMIT = 5000;                    // characters in one Help → Send Feedback… note
 const MIN_PASSWORD = 8;
 const BACKUP_SWEEP_MS = 60 * 60 * 1000;
 const LIBRARY_FOLDER = 'NEO Library';
@@ -117,6 +118,8 @@ function createApp(config, deps = {}) {
   }
   const secretBox = createSecretBox(config.sessionSecret);
   const mailer = deps.mailer || createMailer(config.mail || {});
+  const adminEmails = (config.adminEmails || []).map(normalizeEmail);       // the owner: /admin, and where feedback goes
+  const guestsOfHonor = (config.guestsOfHonor || []).map(normalizeEmail);   // who gets the one-time welcome
   const throttle = new LoginThrottle();
   const mailPerAddress = new LoginThrottle({ limit: 5 });   // emails to one address per window
   const mailPerClient = new LoginThrottle({ limit: 20 });   // emails asked for from one client per window (a writing group shares an address)
@@ -160,10 +163,12 @@ function createApp(config, deps = {}) {
       try { fs.mkdirSync(libraryDir, { recursive: true }); fs.appendFileSync(path.join(libraryDir, 'neo-errors.log'), line); } catch { logServerError(source, err); }
     };
     const { library, branches } = openWriterLibrary({ userId: user.id, libraryDir, t, logError });
+    const honored = guestsOfHonor.includes(normalizeEmail(user.email));
     // this writer's slice of the revision log, keyed by the branch they are in; a no-op without a database
     const onBranch = async (bookId) => ({ userId: user.id, bookId, branch: await branches.activeBranch(bookId) });
     return {
-      user, req, locale, t, logError, branches, library, shares,
+      user, req, locale, t, logError, branches, library, shares, honored,
+      welcomePending: honored && !settings.welcomedAt,   // the one-time welcome is still owed
       merger: createMerger({ branches, library }),
       revisions: {
         record: async (bookId, chapterId, html) => revisions.record({ ...(await onBranch(bookId)), chapterId, html }),
@@ -177,12 +182,35 @@ function createApp(config, deps = {}) {
         fs.mkdirSync(root, { recursive: true });
         writeJSON(settingsFile, { ...readJSON(settingsFile, {}), uiLanguage: resolved });
         return resolved;
+      },
+      /** The welcome was shown (or waved away); it is not shown again. */
+      markWelcomed() {
+        fs.mkdirSync(root, { recursive: true });
+        writeJSON(settingsFile, { ...readJSON(settingsFile, {}), welcomedAt: new Date().toISOString() });
+        return true;
       }
     };
   }
 
+  // Help → Send Feedback…: a writer's note goes to the owner's inbox, through
+  // the same mailer and rations as the sign-in emails. Off without email or
+  // an owner address to send to.
+  const feedback = {
+    enabled: () => mailer.enabled && adminEmails.length > 0,
+    async send(ctx, message) {
+      if (!feedback.enabled()) throw new HttpError(503, ctx.t('Feedback by email is not set up on this server'));
+      const text = String(message || '').trim();
+      if (!text) throw new HttpError(400, ctx.t('Write something first'));
+      if (text.length > FEEDBACK_LIMIT) throw new HttpError(400, ctx.t('That is longer than an email should be; please keep it under {n} characters', { n: FEEDBACK_LIMIT }));
+      allowMail(ctx.req, ctx.user.email);
+      const mail = feedbackMessage({ from: ctx.user.email, honored: ctx.honored, version: VERSIONS.hosted, message: text });
+      for (const to of adminEmails) await mailer.send({ to, ...mail });
+      return true;
+    }
+  };
+
   const api = { handlers: new Map(), handle(channel, fn) { this.handlers.set(channel, fn); } };
-  registerHandlers(api, { spell, secretBox, versions: VERSIONS, rootDir: ROOT });
+  registerHandlers(api, { spell, secretBox, versions: VERSIONS, rootDir: ROOT, feedback });
 
   // ---------------------------------------------------------------------
   // Sessions
@@ -345,7 +373,9 @@ function createApp(config, deps = {}) {
       languages,
       spellLanguages: Object.fromEntries(Object.entries(SPELL_LANGUAGES).map(([code, l]) => [code, l.label])),
       source: 'https://github.com/emanrow/neo_hosted',
-      upstream: 'https://github.com/hughhowey/neo'
+      upstream: 'https://github.com/hughhowey/neo',
+      feedback: feedback.enabled(),                       // Help → Send Feedback… is on the menu
+      welcome: ctx.welcomePending ? 'honored' : ''       // web-feedback.js opens the one-time welcome
     };
   }
 
@@ -363,7 +393,9 @@ function createApp(config, deps = {}) {
       const result = await fn(ctx, ...args);
       sendJSON(res, 200, { ok: true, result: result === undefined ? null : result });
     } catch (err) {
-      // a failed save must reach the page (persistChapter retries) and the log
+      // a failed save must reach the page (persistChapter retries) and the log;
+      // a refusal the handler meant (an HttpError) keeps its status and is not a server fault
+      if (err instanceof HttpError) { sendJSON(res, err.status, { ok: false, error: err.message }); return; }
       ctx.logError(channel, err);
       sendJSON(res, 500, { ok: false, error: String((err && err.message) || err) });
     }
@@ -491,7 +523,6 @@ function createApp(config, deps = {}) {
   // ---------------------------------------------------------------------
   // The owner is whoever NEO_ADMIN_EMAILS names, else the oldest account.
   // Anyone else gets Not found, so the page gives nothing away.
-  const adminEmails = config.adminEmails || [];
   async function isAdmin(user) {
     if (adminEmails.length) return adminEmails.includes(normalizeEmail(user.email));
     const [oldest] = await users.list();

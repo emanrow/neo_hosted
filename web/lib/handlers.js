@@ -15,11 +15,11 @@ const SECRET_NAME = /^[a-z0-9-]{1,32}$/;
 
 /**
  * @param {{ handle: (channel: string, fn: Function) => void }} api
- * @param {{ spell: import('./spell').SpellService, secretBox: object, versions: { hosted: string, neo: string }, rootDir: string }} deps
+ * @param {{ spell: import('./spell').SpellService, secretBox: object, versions: { hosted: string, neo: string }, rootDir: string, feedback: { send: (ctx: object, message: string) => Promise<boolean> } }} deps
  */
 const SHARE_HTML_LIMIT = 20 * 1024 * 1024;        // a book with its fonts and cover inlined
 
-function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
+function registerHandlers(api, { spell, secretBox, versions, rootDir, feedback }) {
   // ---------- library ----------
   api.handle('library:read', (ctx) => ctx.library.readLibrary());
   api.handle('library:write', (ctx, data) => ctx.library.writeLibrary(data));
@@ -151,6 +151,10 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
   api.handle('log:error', (ctx, msg) => { ctx.logError('renderer', msg); return true; });
   api.handle('settings:language', (ctx, code) => ctx.setLanguage(code));
   api.handle('app:version', () => `${versions.hosted} (NEO ${versions.neo})`);
+
+  // ---------- feedback and the welcome (hosted only; web-feedback.js is the caller) ----------
+  api.handle('feedback:send', (ctx, message) => feedback.send(ctx, message));
+  api.handle('welcome:seen', (ctx) => ctx.markWelcomed());
 }
 
 module.exports = { registerHandlers };

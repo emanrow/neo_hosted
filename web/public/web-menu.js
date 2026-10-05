@@ -147,6 +147,7 @@
         item(t('NEO Shortcuts'), { type: 'help' }),
         sep,
         item(t('About NEO'), { type: 'about' }),
+        ...(config.feedback ? [item(t('Send Feedback…'), () => hosted.openFeedback && hosted.openFeedback())] : []),
         { label: t('NEO by Hugh Howey — source and credits'), href: config.upstream },
         { label: t('The hosted edition — source'), href: config.source }
       ])
