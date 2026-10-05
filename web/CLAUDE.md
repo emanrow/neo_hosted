@@ -32,6 +32,7 @@ web/
     spell.js            SpellService: shared Hunspell per language; SPELL_LANGUAGES; defaultSpellLanguage
     i18n.js             listLanguages, resolveLanguage, bundleFor, translatorFor, pickLanguage
     page.js             buildHostedPage(indexHtml, i18n, hostedConfig), PAGE_CSP, MARKERS
+    admin-page.js       buildAdminPage({me, writers, facts, volume, notice}): the owner's page, server-rendered, no script; server.js's isAdmin, adminView and handleAdminRemove drive it
     login-page.js       buildLoginPage(loginHtml, {locale, t}): the sign-in page in the visitor's language; {{English text}} markers, the credits, a JSON block of strings for login.js
   public/
     web-bridge.js       window.neo for the browser; rpc(channel, ...args) → POST /api/<channel>; neoHosted.downloadLibrary() fetches /library.zip
@@ -103,5 +104,6 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **A failed revision never fails a save.** `chapter:write` writes the file first and catches what `ctx.revisions.record` throws into the writer's error log. Keep that order if the handler changes.
 - **SQL lives in `db.js`, `user-store.js`, `revisions.js` and `pg-library.js` only.** A new table is a new entry appended to `MIGRATIONS`, never an edit to a deployed one, and a handler never sees a query.
 - **The bucket is optional and only the sweep knows it.** `createApp` builds `objectStore` from `config.backupBucket` (or takes one in `deps` for tests); `backupEveryone` hands each library a `copy` closure keyed by writer id, and `backups.js` owns the once-and-retry logic through the `.offsite` marker. Nothing else touches the bucket, and nothing ever deletes from it.
+- **Removing an account is the one destructive route, and it zips first.** `handleAdminRemove` in `server.js` writes the library zip under `removed/` before anything goes, then each store empties its own rows (`shares.removeAll`, `revisions.erase`, `library.erase`, `users.remove`); no SQL in the server. A new table that hangs off a writer needs its own erase step there.
 - **A published page is a snapshot, built in the page.** `share:publish` takes finished HTML from the editor's exporter (`buildHtml`, a global of `app.js`) and only checks it is a whole document under the size limit; the server never renders a book itself, so the exporter stays upstream's and the words a stranger reads are exactly what the writer saw. `/s/<token>` answers with a `default-src 'none'` policy and `X-Robots-Tag: noindex`.
 - **Email is optional and the server must not care.** `mailer.enabled` is the only question `server.js` asks; with it off, signup signs in at once and `/auth/forgot` answers 503. Tests pass a stub mailer as `createApp(config, { mailer })` and read what it would have sent.

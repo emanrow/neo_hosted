@@ -89,6 +89,20 @@ describe('PgLibrary', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is n
     assert.deepEqual(await lib.readCover(book.id, art), Buffer.from('paint'), 'removing the cover leaves the painting');
   });
 
+  test('a writer\'s footprint is counted, and erase leaves no row behind', async () => {
+    const erased = (await new PgUserStore(db).create({ email: 'erase@example.com', passwordHash: 'h' })).id;
+    const lib = libraryFor(erased);
+    await lib.writeLibrary({ ...(await lib.readLibrary()), authorName: 'E' });
+    const book = await lib.createBook({ title: 'Gone' });
+    await lib.writeChapter(book.id, 'ch-1', '<p>' + 'word '.repeat(100) + '</p>');
+    assert.ok(await lib.footprint() > 500, 'the chapter counts');
+    assert.equal(await lib.isEmpty(), false);
+    await lib.erase();
+    assert.equal(await lib.isEmpty(), true);
+    assert.equal(await lib.footprint(), 0);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM branches WHERE user_id = $1', [erased])).rows[0].n, 0);
+  });
+
   test('trashing a book takes it off the shelf and keeps its rows', async () => {
     const lib = libraryFor(writerId);
     const book = await lib.createBook({ title: 'Doomed' });

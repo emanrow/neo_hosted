@@ -23,6 +23,8 @@
 //                        is referenced). Unset, accounts live in users.json. With
 //                        it set, an existing users.json is imported once, on boot.
 //                        NEO_DATABASE_URL is read too, for a hand-named variable.
+//   NEO_ADMIN_EMAILS     Who may open /admin (comma-separated addresses). Unset,
+//                        the oldest account is the owner.
 //   NEO_BACKUP_BUCKET    An S3-compatible bucket that gets a copy of every daily
 //                        zip. Unset, the zips stay on the volume only. With it:
 //   AWS_ENDPOINT_URL     The service's address, "https://storage.railway.app".
@@ -104,7 +106,8 @@ function loadConfig(env = process.env) {
     mail: mailFrom(env),
     publicUrl: publicUrlFrom(env, dev),
     databaseUrl: String(env.DATABASE_URL || env.NEO_DATABASE_URL || '').trim(),
-    backupBucket: backupBucket(env)
+    backupBucket: backupBucket(env),
+    adminEmails: String(env.NEO_ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
   };
 }
 

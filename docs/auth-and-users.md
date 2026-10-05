@@ -40,6 +40,10 @@ Two stores, one contract (`web/lib/user-store.js`): `count`, `findByEmail`, `fin
 
 A writer's cover-art key (`secret:set` / `secret:has` / `cover:paint`) is stored in their own `secrets.json`, outside the library folder, encrypted with AES-256-GCM under a key derived from `NEO_SESSION_SECRET` by HKDF (`web/lib/secrets.js`). The desktop uses the OS keychain for the same job. Rotating the secret makes stored keys unreadable, which is the honest outcome: writers paste theirs in again. Nothing from `secrets.json` ever enters a library, a backup zip, or a download.
 
+## The owner's page
+
+`GET /admin` is for the owner: whoever `NEO_ADMIN_EMAILS` names, else the oldest account (the first one made on a fresh deployment). Anyone else, signed in or not, gets Not found, so the page gives nothing away. It lists every account (created, confirmed, books, library size, daily zips, public pages), the server's settings and the volume's size, and offers one action: remove an account, with its address typed back. Removal zips the library as the desktop folder under `removed/` on the volume first, then takes down the account's public pages and history, deletes its rows (or moves its folder under `removed/`) and the user row; the owner cannot remove themself. A line in the server's `neo-errors.log` records who removed whom. It is server-rendered with no script (`web/lib/admin-page.js`), English only.
+
 ## Known gaps
 
 - No way to change the email on an account, and no admin surface: the owner removes an account in Railway's Postgres data view (or `users.json` on a laptop).

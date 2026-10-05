@@ -268,6 +268,39 @@ describe('the hosted server', () => {
     assert.equal((await api('settings:language', 'en')).result, 'en');
   });
 
+  test('the owner sees every account on /admin and can remove one, whose library is zipped and kept', async () => {
+    const owner = cookie;
+    const page = await call('GET', '/admin');
+    assert.equal(page.status, 200, 'the oldest account is the owner');
+    const html = await page.text();
+    assert.ok(html.includes('w@example.com') && html.includes('two@example.com'), 'both accounts listed');
+    assert.match(html, /<td class="num">\d+<\/td>/, 'the counts are there');
+    const other = await call('POST', '/auth/login', { body: { email: 'two@example.com', password: 'longenough' } });
+    assert.equal(other.status, 200);
+    cookie = other.headers.get('set-cookie').split(';')[0];
+    assert.equal((await call('GET', '/admin')).status, 404, 'anyone else: nothing to see');
+    assert.equal((await call('POST', '/admin/remove', { raw: 'userId=x&confirm=x', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })).status, 404);
+    const two = await api('library:read');
+    assert.equal(two.status, 200);
+    cookie = owner;
+    const ids = Object.fromEntries([...html.matchAll(/name="userId" value="([^"]+)"[\s\S]*?aria-label="type ([^ ]+) to confirm"/g)].map((m) => [m[2], m[1]]));
+    assert.ok(ids['two@example.com'], 'the form names the account');
+    const form = (body) => call('POST', '/admin/remove', { raw: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    assert.equal((await form(`userId=${ids['two@example.com']}&confirm=someone@else.com`)).status, 400, 'the address must be typed back');
+    const me = (await call('GET', '/')).status === 200 && [...html.matchAll(/name="userId" value="([^"]+)"/g)].map((m) => m[1]).find((id) => id !== ids['two@example.com']);
+    assert.ok(!me, 'the owner has no remove form of their own');
+    const removed = await form(`userId=${ids['two@example.com']}&confirm=TWO%40example.com`);
+    assert.equal(removed.status, 302);
+    assert.match(removed.headers.get('location'), /^\/admin\?notice=Removed/);
+    const after = await (await call('GET', '/admin')).text();
+    assert.ok(after.includes('w@example.com') && !after.includes('two@example.com'), 'gone from the list');
+    assert.equal(await app.users.findByEmail('two@example.com'), null, 'the account is gone (a sign-in attempt here would count against the throttle test below)');
+    const kept = fs.readdirSync(path.join(dataDir, 'removed'));
+    assert.ok(kept.some((f) => f.endsWith('.zip')), 'the library was zipped first');
+    assert.ok(kept.some((f) => !f.endsWith('.zip') && fs.existsSync(path.join(dataDir, 'removed', f, 'NEO Library'))), 'the folder moved under removed/');
+    assert.ok(!fs.existsSync(path.join(dataDir, 'users', ids['two@example.com'])), 'and left users/');
+  });
+
   test('wrong passwords are counted and the throttle closes the door', async () => {
     cookie = '';
     for (let i = 0; i < 10; i++) {

@@ -329,6 +329,19 @@ function openPgLibrary({ db, userId, dir, t }) {
   }
 
   /** The library as one zip, for the download. */
+  /** How much of the table is this writer's: every row of every branch, trashed ones too. */
+  async function footprint() {
+    const r = await one('SELECT COALESCE(SUM(octet_length(body)), 0) + COALESCE(SUM(octet_length(bytes)), 0) AS n FROM book_files WHERE user_id = $1', [userId]);
+    return Number(r && r.n) || 0;
+  }
+
+  /** Every row of this writer's library, gone, in one transaction: an account being removed, its zip already written. */
+  function erase() {
+    return db.transaction(async (client) => {
+      for (const table of ['branch_bases', 'book_files', 'branches', 'books', 'libraries']) await client.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
+    });
+  }
+
   async function exportZip() {
     const JSZip = require('jszip');
     const zip = new JSZip();
@@ -402,7 +415,7 @@ function openPgLibrary({ db, userId, dir, t }) {
     chapterStamps, readChapter, writeChapter, deleteChapter,
     readAux, writeAux, readSidecar, writeSidecar,
     setCoverBytes, removeCover, readCover, storePainting,
-    branches, dailyBackup, exportZip, isEmpty, importFolder
+    branches, dailyBackup, exportZip, isEmpty, importFolder, footprint, erase
   };
 }
 
