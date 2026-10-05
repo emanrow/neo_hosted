@@ -23,8 +23,9 @@ const BACKUPS_KEPT = 14;
  * @param {string} deps.dir       the library folder; created on first use
  * @param {(key: string, vars?: object) => string} deps.t   the writer's translator, for seed strings
  * @param {(source: string, err: unknown) => void} deps.logError
+ * @param {(bookId: string, root: string) => string} [deps.bookDirFor]  where a book's files are right now (branches.js); default: its folder
  */
-function openLibrary({ dir, t, logError }) {
+function openLibrary({ dir, t, logError, bookDirFor }) {
   const libraryFile = path.join(dir, 'library.json');
   const recovered = (what) => logError('recovered', what);
 
@@ -41,7 +42,10 @@ function openLibrary({ dir, t, logError }) {
     }
   }
 
-  const bookDir = (bookId) => path.join(dir, libName(bookId));
+  // the book's own folder, and the folder its files are read from (the same
+  // unless the writer is on a branch; hosted only, see branches.js)
+  const bookRoot = (bookId) => path.join(dir, libName(bookId));
+  const bookDir = (bookId) => (bookDirFor ? bookDirFor(bookId, bookRoot(bookId)) : bookRoot(bookId));
   const bookFolders = () => {
     try { return fs.readdirSync(dir).filter((d) => d.startsWith('book-')); } catch { return []; }
   };
@@ -146,7 +150,7 @@ function openLibrary({ dir, t, logError }) {
   function listBooks() {
     const out = [];
     for (const folder of bookFolders()) {
-      const meta = readJSON(path.join(dir, folder, 'book.json'), null, recovered);
+      const meta = readJSON(path.join(bookDir(folder), 'book.json'), null, recovered);
       if (meta && meta.id) out.push({ id: meta.id, title: meta.title || t('Untitled'), author: meta.author || '', modified: meta.modified || '', kind: meta.kind || '' });
     }
     return out;
@@ -226,7 +230,7 @@ function openLibrary({ dir, t, logError }) {
   // the writer (or a support hand) can bring it back. Returns false, with the
   // folder untouched, if the move fails.
   function trashBook(bookId) {
-    const folder = bookDir(bookId);
+    const folder = bookRoot(bookId); // the whole book, branches and all
     if (!fs.existsSync(folder)) return true;
     try {
       const trash = path.join(dir, 'Trash');

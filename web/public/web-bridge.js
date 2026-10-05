@@ -19,7 +19,11 @@
   // the Format and View menus' tick marks, as main.js keeps them
   const state = { poetry: false, flush: false, typewriter: false, vim: false, uiZoom: 1, view: { focus: 'off', pageTheme: 'night', uiBright: false }, writingStyle: 'pantser', bookId: null };
   // app.js keeps the open book to itself; the book it last asked about is the one on the page (web-history.js)
-  const noting = (bookId) => { state.bookId = bookId || null; return bookId; };
+  const noting = (bookId) => {
+    if (bookId && bookId !== state.bookId && window.neoHosted && window.neoHosted.branches) window.neoHosted.branches.refresh(bookId);
+    state.bookId = bookId || null;
+    return bookId;
+  };
   let menuListener = null;
   let signedOutShown = false;
 
@@ -151,6 +155,11 @@
     writeChapter: (bookId, chId, html) => rpc('chapter:write', noting(bookId), chId, html),
     /* ---------- history (hosted only; web-history.js is the reader) ---------- */
     listRevisions: (bookId, chId) => rpc('revision:list', bookId, chId),
+    /* ---------- branches (hosted only; web-branches.js is the caller) ---------- */
+    listBranches: (bookId) => rpc('branch:list', bookId),
+    createBranch: (bookId, name) => rpc('branch:create', bookId, name),
+    switchBranch: (bookId, name) => rpc('branch:switch', bookId, name),
+    deleteBranch: (bookId, name) => rpc('branch:delete', bookId, name),
     readRevision: (id) => rpc('revision:read', id),
     deleteChapter: (bookId, chId) => rpc('chapter:delete', bookId, chId),
     readAux: (bookId, name) => rpc('aux:read', bookId, name),

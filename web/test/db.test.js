@@ -157,6 +157,16 @@ describe('RevisionLog', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
     assert.equal(await log.verify(key), false, 'a rewritten timestamp breaks the chain');
   });
 
+  test('each branch has its own history, and a new branch starts with where it came from', async () => {
+    const key = { userId: writer.id, bookId: 'book-2', chapterId: 'ch-1' };
+    await log.record({ ...key, html: '<p>On main.</p>' });
+    await log.record({ ...key, branch: 'alt', html: '<p>On alt.</p>' });
+    await log.record({ ...key, branch: 'alt', html: '<p>On alt, more.</p>' });
+    assert.equal((await log.list(key)).length, 1);
+    assert.equal((await log.list({ ...key, branch: 'alt' })).length, 2);
+    assert.equal(await log.verify({ ...key, branch: 'alt' }), true);
+  });
+
   test('chapter:write through the server records a revision, and the history channels answer', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-revserver-'));
     const app = createApp({ dev: false, dataDir, sessionSecret: 's'.repeat(40), signup: 'open', inviteCode: '', trustProxy: false, port: 0, publicUrl: '', mail: {} }, { db });
@@ -177,6 +187,18 @@ describe('RevisionLog', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
       assert.equal(await api('revision:read', history[1].id), '<p>First words.</p>', 'the earlier draft is still there');
       assert.equal(await api('revision:verify', book.id, 'ch-a'), true);
       assert.equal(await api('chapter:read', book.id, 'ch-a'), '<p>First words, then more.</p>', 'the file on disk is still the truth');
+
+      await api('book:writeMeta', book.id, { ...(await api('book:readMeta', book.id)), chapterOrder: ['ch-a'] });
+      const made = await api('branch:create', book.id, 'what if');
+      assert.equal(made.active, 'what if');
+      const onBranch = await api('revision:list', book.id, 'ch-a');
+      assert.equal(onBranch.length, 1, 'the branch opens with one revision: the draft it came from');
+      assert.equal(onBranch[0].branch, 'what if');
+      await api('chapter:write', book.id, 'ch-a', '<p>Branch words.</p>');
+      assert.equal((await api('revision:list', book.id, 'ch-a')).length, 2);
+      await api('branch:switch', book.id, 'main');
+      assert.equal((await api('revision:list', book.id, 'ch-a')).length, 2, 'main still has its own two');
+      assert.equal(await api('chapter:read', book.id, 'ch-a'), '<p>First words, then more.</p>');
     } finally {
       await app.close();
     }

@@ -32,6 +32,7 @@ const { hashPassword, verifyPassword, signSession, verifySession, signLink, veri
 const { JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified } = require('./lib/user-store');
 const { openDatabase } = require('./lib/db');
 const { RevisionLog, NullRevisionLog } = require('./lib/revisions');
+const { openBranches } = require('./lib/branches');
 const { createMailer, confirmationMessage, resetMessage } = require('./lib/mail');
 const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
@@ -124,15 +125,17 @@ function createApp(config, deps = {}) {
       const line = `[${new Date().toISOString()}] [${source}] ${err && err.stack ? err.stack : String(err)}\n`;
       try { fs.mkdirSync(libraryDir, { recursive: true }); fs.appendFileSync(path.join(libraryDir, 'neo-errors.log'), line); } catch { logServerError(source, err); }
     };
+    const branches = openBranches({ dir: libraryDir, logError });
+    // this writer's slice of the revision log, keyed by the branch they are in; a no-op without a database
+    const onBranch = (bookId) => ({ userId: user.id, bookId, branch: branches.activeBranch(bookId) });
     return {
-      user, req, locale, t, logError,
-      library: openLibrary({ dir: libraryDir, t, logError }),
-      // this writer's slice of the revision log; a no-op without a database
+      user, req, locale, t, logError, branches,
+      library: openLibrary({ dir: libraryDir, t, logError, bookDirFor: branches.folderFor }),
       revisions: {
-        record: (bookId, chapterId, html) => revisions.record({ userId: user.id, bookId, chapterId, html }),
-        list: (bookId, chapterId) => revisions.list({ userId: user.id, bookId, chapterId }),
+        record: (bookId, chapterId, html) => revisions.record({ ...onBranch(bookId), chapterId, html }),
+        list: (bookId, chapterId) => revisions.list({ ...onBranch(bookId), chapterId }),
         read: (id) => revisions.read({ userId: user.id, id }),
-        verify: (bookId, chapterId) => revisions.verify({ userId: user.id, bookId, chapterId })
+        verify: (bookId, chapterId) => revisions.verify({ ...onBranch(bookId), chapterId })
       },
       secretsFile: path.join(root, 'secrets.json'),
       setLanguage(code) {

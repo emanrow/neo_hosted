@@ -27,6 +27,19 @@
   const bodyFonts = () => (typeof window.BODY_FONT_CHOICES !== 'undefined' ? window.BODY_FONT_CHOICES
     : ['Georgia', 'Palatino', 'Baskerville', 'Gelasio', 'TeX Gyre Pagella', 'Libre Baskerville', 'Alegreya', 'Source Serif Pro', 'Jost', 'iA Writer Quattro']);
 
+  // The open book's branches (web-branches.js keeps hosted.state.branches current)
+  function branchItems() {
+    const br = hosted.branches && hosted.state.branches && hosted.state.branches.bookId === hosted.state.bookId ? hosted.state.branches : null;
+    const names = br ? br.branches.map((b) => radio(b.name === 'main' ? t('Main draft') : b.name, b.name === br.active, () => hosted.branches.switchBranch(b.name)))
+      : [{ label: t('Open a book first'), disabled: true }];
+    return [
+      ...names,
+      sep,
+      item(t('New Branch…'), () => hosted.branches && hosted.branches.newBranch()),
+      item(t('Delete Branch…'), () => hosted.branches && hosted.branches.deleteBranch())
+    ];
+  }
+
   // The template, read fresh each time a menu opens so its ticks are true.
   function template() {
     const L = lib();
@@ -56,6 +69,7 @@
         ]),
         sep,
         item(t('History…'), () => hosted.openHistory && hosted.openHistory()),
+        sub(t('Branches'), branchItems()),
         item(t('Import Manuscripts…'), { type: 'import' }, { accel: MOD + (IS_MAC ? '⇧I' : 'Shift+I') }),
         item(t('Reshelve a Book…'), { type: 'reshelve' }),
         sep,
