@@ -14,7 +14,8 @@ web/
     config.js           env → config; refuses to boot on a bad combination (loadConfig)
     http.js             readBody/readJSONBody with limits, sendJSON/HTML, serveFile (path-fenced), cookies, isSameOrigin
     auth.js             hashPassword/verifyPassword (scrypt), signSession/verifySession (HMAC), signLink/verifyLink (email links), LoginThrottle
-    user-store.js       JsonUserStore: count, findByEmail, findById, create, setPasswordHash, markEmailVerified, update; isEmailVerified
+    user-store.js       JsonUserStore (users.json) and PgUserStore (Postgres), one contract: count, findByEmail, findById, create, setPasswordHash, markEmailVerified, update; PgUserStore.importFrom; isEmailVerified
+    db.js               openDatabase(DATABASE_URL): pool, query, migrate (MIGRATIONS applied once, recorded in schema_migrations), close
     mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation and reset messages
     secrets.js          createSecretBox(masterSecret): read/write/has, AES-256-GCM per writer
     files.js            libName, writeFileDurable, readJSON, writeJSON  (port of main.js)
@@ -36,7 +37,7 @@ web/
 
 ## Request path
 
-`server.js` → `route(req, res)`: health, public static files, `/auth/*` (signup, login, logout, forgot, reset, and `GET /auth/verify` for the confirmation link), then everything that needs a writer. `currentUser(req)` verifies the cookie and loads the user; `contextFor(user, req)` builds the context; `handleApi` dispatches `POST /api/<channel>` to `api.handlers`. Errors become `{ ok: false, error }`; an `HttpError` keeps its status, anything else is 500 and logged. Full narrative in [docs/architecture.md](../docs/architecture.md#request-lifecycle).
+`server.js` → `createApp(config, deps)` picks the user store (`PgUserStore` over `deps.db` or `config.databaseUrl`, else `JsonUserStore`) and exposes `ready`, which runs the migrations and the one-time `users.json` import; `main` awaits it before listening. Then `route(req, res)`: health, public static files, `/auth/*` (signup, login, logout, forgot, reset, and `GET /auth/verify` for the confirmation link), then everything that needs a writer. `currentUser(req)` verifies the cookie and loads the user; `contextFor(user, req)` builds the context; `handleApi` dispatches `POST /api/<channel>` to `api.handlers`. Errors become `{ ok: false, error }`; an `HttpError` keeps its status, anything else is 500 and logged. Full narrative in [docs/architecture.md](../docs/architecture.md#request-lifecycle).
 
 The context (`ctx`) a handler receives:
 
@@ -73,4 +74,6 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **`index.html` markers** (`page.js` `MARKERS`): the CSP meta, the drag strip, and the two script tags. A moved marker throws at boot.
 - **Static roots are allowlisted** (`ROOT_FILES`, `ROOT_DIRS` in `server.js`). `main.js`, `preload.js`, `package.json` are never served.
 - **New strings** in `web-bridge.js` and `web-menu.js` are scanned by `scripts/i18n.js`; run `node scripts/i18n.js template`.
+- **Every user-store call is awaited.** `JsonUserStore` is synchronous and `PgUserStore` is not; the contract says "may return a promise", so `currentUser`, `signupAllowed` and the `/auth/*` handlers are all async. A new call site that forgets `await` passes the JSON tests and breaks on Railway.
+- **SQL lives in `db.js` and `PgUserStore` only.** A new table is a new entry appended to `MIGRATIONS`, never an edit to a deployed one, and a handler never sees a query.
 - **Email is optional and the server must not care.** `mailer.enabled` is the only question `server.js` asks; with it off, signup signs in at once and `/auth/forgot` answers 503. Tests pass a stub mailer as `createApp(config, { mailer })` and read what it would have sent.
