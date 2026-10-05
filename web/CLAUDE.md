@@ -16,6 +16,7 @@ web/
     auth.js             hashPassword/verifyPassword (scrypt), signSession/verifySession (HMAC), signLink/verifyLink (email links), LoginThrottle
     user-store.js       JsonUserStore (users.json) and PgUserStore (Postgres), one contract: count, findByEmail, findById, create, setPasswordHash, markEmailVerified, update; PgUserStore.importFrom; isEmailVerified
     db.js               openDatabase(DATABASE_URL): pool, query, migrate (MIGRATIONS applied once, recorded in schema_migrations), close
+    revisions.js        RevisionLog(db): record, list, read, verify; makeDiff/applyDiff at paragraph grain; NullRevisionLog without a database
     mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation and reset messages
     secrets.js          createSecretBox(masterSecret): read/write/has, AES-256-GCM per writer
     files.js            libName, writeFileDurable, readJSON, writeJSON  (port of main.js)
@@ -46,6 +47,7 @@ The context (`ctx`) a handler receives:
 | `user` | `{ id, email, ... }` from the store |
 | `locale`, `t` | the writer's interface language and a translator bound to it |
 | `library` | `openLibrary()` over `<data>/users/<id>/NEO Library` |
+| `revisions` | this writer's slice of the revision log: `record(bookId, chapterId, html)`, `list`, `read(id)`, `verify`; a no-op without Postgres |
 | `secretsFile` | `<data>/users/<id>/secrets.json` |
 | `logError(source, err)` | appends to the writer's own `neo-errors.log` |
 | `setLanguage(code)` | saves `uiLanguage` in the writer's `settings.json` |
@@ -75,5 +77,6 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **Static roots are allowlisted** (`ROOT_FILES`, `ROOT_DIRS` in `server.js`). `main.js`, `preload.js`, `package.json` are never served.
 - **New strings** in `web-bridge.js` and `web-menu.js` are scanned by `scripts/i18n.js`; run `node scripts/i18n.js template`.
 - **Every user-store call is awaited.** `JsonUserStore` is synchronous and `PgUserStore` is not; the contract says "may return a promise", so `currentUser`, `signupAllowed` and the `/auth/*` handlers are all async. A new call site that forgets `await` passes the JSON tests and breaks on Railway.
-- **SQL lives in `db.js` and `PgUserStore` only.** A new table is a new entry appended to `MIGRATIONS`, never an edit to a deployed one, and a handler never sees a query.
+- **A failed revision never fails a save.** `chapter:write` writes the file first and catches what `ctx.revisions.record` throws into the writer's error log. Keep that order if the handler changes.
+- **SQL lives in `db.js`, `PgUserStore` and `RevisionLog` only.** A new table is a new entry appended to `MIGRATIONS`, never an edit to a deployed one, and a handler never sees a query.
 - **Email is optional and the server must not care.** `mailer.enabled` is the only question `server.js` asks; with it off, signup signs in at once and `/auth/forgot` answers 503. Tests pass a stub mailer as `createApp(config, { mailer })` and read what it would have sent.

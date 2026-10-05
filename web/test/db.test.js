@@ -22,7 +22,7 @@ describe('PgUserStore', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
   const store = new PgUserStore(db);
 
   before(async () => {
-    await db.query('DROP TABLE IF EXISTS users, schema_migrations');
+    await db.query('DROP TABLE IF EXISTS revisions, users, schema_migrations');
   });
   after(() => db.close());
 
@@ -64,7 +64,7 @@ describe('PgUserStore', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
     json.save([old, json.create({ email: 'waiting@example.com', passwordHash: 'hash-w', emailVerified: false })]);
 
     assert.equal(await store.importFrom(json), 0, 'the table already has Ann, so nothing moves');
-    await db.query('DELETE FROM users');
+    await db.query('DELETE FROM revisions; DELETE FROM users');
     assert.equal(await store.importFrom(json), 2);
     const imported = await store.findById(old.id);
     assert.equal(imported.email, 'old@example.com');
@@ -74,7 +74,7 @@ describe('PgUserStore', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
   });
 
   test('the server signs writers up and in through Postgres, and imports users.json on boot', async () => {
-    await db.query('DELETE FROM users');
+    await db.query('DELETE FROM revisions; DELETE FROM users');
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-dbserver-'));
     const { hashPassword } = require('../lib/auth');
     new JsonUserStore(path.join(dataDir, 'users.json')).create({ email: 'first@example.com', passwordHash: hashPassword('longenough') });
@@ -97,6 +97,86 @@ describe('PgUserStore', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is
 
       const me = await fetch(base + '/api/library:read', { method: 'POST', headers: { 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/json', Cookie: cookie }, body: '{"args":[]}' });
       assert.equal(me.status, 200, 'a session cookie finds its writer in the table');
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+describe('RevisionLog', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is not set' }, () => {
+  const { openDatabase } = require('../lib/db');
+  const { PgUserStore } = require('../lib/user-store');
+  const { RevisionLog, makeDiff, applyDiff, SNAPSHOT_EVERY } = require('../lib/revisions');
+  const { createApp } = require('../server');
+
+  const db = openDatabase(DATABASE_URL);
+  const log = new RevisionLog(db);
+  let writer;
+
+  before(async () => {
+    await db.query('DROP TABLE IF EXISTS revisions, users, schema_migrations');
+    await db.migrate();
+    writer = await new PgUserStore(db).create({ email: 'rev@example.com', passwordHash: 'h' });
+  });
+  after(() => db.close());
+
+  test('a diff at paragraph grain round-trips, including an empty chapter', () => {
+    const a = '<p>One.</p><p>Two.</p><p>Three.</p>';
+    const b = '<p>One.</p><p>Two, revised.</p><hr class="sb"><p>Three.</p><p>Four.</p>';
+    assert.equal(applyDiff(a, makeDiff(a, b)), b);
+    assert.equal(applyDiff(b, makeDiff(b, a)), a);
+    assert.equal(applyDiff('', makeDiff('', a)), a);
+    assert.equal(applyDiff(a, makeDiff(a, '')), '');
+    assert.equal(applyDiff('plain text, no tags', makeDiff('plain text, no tags', 'plain text, no tags at all')), 'plain text, no tags at all');
+  });
+
+  test('records changes only, snapshots on a cadence, rebuilds any revision, and keeps the chain intact', async () => {
+    const key = { userId: writer.id, bookId: 'book-1', chapterId: 'ch-1' };
+    const first = await log.record({ ...key, html: '<p>Call me Ishmael.</p>' });
+    assert.equal(first.kind, 'snapshot');
+    assert.equal(first.words, 3);
+    assert.equal(await log.record({ ...key, html: '<p>Call me Ishmael.</p>' }), null, 'the same words again are not a revision');
+
+    const drafts = [];
+    for (let i = 1; i <= SNAPSHOT_EVERY + 2; i++) {
+      drafts.push(`<p>Call me Ishmael.</p>${'<p>Some years ago.</p>'.repeat(i)}`);
+      await log.record({ ...key, html: drafts[drafts.length - 1] });
+    }
+    const entries = await log.list(key);
+    assert.equal(entries.length, SNAPSHOT_EVERY + 3);
+    assert.equal(entries[0].kind, 'diff', 'newest first');
+    assert.deepEqual(entries.map((e) => e.kind).filter((k) => k === 'snapshot').length, 2, 'one snapshot at the start, one when the chain got long');
+
+    for (const [i, html] of drafts.entries()) {
+      assert.equal(await log.read({ userId: writer.id, id: entries[drafts.length - 1 - i].id }), html, `draft ${i + 1} rebuilds`);
+    }
+    assert.equal(await log.read({ userId: 'u-someone-else', id: entries[0].id }), null, 'another writer cannot read it');
+    assert.equal(await log.verify(key), true);
+
+    await db.query('UPDATE revisions SET created_at = created_at - interval \'1 day\' WHERE id = $1', [entries[3].id]);
+    assert.equal(await log.verify(key), false, 'a rewritten timestamp breaks the chain');
+  });
+
+  test('chapter:write through the server records a revision, and the history channels answer', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-revserver-'));
+    const app = createApp({ dev: false, dataDir, sessionSecret: 's'.repeat(40), signup: 'open', inviteCode: '', trustProxy: false, port: 0, publicUrl: '', mail: {} }, { db });
+    await app.ready;
+    await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${app.server.address().port}`;
+    const headers = { 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/json' };
+    try {
+      const signup = await fetch(base + '/auth/signup', { method: 'POST', headers, body: JSON.stringify({ email: 'typing@example.com', password: 'longenough' }), redirect: 'manual' });
+      const cookie = signup.headers.get('set-cookie').split(';')[0];
+      const api = async (channel, ...args) => (await (await fetch(base + '/api/' + channel, { method: 'POST', headers: { ...headers, Cookie: cookie }, body: JSON.stringify({ args }) })).json()).result;
+
+      const book = await api('book:create', { title: 'Draft' });
+      await api('chapter:write', book.id, 'ch-a', '<p>First words.</p>');
+      await api('chapter:write', book.id, 'ch-a', '<p>First words, then more.</p>');
+      const history = await api('revision:list', book.id, 'ch-a');
+      assert.equal(history.length, 2);
+      assert.equal(await api('revision:read', history[1].id), '<p>First words.</p>', 'the earlier draft is still there');
+      assert.equal(await api('revision:verify', book.id, 'ch-a'), true);
+      assert.equal(await api('chapter:read', book.id, 'ch-a'), '<p>First words, then more.</p>', 'the file on disk is still the truth');
     } finally {
       await app.close();
     }

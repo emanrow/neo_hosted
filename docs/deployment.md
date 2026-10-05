@@ -64,7 +64,7 @@ Things the owner can do from a browser and the Railway dashboard:
 - `https://<domain>/` redirects to `/login`; creating an account lands on the shelf and the first-run questions.
 - The editor is styled: the shelf has its paper background, not browser defaults. The image copies the desktop app's files by name, so a file missing from the `Dockerfile` shows up here first; `web/test/dockerfile.test.js` guards the list.
 - Railway → Deploy logs show `NEO hosted <version> (NEO <version>) listening on :8080`, then the data folder path, `users: postgres` (with `(N imported from users.json)` on the boot that moved them) or `users: users.json`, the signup mode and `email: on (Resend)` or `email: off`. A boot that cannot reach Postgres or fails a migration exits with `could not open the user store` instead of listening.
-- With Postgres: signing in with an account made before still works, and Railway → Postgres → Data shows the `users` and `schema_migrations` tables.
+- With Postgres: signing in with an account made before still works, and Railway → Postgres → Data shows the `users`, `revisions` and `schema_migrations` tables. Typing in a chapter adds `revisions` rows; the same words saved twice add none.
 - With email on: create an account with an address you own; the page says to check your email, the link lands on the shelf, and Resend's dashboard lists the message. "Forgot your password?" on the sign-in page sends the second kind of link.
 - Railway → Volume shows `users/<id>/NEO Library/` after the first sign-up (and `users.json` only without Postgres).
 - A failing save shows a toast in the page and a line in that writer's `neo-errors.log` on the volume.

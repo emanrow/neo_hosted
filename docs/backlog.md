@@ -18,7 +18,7 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 Decided 2026-10-05 with the owner: canonical text moves into Postgres by stages, behind the same `library` interface `app.js` already talks to, so the editor stays upstream's. Branching (alternate drafts side by side) is the feature that decides this; proof of human work is a quiet property of the history, never a certificate; the desktop folder stops being the escape hatch and DOCX/PDF/EPUB exports take its place, with a plain-file folder export kept as a courtesy.
 
 - **A. Accounts in Postgres**: done, below.
-- **B. Revision log**: every `chapter:write` that changes content appends a row (chapter, branch, parent revision, compressed diff against the parent with a full snapshot every N, a hash chaining to the parent, a timestamp). Files stay canonical; the log is additive. Gives undo beyond the browser session, a blackline between any two revisions, cheaper backups and the quiet proof of work. Timelines and characters will anchor to revisions, so this comes before any room off the hallway.
+- **B. Revision log**: done, below. What remains writer-facing: a History panel in the hosted menu (list a chapter's revisions, read one, restore one as a new revision) and a blackline between two revisions; both read the channels that exist now.
 - **C. Branches**: a named pointer to a head revision per chapter or book; create, write on, compare, merge at paragraph granularity with the writer resolving real conflicts side by side. The editor edits "the open branch's head" through the same channels.
 - **D. Flip canonical** to the database: files become an export, covers and images move to object storage, the daily zips give way to Postgres backups plus exports.
 
@@ -34,7 +34,7 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 
 ## Done
 
-- **Accounts in Postgres** (2026-10-05): `web/lib/db.js` and `PgUserStore`, chosen by `DATABASE_URL`; `users.json` is imported once on the first boot and kept beside the volume as `users.json.imported-<date>`. Storage stage A.
+- **Revision log** (2026-10-05): `web/lib/revisions.js`, the `revisions` table; every `chapter:write` that changed the words appends a snapshot or paragraph-grain diff, hash-chained with its timestamp. `revision:list`, `revision:read`, `revision:verify` answer; no UI yet. Storage stage B.- **Accounts in Postgres** (2026-10-05): `web/lib/db.js` and `PgUserStore`, chosen by `DATABASE_URL`; `users.json` is imported once on the first boot and kept beside the volume as `users.json.imported-<date>`. Storage stage A.
 - **Email** (2026-10-05): Resend behind `web/lib/mail.js`; new writers confirm their address, a forgotten password comes back by a link that works once. `RESEND_API_KEY`, `NEO_MAIL_FROM`, `NEO_PUBLIC_URL` turn it on.
 - **Checks on every PR** (2026-10-05): `.github/workflows/hosted.yml` runs the hosted suite, the lint, the parser tests and boots the Docker image.
 - **Import** .docx / .txt / .md (2026-10-03): the parser left `main.js` for a shared `import-parse.js`; the server exposes `POST /api/import:upload`; the bridge wires `importPick` and `importFiles`. One parser for both editions.
