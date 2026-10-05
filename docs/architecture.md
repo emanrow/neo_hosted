@@ -53,6 +53,7 @@ Without a database (a laptop, the tests), `lib/library.js` and `lib/branches.js`
     NEO Library/                    with Postgres: only the two lines below; without: the desktop layout (AGENTS.md, "Files on disk")
       neo-errors.log                this writer's failures
       Backups/neo-backup-YYYY-MM-DD.zip   one per day, 14 kept, swept hourly by the server (lib/backups.js)
+      Backups/neo-backup-YYYY-MM-DD.zip.offsite   present once that zip landed in the bucket (lib/object-store.js), when one is configured
       library.json  _catalog.txt          folder mode only, and the rest of this list
       Trash/<book-id>--<timestamp>/       a "deleted" book; there is no system trash on a server
       Trash/<book-id>--branch-<name>--<timestamp>/   a deleted branch
@@ -81,7 +82,7 @@ A writer can download their library (File → Download Library…) and open it i
 | `readJSON` / `writeJSON` | `files.readJSON` / `files.writeJSON` | `.bak` of the last whole version; reads fall back on `.tmp` then `.bak` and restore |
 | `rebuildBookMeta` | `library.rebuildBookMeta` | a lost `book.json` comes back from the chapter files and the catalog |
 | `library:read` recovery | `library.readLibrary` | an unreadable `library.json` with no copy puts every book on one shelf |
-| `dailyBackup` | `library.dailyBackup` | one zip a day, 14 kept, `Backups/`, `Exports/` and `Trash/` left out |
+| `dailyBackup` | `library.dailyBackup(copy)` | one zip a day, 14 kept, `Backups/`, `Exports/` and `Trash/` left out; `copy(name, bytes)` sends it to the bucket and is retried hourly until it lands |
 | `book:delete` → `shell.trashItem` | `library.trashBook` | the folder moves to `Trash/` inside the library, timestamped |
 
 A fix to one of these upstream needs the same fix here. Lifting them into a module both can `require` is welcome once the hosted edition has settled.

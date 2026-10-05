@@ -12,7 +12,9 @@ const { describe, test, before, after } = require('node:test');
 const { createApp } = require('../server');
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-server-'));
-const app = createApp({ dev: true, dataDir, sessionSecret: 's'.repeat(40), signup: 'invite', inviteCode: 'come-in', trustProxy: false, port: 0 });
+const bucketPuts = [];                                 // what the stand-in bucket was sent
+const objectStore = { enabled: true, bucket: 'words', put: async (key, bytes, type) => { bucketPuts.push({ key, size: bytes.length, type }); } };
+const app = createApp({ dev: true, dataDir, sessionSecret: 's'.repeat(40), signup: 'invite', inviteCode: 'come-in', trustProxy: false, port: 0 }, { objectStore });
 let base = '';
 let cookie = '';
 
@@ -286,13 +288,18 @@ describe('the hosted server', () => {
     assert.match(out.headers.get('set-cookie'), /Max-Age=0/);
   });
 
-  test('the backup sweep zips every writer\'s library', async () => {
+  test('the backup sweep zips every writer\'s library and sends each zip to the bucket', async () => {
+    const put = bucketPuts;
     await app.backupEveryone();
     const users = fs.readdirSync(path.join(dataDir, 'users'));
     const withLibrary = users.filter((u) => fs.existsSync(path.join(dataDir, 'users', u, 'NEO Library')));
     assert.ok(withLibrary.length >= 1);
     for (const u of withLibrary) {
-      assert.equal(fs.readdirSync(path.join(dataDir, 'users', u, 'NEO Library', 'Backups')).length, 1);
+      const files = fs.readdirSync(path.join(dataDir, 'users', u, 'NEO Library', 'Backups')).sort();
+      assert.equal(files.filter((f) => f.endsWith('.zip')).length, 1);
+      assert.equal(files.filter((f) => f.endsWith('.zip.offsite')).length, 1, 'marked as copied');
+      assert.ok(put.some((p) => p.key.startsWith(`${u}/neo-backup-`) && p.key.endsWith('.zip') && p.type === 'application/zip' && p.size > 0), `${u} was sent`);
     }
+    assert.equal(put.length, withLibrary.length);
   });
 });

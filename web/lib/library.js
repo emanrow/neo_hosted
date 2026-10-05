@@ -319,10 +319,10 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     }
   }
 
-  /** One zip of the whole library per day (backups.js keeps 14). */
-  function dailyBackup() {
+  /** One zip of the whole library per day (backups.js keeps 14); `copy(name, bytes)` sends it off-site. */
+  function dailyBackup(copy) {
     ensure();
-    return dailyZip({ backupsDir: path.join(dir, 'Backups'), fill: fillZip });
+    return dailyZip({ backupsDir: path.join(dir, 'Backups'), fill: fillZip, copy });
   }
 
   /** The library as one zip, for the download. */
