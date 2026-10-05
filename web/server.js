@@ -12,6 +12,8 @@
 //   GET  /login, /web/*, /app.js, /styles.css, /covers.js, /i18n.js,
 //        /jszip.min.js, /fonts/*, /locales/*       public static files
 //   POST /auth/signup | /auth/login | /auth/logout
+//   POST /auth/forgot { email } | /auth/reset { token, password }   (email on; see lib/mail.js)
+//   GET  /auth/verify?token=     the link in a confirmation email → signed in, or → /login?notice=link-expired
 //   POST /api/<channel>            { args: [...] } → { ok, result | error }   (see lib/handlers.js)
 //   POST /api/cover:upload?bookId=&ext=            raw image bytes → file name
 //   POST /api/import:upload?name=<file name>       raw .docx/.txt/.md bytes → the parsed book
@@ -26,8 +28,9 @@ const JSZip = require('jszip');                      // web/node_modules' copy, 
 
 const { loadConfig } = require('./lib/config');
 const { HttpError, readBody, readJSONBody, sendJSON, sendHTML, sendText, redirect, serveFile, parseCookies, cookieHeader, isSameOrigin, clientAddress, isSecureRequest } = require('./lib/http');
-const { hashPassword, verifyPassword, signSession, verifySession, LoginThrottle, SESSION_TTL_MS } = require('./lib/auth');
-const { JsonUserStore, normalizeEmail } = require('./lib/user-store');
+const { hashPassword, verifyPassword, signSession, verifySession, signLink, verifyLink, linkStamp, LoginThrottle, SESSION_TTL_MS } = require('./lib/auth');
+const { JsonUserStore, normalizeEmail, isEmailVerified } = require('./lib/user-store');
+const { createMailer, confirmationMessage, resetMessage } = require('./lib/mail');
 const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
 const { registerHandlers } = require('./lib/handlers');
@@ -57,11 +60,18 @@ const VERSIONS = {
 const ROOT_FILES = new Set(['/app.js', '/styles.css', '/covers.js', '/i18n.js']);
 const ROOT_DIRS = ['/fonts/', '/locales/'];
 
-function createApp(config) {
+/**
+ * The whole server, not yet listening. `deps.mailer` lets a test catch the
+ * email the server would send; production builds one from config.mail.
+ */
+function createApp(config, deps = {}) {
   fs.mkdirSync(config.dataDir, { recursive: true });
   const users = new JsonUserStore(path.join(config.dataDir, 'users.json'));
   const secretBox = createSecretBox(config.sessionSecret);
+  const mailer = deps.mailer || createMailer(config.mail || {});
   const throttle = new LoginThrottle();
+  const mailPerAddress = new LoginThrottle({ limit: 5 });   // emails to one address per window
+  const mailPerClient = new LoginThrottle({ limit: 20 });   // emails asked for from one client per window (a writing group shares an address)
   const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const languages = i18n.listLanguages();
 
@@ -126,15 +136,66 @@ function createApp(config) {
     return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
+  // -------------------------------------------------------------------
+  // Email: confirming an address, resetting a password
+  // -------------------------------------------------------------------
+
+  /** Where links in email point: NEO_PUBLIC_URL, or (laptops only) the host this request came to. */
+  function linkBase(req) {
+    if (config.publicUrl) return config.publicUrl;
+    return `${isSecureRequest(req, config.trustProxy) ? 'https' : 'http'}://${req.headers.host}`;
+  }
+
+  /** Rations email: so many to one address, so many from one client, per window. Counts the request, then refuses past the limit. */
+  function allowMail(req, email) {
+    const rations = [[mailPerAddress, normalizeEmail(email)], [mailPerClient, clientAddress(req, config.trustProxy)]];
+    if (!rations.every(([ration, key]) => ration.allowed(key))) throw new HttpError(429, 'Too many emails requested. Try again in a few minutes.');
+    rations.forEach(([ration, key]) => ration.failed(key));
+  }
+
+  async function sendConfirmation(req, user) {
+    const token = signLink({ purpose: 'verify', userId: user.id }, config.sessionSecret);
+    const link = `${linkBase(req)}/auth/verify?token=${encodeURIComponent(token)}`;
+    await mailer.send({ to: user.email, ...confirmationMessage({ link }) });
+  }
+
+  async function sendReset(req, user) {
+    const token = signLink({ purpose: 'reset', userId: user.id, stamp: linkStamp(user.passwordHash) }, config.sessionSecret);
+    const link = `${linkBase(req)}/login?reset=${encodeURIComponent(token)}`;
+    await mailer.send({ to: user.email, ...resetMessage({ link }) });
+  }
+
+  /** Signs the writer in and tells the page so. */
+  function signIn(req, res, user) {
+    res.setHeader('Set-Cookie', sessionCookie(req, user));
+    sendJSON(res, 200, { ok: true });
+  }
+
+  function checkCredentials({ email, password }) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) throw new HttpError(400, 'That does not look like an email address');
+    if (typeof password !== 'string' || password.length < MIN_PASSWORD) throw new HttpError(400, `A password needs at least ${MIN_PASSWORD} characters`);
+  }
+
+  // With email on, a new account waits for its confirmation link and the
+  // page says "check your email" ({ ok, confirm: true }). Signing up again
+  // with the same password while still waiting sends the link again, so a
+  // lost email is not a lost account. With email off, signup signs in.
   async function handleSignup(req, res) {
     const { email, password, invite } = await readJSONBody(req, AUTH_BODY_LIMIT);
     if (!signupAllowed(invite)) throw new HttpError(403, config.signup === 'closed' ? 'New accounts are not being created here' : 'That invitation code is not right');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) throw new HttpError(400, 'That does not look like an email address');
-    if (typeof password !== 'string' || password.length < MIN_PASSWORD) throw new HttpError(400, `A password needs at least ${MIN_PASSWORD} characters`);
+    checkCredentials({ email, password });
+    const waiting = users.findByEmail(email);
+    if (waiting && mailer.enabled && !isEmailVerified(waiting) && verifyPassword(password, waiting.passwordHash)) {
+      allowMail(req, email);
+      await sendConfirmation(req, waiting);
+      return sendJSON(res, 200, { ok: true, confirm: true });
+    }
     let user;
-    try { user = users.create({ email, passwordHash: hashPassword(password) }); } catch (err) { throw new HttpError(409, err.message); }
-    res.setHeader('Set-Cookie', sessionCookie(req, user));
-    sendJSON(res, 200, { ok: true });
+    try { user = users.create({ email, passwordHash: hashPassword(password), emailVerified: !mailer.enabled }); } catch (err) { throw new HttpError(409, err.message); }
+    if (!mailer.enabled) return signIn(req, res, user);
+    allowMail(req, email);
+    await sendConfirmation(req, user);
+    sendJSON(res, 200, { ok: true, confirm: true });
   }
 
   async function handleLogin(req, res) {
@@ -147,8 +208,49 @@ function createApp(config) {
       throw new HttpError(401, 'That email and password do not match');
     }
     keys.forEach((k) => throttle.clear(k));
+    if (mailer.enabled && !isEmailVerified(user)) {
+      // the right password, an unconfirmed address: send the link again rather than leave them stuck
+      allowMail(req, email);
+      await sendConfirmation(req, user);
+      throw new HttpError(403, 'Confirm your email first. We just sent you a new link.');
+    }
+    signIn(req, res, user);
+  }
+
+  function handleVerify(url, req, res) {
+    const link = verifyLink(url.searchParams.get('token'), 'verify', config.sessionSecret);
+    const user = link && users.findById(link.userId);
+    if (!user) return redirect(res, '/login?notice=link-expired');
+    users.markEmailVerified(user.id);
     res.setHeader('Set-Cookie', sessionCookie(req, user));
+    redirect(res, '/');
+  }
+
+  // Always "ok", whether or not the address has an account, so the form
+  // cannot be used to find out who writes here.
+  async function handleForgot(req, res) {
+    const { email } = await readJSONBody(req, AUTH_BODY_LIMIT);
+    if (!mailer.enabled) throw new HttpError(503, 'Password reset by email is not set up on this server');
+    allowMail(req, email);
+    const user = users.findByEmail(email);
+    if (user) await sendReset(req, user);
     sendJSON(res, 200, { ok: true });
+  }
+
+  // The reset link carries a stamp of the password hash it was issued
+  // against, so it works once: after this, the stamp no longer matches.
+  // Opening the link also proves the address, so an unconfirmed account
+  // is confirmed here too.
+  async function handleReset(req, res) {
+    const { token, password } = await readJSONBody(req, AUTH_BODY_LIMIT);
+    const link = verifyLink(token, 'reset', config.sessionSecret);
+    const user = link && users.findById(link.userId);
+    if (!user || link.stamp !== linkStamp(user.passwordHash)) throw new HttpError(400, 'That reset link has expired or was already used. Ask for a new one.');
+    if (typeof password !== 'string' || password.length < MIN_PASSWORD) throw new HttpError(400, `A password needs at least ${MIN_PASSWORD} characters`);
+    users.setPasswordHash(user.id, hashPassword(password));
+    users.markEmailVerified(user.id);
+    throttle.clear('email:' + user.email);
+    signIn(req, res, users.findById(user.id));
   }
 
   function handleLogout(req, res) {
@@ -244,12 +346,15 @@ function createApp(config) {
       if (p === '/auth/signup') return handleSignup(req, res);
       if (p === '/auth/login') return handleLogin(req, res);
       if (p === '/auth/logout') return handleLogout(req, res);
+      if (p === '/auth/forgot') return handleForgot(req, res);
+      if (p === '/auth/reset') return handleReset(req, res);
     }
+    if (method === 'GET' && p === '/auth/verify') return handleVerify(url, req, res);
 
     const user = currentUser(req);
 
     if (method === 'GET' && p === '/login') {
-      if (user) return redirect(res, '/');
+      if (user && !url.searchParams.has('reset')) return redirect(res, '/');
       return sendHTML(res, 200, fs.readFileSync(path.join(PUBLIC, 'login.html'), 'utf8'), { 'Content-Security-Policy': PAGE_CSP });
     }
     if (method === 'GET' && p === '/') {
@@ -311,7 +416,7 @@ function createApp(config) {
   }
 
   return {
-    server, users, spell, config, backupEveryone, startBackups,
+    server, users, spell, mailer, config, backupEveryone, startBackups,
     close: () => new Promise((resolve) => { timers.forEach(clearTimeout); server.close(() => resolve()); })
   };
 }
@@ -323,7 +428,7 @@ if (require.main === module) {
   process.on('unhandledRejection', (err) => console.error('[main-promise]', err));
   app.server.listen(config.port, () => {
     console.log(`NEO hosted ${VERSIONS.hosted} (NEO ${VERSIONS.neo}) listening on :${config.port}`);
-    console.log(`library volume: ${config.dataDir}  signup: ${config.signup}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
+    console.log(`library volume: ${config.dataDir}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
   });
   app.startBackups();
 }

@@ -1,6 +1,6 @@
 'use strict';
 
-// Passwords and sessions with nothing but node:crypto.
+// Passwords, sessions and the links in email, with nothing but node:crypto.
 //
 // Passwords: scrypt, parameters recorded in the stored string so they can be
 // raised later and old hashes still verify. Sessions: a signed token in an
@@ -58,6 +58,45 @@ function verifySession(token, secret) {
   return userId;
 }
 
+// ---------------------------------------------------------------------------
+// Links in email: "purpose.userId.expiry.stamp.signature"
+//
+// The HMAC key is derived from the session secret per purpose, so a link that
+// confirms an email can never pass as a session or as a password reset. The
+// stamp is a digest of some state the link should die with (the password
+// hash, for a reset): once that state changes, the stamp no longer matches
+// and a replayed link is refused. Nothing is stored server-side, as with
+// sessions.
+// ---------------------------------------------------------------------------
+
+const LINK_TTL_MS = { verify: 24 * 60 * 60 * 1000, reset: 60 * 60 * 1000 };
+
+const linkKey = (secret, purpose) => Buffer.from(crypto.hkdfSync('sha256', String(secret), '', `neo-link:${purpose}`, 32));
+
+/** A short, non-reversible digest of the state a link is tied to. */
+const linkStamp = (state) => b64url(crypto.createHash('sha256').update(String(state || '')).digest()).slice(0, 22);
+
+/** A one-purpose token for userId, good for LINK_TTL_MS[purpose] (or ttlMs). */
+function signLink({ purpose, userId, stamp = linkStamp('') }, secret, ttlMs = LINK_TTL_MS[purpose]) {
+  if (!LINK_TTL_MS[purpose]) throw new Error(`Unknown link purpose: ${purpose}`);
+  const payload = [purpose, userId, Date.now() + ttlMs, stamp].join('.');
+  return `${payload}.${sign(payload, linkKey(secret, purpose))}`;
+}
+
+/** `{ userId, stamp }` for a genuine, unexpired link of this purpose; null otherwise. The caller compares the stamp. */
+function verifyLink(token, purpose, secret) {
+  if (typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 5 || parts[0] !== purpose) return null;
+  const [, userId, expiry, stamp, signature] = parts;
+  const expected = sign([purpose, userId, expiry, stamp].join('.'), linkKey(secret, purpose));
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  if (!/^\d+$/.test(expiry) || Number(expiry) < Date.now()) return null;
+  return { userId, stamp };
+}
+
 /**
  * Slows a password guesser down: after `limit` failures from one key (an IP
  * or an email) within `windowMs`, further attempts are refused until the
@@ -82,4 +121,4 @@ class LoginThrottle {
   clear(key) { this.failures.delete(key); }
 }
 
-module.exports = { hashPassword, verifyPassword, signSession, verifySession, LoginThrottle, SESSION_TTL_MS };
+module.exports = { hashPassword, verifyPassword, signSession, verifySession, signLink, verifyLink, linkStamp, LoginThrottle, SESSION_TTL_MS, LINK_TTL_MS };

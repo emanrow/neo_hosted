@@ -17,6 +17,9 @@ All read once in `web/lib/config.js`; the server refuses to boot on a bad combin
 | `NEO_INVITE_CODE` | Needed when `NEO_SIGNUP=invite`. |
 | `NEO_TRUST_PROXY` | `1` behind a TLS-terminating proxy. Defaults on when `RAILWAY_ENVIRONMENT` is set. |
 | `NEO_DEV` | `1` makes a throwaway session secret and relaxes the checks above. Laptops only. |
+| `RESEND_API_KEY` | Turns email on: new writers confirm their address before they can sign in, and a forgotten password can be reset by link. Unset, there is no email at all and signup signs straight in. |
+| `NEO_MAIL_FROM` | The sender Resend has verified for your domain, `NEO <neo@example.com>`. Required with `RESEND_API_KEY`. |
+| `NEO_PUBLIC_URL` | Where writers open the site, `https://neo.example.com`, so the links in email point home. Required with `RESEND_API_KEY` (a `NEO_DEV` laptop falls back to the request's own host). |
 
 Generate a secret with:
 
@@ -31,6 +34,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 3. Set `NEO_SESSION_SECRET`, `NEO_SIGNUP`, and for invite mode `NEO_INVITE_CODE`.
 4. Generate a domain. Health checks hit `/healthz`.
 5. Open the site and create the first account. It is the owner's.
+6. For email (optional, but needed for confirmed addresses and password reset): create a [Resend](https://resend.com) account, add and verify the sending domain there, make an API key, and set `RESEND_API_KEY`, `NEO_MAIL_FROM` and `NEO_PUBLIC_URL` on the service. Accounts made before email was on keep working; only new ones wait for a confirmation link. The server refuses to boot if one of the three is missing and says which. [auth-and-users.md](auth-and-users.md#email) has the flow.
 
 Railway auto-deploys `main`. The volume is the only state; back it up. The daily zips live on the same volume, so they protect against a writer's mistake, not against losing the volume ([backlog.md](backlog.md) has off-site copies).
 
@@ -57,10 +61,11 @@ Things the owner can do from a browser and the Railway dashboard:
 - `https://<domain>/healthz` answers `ok`.
 - `https://<domain>/` redirects to `/login`; creating an account lands on the shelf and the first-run questions.
 - The editor is styled: the shelf has its paper background, not browser defaults. The image copies the desktop app's files by name, so a file missing from the `Dockerfile` shows up here first; `web/test/dockerfile.test.js` guards the list.
-- Railway → Deploy logs show `NEO hosted <version> (NEO <version>) listening on :8080` and the data folder path.
+- Railway → Deploy logs show `NEO hosted <version> (NEO <version>) listening on :8080`, then the data folder path, the signup mode and `email: on (Resend)` or `email: off`.
+- With email on: create an account with an address you own; the page says to check your email, the link lands on the shelf, and Resend's dashboard lists the message. "Forgot your password?" on the sign-in page sends the second kind of link.
 - Railway → Volume shows `users.json` and `users/<id>/NEO Library/` after the first sign-up.
 - A failing save shows a toast in the page and a line in that writer's `neo-errors.log` on the volume.
 
 ## Upgrading
 
-Merge to `main`. Sessions survive a deploy (nothing is stored server-side). Libraries are files; there are no migrations. If upstream NEO changes `index.html` so a page marker moves, the new build fails its health check rather than serving a broken page; see `web/lib/page.js`.
+Every pull request runs the hosted suite, the lint, the shared parser's tests and a boot of the Docker image in GitHub Actions (`.github/workflows/hosted.yml`); the checks must be green before the merge. Merge to `main`. Sessions survive a deploy (nothing is stored server-side). Libraries are files; there are no migrations. If upstream NEO changes `index.html` so a page marker moves, the new build fails its health check rather than serving a broken page; see `web/lib/page.js`.

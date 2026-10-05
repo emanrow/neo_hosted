@@ -13,8 +13,9 @@ web/
   lib/
     config.js           env → config; refuses to boot on a bad combination (loadConfig)
     http.js             readBody/readJSONBody with limits, sendJSON/HTML, serveFile (path-fenced), cookies, isSameOrigin
-    auth.js             hashPassword/verifyPassword (scrypt), signSession/verifySession (HMAC), LoginThrottle
-    user-store.js       JsonUserStore: count, findByEmail, findById, create, setPasswordHash
+    auth.js             hashPassword/verifyPassword (scrypt), signSession/verifySession (HMAC), signLink/verifyLink (email links), LoginThrottle
+    user-store.js       JsonUserStore: count, findByEmail, findById, create, setPasswordHash, markEmailVerified, update; isEmailVerified
+    mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation and reset messages
     secrets.js          createSecretBox(masterSecret): read/write/has, AES-256-GCM per writer
     files.js            libName, writeFileDurable, readJSON, writeJSON  (port of main.js)
     library.js          openLibrary({dir, t, logError}): one writer's NEO Library  (port of main.js)
@@ -26,7 +27,7 @@ web/
     web-bridge.js       window.neo for the browser; rpc(channel, ...args) → POST /api/<channel>
     web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10
     web.css             menu bar and sign-in styles, on styles.css's tokens
-    login.html, login.js  sign in / create account (English only for now)
+    login.html, login.js  sign in / create account / forgot / reset, one form in four modes (English only for now)
   scripts/smoke.e2e.js  optional headless-Chromium run, see docs/testing.md
   docker-entrypoint.sh  starts as root, hands the mounted volume to `node`, drops privileges (docs/deployment.md)
   test/*.test.js        node:test; server.test.js boots the real server
@@ -35,7 +36,7 @@ web/
 
 ## Request path
 
-`server.js` → `route(req, res)`: health, public static files, `/auth/*`, then everything that needs a writer. `currentUser(req)` verifies the cookie and loads the user; `contextFor(user, req)` builds the context; `handleApi` dispatches `POST /api/<channel>` to `api.handlers`. Errors become `{ ok: false, error }`; an `HttpError` keeps its status, anything else is 500 and logged. Full narrative in [docs/architecture.md](../docs/architecture.md#request-lifecycle).
+`server.js` → `route(req, res)`: health, public static files, `/auth/*` (signup, login, logout, forgot, reset, and `GET /auth/verify` for the confirmation link), then everything that needs a writer. `currentUser(req)` verifies the cookie and loads the user; `contextFor(user, req)` builds the context; `handleApi` dispatches `POST /api/<channel>` to `api.handlers`. Errors become `{ ok: false, error }`; an `HttpError` keeps its status, anything else is 500 and logged. Full narrative in [docs/architecture.md](../docs/architecture.md#request-lifecycle).
 
 The context (`ctx`) a handler receives:
 
@@ -72,3 +73,4 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **`index.html` markers** (`page.js` `MARKERS`): the CSP meta, the drag strip, and the two script tags. A moved marker throws at boot.
 - **Static roots are allowlisted** (`ROOT_FILES`, `ROOT_DIRS` in `server.js`). `main.js`, `preload.js`, `package.json` are never served.
 - **New strings** in `web-bridge.js` and `web-menu.js` are scanned by `scripts/i18n.js`; run `node scripts/i18n.js template`.
+- **Email is optional and the server must not care.** `mailer.enabled` is the only question `server.js` asks; with it off, signup signs in at once and `/auth/forgot` answers 503. Tests pass a stub mailer as `createApp(config, { mailer })` and read what it would have sent.
