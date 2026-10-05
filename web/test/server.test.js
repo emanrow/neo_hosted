@@ -137,6 +137,12 @@ describe('the hosted server', () => {
     assert.equal((await api('chapter:read', book.id, 'ch-1')).result, '<p>Alt.</p>');
     assert.equal((await api('branch:switch', book.id, 'main')).result.active, 'main');
     assert.equal((await api('chapter:read', book.id, 'ch-1')).result, '<p>Main.</p>');
+    const beside = (await api('branch:read', book.id, 'alt')).result;
+    assert.equal(beside.name, 'alt');
+    assert.deepEqual(beside.meta.chapterOrder, ['ch-1']);
+    assert.deepEqual(beside.chapters, { 'ch-1': '<p>Alt.</p>' }, 'the other draft can be read without switching to it');
+    assert.equal((await api('chapter:read', book.id, 'ch-1')).result, '<p>Main.</p>', 'and reading it changes nothing here');
+    assert.equal((await api('branch:read', book.id, 'nope')).status, 500, 'a branch that is not there is an error');
     assert.equal((await api('revision:list', book.id, 'ch-1')).result.length, 0, 'no database, no history, no error');
     const refused = await api('branch:create', book.id, 'main');
     assert.equal(refused.status, 500);

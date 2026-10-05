@@ -209,6 +209,110 @@
     };
   }
 
+  /** Side by Side…: this draft on the left, another on the right, one chapter at a time, read only. Nothing is merged. */
+  async function sideBySide() {
+    const bookId = bookOnPage();
+    const info = bookId && (await refresh(bookId));
+    if (!info) { say(t('Open a book first')); return; }
+    const others = info.branches.filter((b) => b.name !== info.active).map((b) => b.name);
+    if (!others.length) { say(t('No other branch to read. Make one first.')); return; }
+    const label = (n) => (n === 'main' ? t('Main draft') : n);
+    const name = others.length === 1 ? others[0] : (typeof window.optionModal === 'function'
+      ? await window.optionModal(t('Read side by side'), t('Which draft goes beside "{here}"?', { here: label(info.active) }), others.map((n) => ({ label: label(n), value: n })))
+      : (window.prompt(t('Read which draft? {names}', { names: others.join(', ') })) || null));
+    if (!name || !others.includes(name)) return;
+    if (typeof window.flushAllSaves === 'function') window.flushAllSaves();
+    await pause(800);
+    let here, there;
+    try {
+      [here, there] = await Promise.all([window.neo.readBranch(bookId, info.active), window.neo.readBranch(bookId, name)]);
+    } catch (err) { say(String((err && err.message) || err)); return; }
+    showSideBySide(here, there, label);
+  }
+
+  function showSideBySide(here, there, label) {
+    const bd = document.createElement('div');
+    bd.className = 'modal-backdrop hosted-side';
+    bd.tabIndex = -1;
+    bd.innerHTML = `
+      <div class="modal hosted-side-modal" role="dialog" aria-labelledby="hosted-side-title">
+        <div class="sb-head">
+          <h2 id="hosted-side-title" style="font-size:16px"></h2>
+          <button class="sb-prev btn-quiet" aria-label="${t('Previous chapter')}">‹</button>
+          <select class="sb-chapter"></select>
+          <button class="sb-next btn-quiet" aria-label="${t('Next chapter')}">›</button>
+          <label class="sb-sync"><input type="checkbox" checked> ${t('Scroll together')}</label>
+          <span class="mm-spacer"></span>
+          <button class="sb-close btn-gold">${t('Close')}</button>
+        </div>
+        <div class="sb-columns">
+          <div class="sb-column"><div class="sb-column-title"></div><div class="chapter-body sb-text"></div></div>
+          <div class="sb-column"><div class="sb-column-title"></div><div class="chapter-body sb-text"></div></div>
+        </div>
+      </div>`;
+    document.body.appendChild(bd);
+    bd.querySelector('h2').textContent = t('Side by side');
+    const select = bd.querySelector('.sb-chapter');
+    const [left, right] = bd.querySelectorAll('.sb-column');
+    left.querySelector('.sb-column-title').textContent = t('Here, in "{name}"', { name: label(here.name) });
+    right.querySelector('.sb-column-title').textContent = t('In "{name}"', { name: label(there.name) });
+    const leftText = left.querySelector('.sb-text');
+    const rightText = right.querySelector('.sb-text');
+    const sync = bd.querySelector('.sb-sync input');
+    const close = () => bd.remove();
+    bd.querySelector('.sb-close').onclick = close;
+    bd.addEventListener('click', (e) => { if (e.target === bd) close(); });
+    bd.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); close(); }
+      if (e.key === 'ArrowLeft' && e.target.tagName !== 'SELECT') step(-1);
+      if (e.key === 'ArrowRight' && e.target.tagName !== 'SELECT') step(1);
+    });
+    bd.focus();
+
+    // every chapter either draft has, in this draft's order, the other draft's extras after
+    const order = [...((here.meta && here.meta.chapterOrder) || [])];
+    for (const id of (there.meta && there.meta.chapterOrder) || []) if (!order.includes(id)) order.push(id);
+    const nameOf = (id) => {
+      const titles = (here.meta && here.meta.chapterTitles) || {};
+      const theirTitles = (there.meta && there.meta.chapterTitles) || {};
+      const n = order.indexOf(id) + 1;
+      return titles[id] || theirTitles[id] || t('Chapter {n}', { n });
+    };
+    for (const id of order) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = nameOf(id);
+      select.appendChild(opt);
+    }
+    const missing = `<p class="hh-note"><em>${t('Not in this draft.')}</em></p>`;
+    const show = (id) => {
+      select.value = id;
+      leftText.innerHTML = id in here.chapters ? (here.chapters[id] || '<p></p>') : missing;
+      rightText.innerHTML = id in there.chapters ? (there.chapters[id] || '<p></p>') : missing;
+      leftText.scrollTop = 0; rightText.scrollTop = 0;
+      bd.querySelector('.sb-prev').disabled = order.indexOf(id) <= 0;
+      bd.querySelector('.sb-next').disabled = order.indexOf(id) >= order.length - 1;
+      if (!bd.contains(document.activeElement) || document.activeElement.disabled) bd.focus();   // a disabled button drops focus, and with it the keys
+    };
+    const step = (by) => { const i = order.indexOf(select.value) + by; if (i >= 0 && i < order.length) show(order[i]); };
+    select.onchange = () => show(select.value);
+    bd.querySelector('.sb-prev').onclick = () => step(-1);
+    bd.querySelector('.sb-next').onclick = () => step(1);
+    // scrolling one column scrolls the other by the same share of its height
+    let following = null;
+    const follow = (from, to) => () => {
+      if (!sync.checked || following === to) return;
+      following = from;
+      const share = from.scrollTop / Math.max(1, from.scrollHeight - from.clientHeight);
+      to.scrollTop = share * (to.scrollHeight - to.clientHeight);
+      requestAnimationFrame(() => { following = null; });
+    };
+    leftText.addEventListener('scroll', follow(leftText, rightText));
+    rightText.addEventListener('scroll', follow(rightText, leftText));
+    const current = (window.neoHosted.state && window.neoHosted.state.chapterId) || null;
+    show(current && order.includes(current) ? current : order[0]);
+  }
+
   // After a switch the page reloads on the shelf; open the book again once
   // the shelf is drawn, and say which draft this is.
   async function reopenAfterReload() {
@@ -225,6 +329,6 @@
     if (info) say(info.active === 'main' ? t('Main draft') : t('Branch: {name}', { name: info.active }));
   }
 
-  hosted.branches = { refresh, switchBranch, newBranch, deleteBranch, mergeBranch };
+  hosted.branches = { refresh, switchBranch, newBranch, deleteBranch, mergeBranch, sideBySide };
   reopenAfterReload();
 })();

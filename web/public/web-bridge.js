@@ -165,6 +165,7 @@
     switchBranch: (bookId, name) => rpc('branch:switch', bookId, name),
     deleteBranch: (bookId, name) => rpc('branch:delete', bookId, name),
     mergePreview: (bookId, name) => rpc('branch:mergePreview', bookId, name),
+    readBranch: (bookId, name) => rpc('branch:read', bookId, name),
     mergeBranch: (bookId, name, resolutions) => rpc('branch:merge', bookId, name, resolutions),
     readRevision: (id) => rpc('revision:read', id),
     compareRevision: (bookId, chId, id) => rpc('revision:compare', bookId, chId, id),

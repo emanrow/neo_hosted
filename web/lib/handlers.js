@@ -47,6 +47,15 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir, feedback }
   api.handle('branch:switch', (ctx, bookId, name) => ctx.branches.switchTo(bookId, name));
   api.handle('branch:delete', (ctx, bookId, name) => ctx.branches.remove(bookId, name));
   api.handle('branch:mergePreview', (ctx, bookId, name) => ctx.merger.preview(bookId, name));
+  // a whole draft to read beside this one (Side by Side…): its book.json and every chapter, nothing written
+  api.handle('branch:read', async (ctx, bookId, name) => {
+    const { branches } = await ctx.branches.list(bookId);
+    if (!branches.some((b) => b.name === name)) throw new Error('No such branch');
+    const meta = await ctx.branches.readMetaOf(bookId, name);
+    const chapters = {};
+    for (const chapterId of (meta && meta.chapterOrder) || []) chapters[chapterId] = await ctx.branches.readChapterOf(bookId, name, chapterId);
+    return { name, meta, chapters };
+  });
   // the merged chapters go through chapter:write's path so the log keeps them
   api.handle('branch:merge', async (ctx, bookId, name, resolutions) => {
     const result = await ctx.merger.apply(bookId, name, resolutions && typeof resolutions === 'object' ? resolutions : {});
