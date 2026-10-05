@@ -40,7 +40,7 @@ web/
     web-branches.js     File → Branches: new, switch, delete, Compare & Merge… (the merge panel: chapter list, blackline, conflict choices); a switch or merge saves, tells the server, reloads and reopens the book
     web-share.js        File → Share…: publish the book or the chapter the caret is in as a read-only page, copy the link, publish again, unpublish; the HTML comes from app.js's own buildHtml/bookExportData/chapterExportData
     web-mobile.js       a touch screen only ((hover: none)): the ☰ button that opens the menu bar, edge swipes for the chapter and notes panes; web.css's body.hosted-touch and max-width rules do the rest
-    web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, restore by writing the draft back and calling the editor's refreshFromDisk
+    web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, Show Changes (revision:compare: that save against the draft now, a blackline from merge.js), restore by writing the draft back and calling the editor's refreshFromDisk
     web.css             menu bar and sign-in styles, on styles.css's tokens
     login.html, login.js  sign in / create account / forgot / reset, one form in four modes; rendered through login-page.js, never served raw
   locales/<code>.json   the hosted edition's own strings (sign-in page, auth errors) per language, laid over ../locales/<code>.json by lib/i18n.js; one file per upstream language, keys are the English text

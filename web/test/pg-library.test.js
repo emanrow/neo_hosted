@@ -269,6 +269,7 @@ describe('PgLibrary', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is n
       assert.equal(await api('chapter:write', book.id, 'ch-1', '<p>First words.</p>'), true);
       assert.match((await api('chapter:stamps', book.id))['ch-1'], /:19$/);
       assert.equal((await api('revision:list', book.id, 'ch-1')).length, 1, 'the log still records');
+      const [first] = await api('revision:list', book.id, 'ch-1');
       assert.ok(!fs.existsSync(path.join(libraryDir, book.id)), 'nothing was written to the volume');
 
       const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
@@ -287,6 +288,12 @@ describe('PgLibrary', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is n
       assert.equal(preview.chapters[0].status, 'merged');
       assert.deepEqual(await api('branch:merge', book.id, 'what if', {}), { into: 'main', from: 'what if', chapters: 1 });
       assert.equal(await api('chapter:read', book.id, 'ch-1'), '<p>Branch words.</p>');
+      const compared = await api('revision:compare', book.id, 'ch-1', first.id);
+      assert.equal(compared.same, false);
+      assert.match(compared.blackline, /<del class="bl-del"><p>First words\.<\/p><\/del>/, 'what the first save had is struck');
+      assert.match(compared.blackline, /<ins class="bl-ins"><p>Branch words\.<\/p><\/ins>/, 'what was written since is marked');
+      const missing = await call('/api/revision:compare', { method: 'POST', body: JSON.stringify({ args: [book.id, 'ch-1', first.id + 1000] }) });
+      assert.equal((await missing.json()).error, 'No such revision');
 
       const zip = await JSZip.loadAsync(Buffer.from(await (await call('/library.zip')).arrayBuffer()));
       assert.equal(await zip.file(`${book.id}/chapters/ch-1.html`).async('string'), '<p>Branch words.</p>');
