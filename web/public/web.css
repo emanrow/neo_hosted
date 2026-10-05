@@ -280,8 +280,8 @@ body.light .mp-inspector input, body.light .mp-inspector select, body.light .mp-
 .hw-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 .hw-tools { margin-bottom: 0; }
 .hw-tools.hw-disabled > *:not(.mm-close):not(.mm-spacer) { opacity: .4; pointer-events: none; }
-.hw-title { flex: none; width: 180px; padding: 5px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 13px; }
-.hw-tools select { padding: 5px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 13px; max-width: 180px; }
+.hosted-handwriting-modal input.hw-title { flex: none; width: 150px; padding: 5px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 13px; }
+.hw-tools select { padding: 5px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 13px; max-width: 150px; }
 .hw-inks, .hw-widths { display: inline-flex; gap: 4px; align-items: center; }
 .hw-ink { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer; }
 .hw-ink.hw-on { border-color: #fff; box-shadow: 0 0 0 1px #1c1c1c; }
