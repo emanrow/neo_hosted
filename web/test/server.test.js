@@ -91,9 +91,31 @@ describe('the hosted server', () => {
     assert.ok(html.includes('/web/web-menu.js'));
     assert.ok(html.includes('/web/web-history.js'));
     assert.equal((await call('GET', '/web/web-history.js')).status, 200);
+    assert.ok(html.includes('/web/web-branches.js'));
+    assert.equal((await call('GET', '/web/web-branches.js')).status, 200);
     assert.match(res.headers.get('content-security-policy'), /connect-src 'self'/);
     const login = await call('GET', '/login');
     assert.equal(login.status, 302, 'a signed-in writer is sent to the room');
+  });
+
+  test('branches: create, switch, delete, with the book following the active one', async () => {
+    const book = (await api('book:create', { title: 'Forked' })).result;
+    await api('book:writeMeta', book.id, { ...book, chapterOrder: ['ch-1'] });
+    await api('chapter:write', book.id, 'ch-1', '<p>Main.</p>');
+    const made = (await api('branch:create', book.id, 'alt'));
+    assert.equal(made.status, 200);
+    assert.equal(made.result.active, 'alt');
+    assert.deepEqual(made.result.branches.map((b) => b.name), ['main', 'alt']);
+    await api('chapter:write', book.id, 'ch-1', '<p>Alt.</p>');
+    assert.equal((await api('chapter:read', book.id, 'ch-1')).result, '<p>Alt.</p>');
+    assert.equal((await api('branch:switch', book.id, 'main')).result.active, 'main');
+    assert.equal((await api('chapter:read', book.id, 'ch-1')).result, '<p>Main.</p>');
+    assert.equal((await api('revision:list', book.id, 'ch-1')).result.length, 0, 'no database, no history, no error');
+    const refused = await api('branch:create', book.id, 'main');
+    assert.equal(refused.status, 500);
+    assert.match(refused.error, /branch name/);
+    assert.deepEqual((await api('branch:delete', book.id, 'alt')).result.branches.map((b) => b.name), ['main']);
+    assert.equal((await api('book:delete', book.id)).result, true); // the shelf test below counts books
   });
 
   test('the window.neo channels answer with the desktop\'s shapes', async () => {

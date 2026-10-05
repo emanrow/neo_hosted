@@ -38,7 +38,21 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir }) {
     return saved;
   });
   api.handle('chapter:delete', (ctx, bookId, chapterId) => ctx.library.deleteChapter(bookId, chapterId));
-  // ---------- history (hosted only; the editor does not call these yet) ----------
+  // ---------- branches (hosted only; web-branches.js is the caller) ----------
+  api.handle('branch:list', (ctx, bookId) => ctx.branches.list(bookId));
+  api.handle('branch:switch', (ctx, bookId, name) => ctx.branches.switchTo(bookId, name));
+  api.handle('branch:delete', (ctx, bookId, name) => ctx.branches.remove(bookId, name));
+  // a new branch starts its history with where it branched from, chapter by chapter
+  api.handle('branch:create', async (ctx, bookId, name) => {
+    const info = ctx.branches.create(bookId, name);
+    const meta = ctx.library.readBookMeta(bookId);
+    for (const chapterId of (meta && meta.chapterOrder) || []) {
+      try { await ctx.revisions.record(bookId, chapterId, ctx.library.readChapter(bookId, chapterId)); } catch (err) { ctx.logError('revisions', err); }
+    }
+    return info;
+  });
+
+  // ---------- history (hosted only; web-history.js is the reader) ----------
   api.handle('revision:list', (ctx, bookId, chapterId) => ctx.revisions.list(bookId, chapterId));
   api.handle('revision:read', (ctx, id) => ctx.revisions.read(id));
   api.handle('revision:verify', (ctx, bookId, chapterId) => ctx.revisions.verify(bookId, chapterId));

@@ -38,8 +38,13 @@ The server serves `app.js`, `styles.css`, `covers.js`, `i18n.js`, `fonts/` and `
       library.json  _catalog.txt  neo-errors.log
       Backups/neo-backup-YYYY-MM-DD.zip   one per day, 14 kept, swept hourly by the server
       Trash/<book-id>--<timestamp>/       a "deleted" book; there is no system trash on a server
-      book-<slug>-<id>/ ...
+      Trash/<book-id>--branch-<name>--<timestamp>/   a deleted branch
+      book-<slug>-<id>/ ...               the main draft
+        .branches/active                  names the branch the writer is in (absent or "main": the folder above)
+        .branches/<name>/ ...             a whole alternate draft: the same layout, plus branch.json (hosted only)
 ```
+
+**Branches** (`lib/branches.js`, hosted only): a branch is a copy of the whole book folder under `.branches/<name>/`, made from the draft the writer is in. `contextFor` hands `openLibrary` a `bookDirFor` that answers with the active branch's folder, so every channel reads and writes "the book" and lands on that draft; the editor never learns which. Switching saves the page, moves the pointer and reloads the page, which reopens the book: two drafts are never merged onto one page. Deleting a branch moves it to Trash; trashing the book takes its branches along; the daily zip carries them. The revision log keys rows by branch, and a new branch opens its history with the draft it came from. Merging drafts is still to come ([backlog.md](backlog.md#storage)).
 
 **The revision log** (Postgres, `revisions` table): one row per autosave that changed a chapter, a snapshot of the whole chapter every twentieth row and a paragraph-grain diff against the parent otherwise, each row hashed into the one before it with its timestamp. Rebuilding any revision walks back to the nearest snapshot and replays forward. The files on the volume stay the chapter's truth; the log is history, and a chapter written before the log existed simply has history that starts at its next save. The `branch` column is `main` for every row until alternate drafts arrive ([backlog.md](backlog.md#storage)).
 

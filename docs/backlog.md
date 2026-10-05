@@ -19,7 +19,7 @@ Decided 2026-10-05 with the owner: canonical text moves into Postgres by stages,
 
 - **A. Accounts in Postgres**: done, below.
 - **B. Revision log**: done, below, with the History panel. Still to come: a blackline between two revisions, in the same panel.
-- **C. Branches**: a named pointer to a head revision per chapter or book; create, write on, compare, merge at paragraph granularity with the writer resolving real conflicts side by side. The editor edits "the open branch's head" through the same channels.
+- **C. Branches**: per book, as the owner decided (2026-10-05). Create, switch and delete are done, below. Still to come: a comparison of two branches (which chapters differ, a blackline per chapter) and a merge at paragraph granularity, the writer resolving the few real conflicts side by side.
 - **D. Flip canonical** to the database: files become an export, covers and images move to object storage, the daily zips give way to Postgres backups plus exports.
 
 ## Rooms off the hallway
@@ -35,6 +35,7 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 ## Done
 
 - **Revision log** (2026-10-05): `web/lib/revisions.js`, the `revisions` table; every `chapter:write` that changed the words appends a snapshot or paragraph-grain diff, hash-chained with its timestamp. `revision:list`, `revision:read`, `revision:verify` answer. Storage stage B.
+- **Branches** (2026-10-05): File → Branches in the hosted menu; `web/lib/branches.js` keeps each as a copy of the book folder under `.branches/`, the library follows the active one, the revision log keys by it. Storage stage C, first half.
 - **History panel** (2026-10-05): File → History… in the hosted menu (`web/public/web-history.js`) lists the chapter's saves, previews one, restores one.- **Accounts in Postgres** (2026-10-05): `web/lib/db.js` and `PgUserStore`, chosen by `DATABASE_URL`; `users.json` is imported once on the first boot and kept beside the volume as `users.json.imported-<date>`. Storage stage A.
 - **Email** (2026-10-05): Resend behind `web/lib/mail.js`; new writers confirm their address, a forgotten password comes back by a link that works once. `RESEND_API_KEY`, `NEO_MAIL_FROM`, `NEO_PUBLIC_URL` turn it on.
 - **Checks on every PR** (2026-10-05): `.github/workflows/hosted.yml` runs the hosted suite, the lint, the parser tests and boots the Docker image.
