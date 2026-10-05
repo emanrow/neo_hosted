@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Português (Portugal)",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Iniciar sessão",
+  "A word processor for authors. Distraction-free by default.": "Um processador de texto para autores. Sem distrações, por omissão.",
+  "Email": "E-mail",
+  "Password": "Palavra-passe",
+  "Invitation code": "Código de convite",
+  "Sign in": "Iniciar sessão",
+  "Create an account": "Criar uma conta",
+  "Forgot your password?": "Esqueceu-se da palavra-passe?",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "NEO é o processador de texto para autores escrito por {author}, sob licença MIT.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "Esta é uma {edition} independente, sem vínculo com ele e sem o aval dele.",
+  "hosted edition": "edição alojada",
+  "Your books are yours: download your whole library any time from the File menu.": "Os seus livros são seus: descarregue toda a sua biblioteca a qualquer momento a partir do menu Ficheiro.",
+  "Create account": "Criar conta",
+  "I already have an account": "Já tenho uma conta",
+  "Email me a reset link": "Enviar-me uma ligação para repor a palavra-passe",
+  "Back to sign in": "Voltar ao início de sessão",
+  "Set new password": "Definir a nova palavra-passe",
+  "New password": "Nova palavra-passe",
+  "Could not sign in": "Não foi possível iniciar sessão",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Essa ligação expirou ou já foi usada. Inicie sessão para receber uma nova, ou peça para repor a palavra-passe.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Se esse endereço tiver uma conta aqui, uma ligação para repor a palavra-passe está a caminho. Verifique o seu e-mail.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Quase. Enviámos uma ligação de confirmação para o seu e-mail; abra-a para começar a escrever.",
+  "Too many emails requested. Try again in a few minutes.": "Demasiados e-mails pedidos. Tente de novo dentro de alguns minutos.",
+  "That does not look like an email address": "Isso não parece um endereço de e-mail",
+  "A password needs at least {n} characters": "Uma palavra-passe precisa de pelo menos {n} caracteres",
+  "New accounts are not being created here": "Não estão a ser criadas contas novas aqui",
+  "That invitation code is not right": "Esse código de convite não está certo",
+  "That email already has an account": "Esse e-mail já tem uma conta",
+  "Too many attempts. Try again in a few minutes.": "Demasiadas tentativas. Tente de novo dentro de alguns minutos.",
+  "That email and password do not match": "Esse e-mail e essa palavra-passe não correspondem",
+  "Confirm your email first. We just sent you a new link.": "Confirme primeiro o seu e-mail. Acabámos de lhe enviar uma nova ligação.",
+  "That reset link has expired or was already used. Ask for a new one.": "Essa ligação para repor a palavra-passe expirou ou já foi usada. Peça uma nova.",
+  "Password reset by email is not set up on this server": "A reposição da palavra-passe por e-mail não está configurada neste servidor"
+}

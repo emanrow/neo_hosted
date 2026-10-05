@@ -4,41 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>NEO — Sign in</title>
+  <title>{{NEO — Sign in}}</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/web/web.css" />
 </head>
 <body class="hosted-login">
   <main class="login-card">
     <h1>NEO</h1>
-    <p class="tagline">A word processor for authors. Distraction-free by default.</p>
+    <p class="tagline">{{A word processor for authors. Distraction-free by default.}}</p>
     <form id="login-form" autocomplete="on">
       <p class="notice" id="notice" role="status" hidden></p>
       <div id="email-row">
-        <label for="email">Email</label>
+        <label for="email">{{Email}}</label>
         <input id="email" name="email" type="email" autocomplete="username" required autofocus />
       </div>
       <div id="password-row">
-        <label for="password" id="password-label">Password</label>
+        <label for="password" id="password-label">{{Password}}</label>
         <input id="password" name="password" type="password" autocomplete="current-password" minlength="8" required />
       </div>
       <div id="invite-row" hidden>
-        <label for="invite">Invitation code</label>
+        <label for="invite">{{Invitation code}}</label>
         <input id="invite" name="invite" type="text" autocomplete="off" spellcheck="false" />
       </div>
       <div class="actions">
-        <button type="submit" class="btn-gold" id="submit">Sign in</button>
-        <button type="button" class="switch" id="switch">Create an account</button>
+        <button type="submit" class="btn-gold" id="submit">{{Sign in}}</button>
+        <button type="button" class="switch" id="switch">{{Create an account}}</button>
       </div>
-      <p class="links"><button type="button" class="switch" id="forgot">Forgot your password?</button></p>
+      <p class="links"><button type="button" class="switch" id="forgot">{{Forgot your password?}}</button></p>
       <p class="error" id="error" role="alert"></p>
     </form>
     <p class="credits">
-      NEO is <a href="https://github.com/hughhowey/neo" rel="noopener" target="_blank">Hugh Howey's</a> word processor for authors, MIT licensed.<br />
-      This is an independent <a href="https://github.com/emanrow/neo_hosted" rel="noopener" target="_blank">hosted edition</a>, not affiliated with or endorsed by him.<br />
-      Your books are plain files in your own library folder on this server.
+      {{credits}}
     </p>
   </main>
+  {{strings}}
   <script src="/web/login.js"></script>
 </body>
 </html>

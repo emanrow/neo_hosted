@@ -31,7 +31,7 @@ const JSZip = require('jszip');                      // web/node_modules' copy, 
 const { loadConfig } = require('./lib/config');
 const { MIME, HttpError, readBody, readJSONBody, send, sendJSON, sendHTML, sendText, redirect, serveFile, parseCookies, cookieHeader, isSameOrigin, clientAddress, isSecureRequest } = require('./lib/http');
 const { hashPassword, verifyPassword, signSession, verifySession, signLink, verifyLink, linkStamp, LoginThrottle, SESSION_TTL_MS } = require('./lib/auth');
-const { JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified } = require('./lib/user-store');
+const { JsonUserStore, PgUserStore, normalizeEmail, isEmailVerified, EMAIL_TAKEN } = require('./lib/user-store');
 const { openDatabase } = require('./lib/db');
 const { RevisionLog, NullRevisionLog } = require('./lib/revisions');
 const { openBranches } = require('./lib/branches');
@@ -44,6 +44,7 @@ const { createObjectStore, NO_OBJECT_STORE } = require('./lib/object-store');
 const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
 const { buildHostedPage, PAGE_CSP } = require('./lib/page');
+const { buildLoginPage } = require('./lib/login-page');
 const { readJSON, writeJSON, libName } = require('./lib/files');
 // the desktop's own manuscript parser, shared with main.js
 const { importBuffer, isImportable } = require('../import-parse');
@@ -204,6 +205,12 @@ function createApp(config, deps = {}) {
   // Email: confirming an address, resetting a password
   // -------------------------------------------------------------------
 
+  /** Before anyone is signed in, the browser's language decides what the sign-in page and its errors say. */
+  function visitorLanguage(req) {
+    const locale = i18n.pickLanguage({ acceptLanguage: req.headers['accept-language'] });
+    return { locale, t: i18n.translatorFor(locale) };
+  }
+
   /** Where links in email point: NEO_PUBLIC_URL, or (laptops only) the host this request came to. */
   function linkBase(req) {
     if (config.publicUrl) return config.publicUrl;
@@ -213,7 +220,7 @@ function createApp(config, deps = {}) {
   /** Rations email: so many to one address, so many from one client, per window. Counts the request, then refuses past the limit. */
   function allowMail(req, email) {
     const rations = [[mailPerAddress, normalizeEmail(email)], [mailPerClient, clientAddress(req, config.trustProxy)]];
-    if (!rations.every(([ration, key]) => ration.allowed(key))) throw new HttpError(429, 'Too many emails requested. Try again in a few minutes.');
+    if (!rations.every(([ration, key]) => ration.allowed(key))) throw new HttpError(429, visitorLanguage(req).t('Too many emails requested. Try again in a few minutes.'));
     rations.forEach(([ration, key]) => ration.failed(key));
   }
 
@@ -235,9 +242,9 @@ function createApp(config, deps = {}) {
     sendJSON(res, 200, { ok: true });
   }
 
-  function checkCredentials({ email, password }) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) throw new HttpError(400, 'That does not look like an email address');
-    if (typeof password !== 'string' || password.length < MIN_PASSWORD) throw new HttpError(400, `A password needs at least ${MIN_PASSWORD} characters`);
+  function checkCredentials({ email, password }, t) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))) throw new HttpError(400, t('That does not look like an email address'));
+    if (typeof password !== 'string' || password.length < MIN_PASSWORD) throw new HttpError(400, t('A password needs at least {n} characters', { n: MIN_PASSWORD }));
   }
 
   // With email on, a new account waits for its confirmation link and the
@@ -246,8 +253,9 @@ function createApp(config, deps = {}) {
   // lost email is not a lost account. With email off, signup signs in.
   async function handleSignup(req, res) {
     const { email, password, invite } = await readJSONBody(req, AUTH_BODY_LIMIT);
-    if (!await signupAllowed(invite)) throw new HttpError(403, config.signup === 'closed' ? 'New accounts are not being created here' : 'That invitation code is not right');
-    checkCredentials({ email, password });
+    const { t } = visitorLanguage(req);
+    if (!await signupAllowed(invite)) throw new HttpError(403, t(config.signup === 'closed' ? 'New accounts are not being created here' : 'That invitation code is not right'));
+    checkCredentials({ email, password }, t);
     const waiting = await users.findByEmail(email);
     if (waiting && mailer.enabled && !isEmailVerified(waiting) && verifyPassword(password, waiting.passwordHash)) {
       allowMail(req, email);
@@ -255,7 +263,7 @@ function createApp(config, deps = {}) {
       return sendJSON(res, 200, { ok: true, confirm: true });
     }
     let user;
-    try { user = await users.create({ email, passwordHash: hashPassword(password), emailVerified: !mailer.enabled }); } catch (err) { throw new HttpError(409, err.message); }
+    try { user = await users.create({ email, passwordHash: hashPassword(password), emailVerified: !mailer.enabled }); } catch (err) { throw new HttpError(409, err.message === EMAIL_TAKEN ? t(EMAIL_TAKEN) : err.message); }
     if (!mailer.enabled) return signIn(req, res, user);
     allowMail(req, email);
     await sendConfirmation(req, user);
@@ -265,18 +273,19 @@ function createApp(config, deps = {}) {
   async function handleLogin(req, res) {
     const { email, password } = await readJSONBody(req, AUTH_BODY_LIMIT);
     const keys = [clientAddress(req, config.trustProxy), 'email:' + normalizeEmail(email)];
-    if (!keys.every((k) => throttle.allowed(k))) throw new HttpError(429, 'Too many attempts. Try again in a few minutes.');
+    const { t } = visitorLanguage(req);
+    if (!keys.every((k) => throttle.allowed(k))) throw new HttpError(429, t('Too many attempts. Try again in a few minutes.'));
     const user = await users.findByEmail(email);
     if (!user || !verifyPassword(password, user.passwordHash)) {
       keys.forEach((k) => throttle.failed(k));
-      throw new HttpError(401, 'That email and password do not match');
+      throw new HttpError(401, t('That email and password do not match'));
     }
     keys.forEach((k) => throttle.clear(k));
     if (mailer.enabled && !isEmailVerified(user)) {
       // the right password, an unconfirmed address: send the link again rather than leave them stuck
       allowMail(req, email);
       await sendConfirmation(req, user);
-      throw new HttpError(403, 'Confirm your email first. We just sent you a new link.');
+      throw new HttpError(403, t('Confirm your email first. We just sent you a new link.'));
     }
     signIn(req, res, user);
   }
@@ -294,7 +303,7 @@ function createApp(config, deps = {}) {
   // cannot be used to find out who writes here.
   async function handleForgot(req, res) {
     const { email } = await readJSONBody(req, AUTH_BODY_LIMIT);
-    if (!mailer.enabled) throw new HttpError(503, 'Password reset by email is not set up on this server');
+    if (!mailer.enabled) throw new HttpError(503, visitorLanguage(req).t('Password reset by email is not set up on this server'));
     allowMail(req, email);
     const user = await users.findByEmail(email);
     if (user) await sendReset(req, user);
@@ -309,8 +318,8 @@ function createApp(config, deps = {}) {
     const { token, password } = await readJSONBody(req, AUTH_BODY_LIMIT);
     const link = verifyLink(token, 'reset', config.sessionSecret);
     const user = link && await users.findById(link.userId);
-    if (!user || link.stamp !== linkStamp(user.passwordHash)) throw new HttpError(400, 'That reset link has expired or was already used. Ask for a new one.');
-    if (typeof password !== 'string' || password.length < MIN_PASSWORD) throw new HttpError(400, `A password needs at least ${MIN_PASSWORD} characters`);
+    if (!user || link.stamp !== linkStamp(user.passwordHash)) throw new HttpError(400, visitorLanguage(req).t('That reset link has expired or was already used. Ask for a new one.'));
+    if (typeof password !== 'string' || password.length < MIN_PASSWORD) throw new HttpError(400, visitorLanguage(req).t('A password needs at least {n} characters', { n: MIN_PASSWORD }));
     await users.setPasswordHash(user.id, hashPassword(password));
     await users.markEmailVerified(user.id);
     throttle.clear('email:' + user.email);
@@ -426,7 +435,8 @@ function createApp(config, deps = {}) {
 
     if (method === 'GET' && p === '/login') {
       if (user && !url.searchParams.has('reset')) return redirect(res, '/');
-      return sendHTML(res, 200, fs.readFileSync(path.join(PUBLIC, 'login.html'), 'utf8'), { 'Content-Security-Policy': PAGE_CSP });
+      const html = buildLoginPage(fs.readFileSync(path.join(PUBLIC, 'login.html'), 'utf8'), visitorLanguage(req));
+      return sendHTML(res, 200, html, { 'Content-Security-Policy': PAGE_CSP, Vary: 'Accept-Language' });
     }
     if (method === 'GET' && p === '/') {
       if (!user) return redirect(res, '/login');

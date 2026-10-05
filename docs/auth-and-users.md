@@ -11,6 +11,7 @@ The desktop app has one writer and no sign-in. The hosted edition adds the small
 - **Throttle**: ten wrong passwords from one address or for one email close the door for fifteen minutes (`LoginThrottle`, in memory; a restart forgives). The client address comes from `X-Forwarded-For` only when `trustProxy` is on.
 - **CSRF**: `/auth/*` and `/api/*` POSTs must be same-origin by `Sec-Fetch-Site` (or `Origin` on older browsers). API bodies are JSON, which a cross-site form cannot send.
 - **Secure cookies** are set when the request is TLS or the trusted proxy says `X-Forwarded-Proto: https`.
+- **Language**: nobody is signed in yet, so the sign-in page and every `/auth/*` error follow the browser's `Accept-Language` when NEO speaks it, English otherwise (`visitorLanguage` in `server.js`, strings in `web/locales/`). The confirmation and reset emails are English for now.
 
 ## Signup policy
 

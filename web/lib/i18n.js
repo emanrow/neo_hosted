@@ -2,7 +2,13 @@
 
 // Interface language on the server: which locales/ files exist, which one a
 // writer gets, and a translator for the few strings the server itself writes
-// into a library (shelf names, "Untitled", the catalog header).
+// into a library (shelf names, "Untitled", the catalog header) and says on
+// the sign-in page.
+//
+// The hosted edition's own strings (the sign-in page, its errors) live in
+// web/locales/<code>.json, laid over upstream's locales/<code>.json for the
+// same code, so upstream's files are never edited here and the editor's
+// language list is still upstream's.
 //
 // Gotcha: the shared i18n.js is a singleton with one current locale. The
 // translator returned here sets that locale on every call, and the library
@@ -14,12 +20,19 @@ const path = require('node:path');
 const NeoI18n = require('../../i18n.js');
 
 const LOCALES_DIR = path.join(__dirname, '..', '..', 'locales');
+const HOSTED_LOCALES_DIR = path.join(__dirname, '..', 'locales');
 const CODE = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/;
 const normCode = (c) => String(c || '').replace(/_/g, '-');
 
-function readLocaleFile(code) {
+function readLocaleFile(code, dir = LOCALES_DIR) {
   if (!CODE.test(code)) return null;
-  try { return JSON.parse(fs.readFileSync(path.join(LOCALES_DIR, code + '.json'), 'utf8')); } catch { return null; }
+  try { return JSON.parse(fs.readFileSync(path.join(dir, code + '.json'), 'utf8')); } catch { return null; }
+}
+
+/** The hosted edition's strings for one code, without the _meta entry. */
+function hostedStrings(code) {
+  const { _meta, ...strings } = readLocaleFile(code, HOSTED_LOCALES_DIR) || {};
+  return strings;
 }
 
 /** Every locales/<code>.json, named in its own words, sorted by name. */
@@ -50,10 +63,10 @@ function resolveLanguage(wanted) {
 
 /** The chosen language's strings: its base language, then the regional file on top. */
 function localeDict(code) {
-  if (code === 'en') return readLocaleFile('en') || {};
+  if (code === 'en') return { ...(readLocaleFile('en') || {}), ...hostedStrings('en') };
   const base = code.split('-')[0];
-  const dict = base !== code ? { ...(readLocaleFile(base) || {}) } : {};
-  Object.assign(dict, readLocaleFile(code) || {});
+  const dict = base !== code ? { ...(readLocaleFile(base) || {}), ...hostedStrings(base) } : {};
+  Object.assign(dict, readLocaleFile(code) || {}, hostedStrings(code));
   return dict;
 }
 
@@ -86,4 +99,4 @@ function pickLanguage({ saved, acceptLanguage }) {
   return 'en';
 }
 
-module.exports = { listLanguages, resolveLanguage, localeDict, bundleFor, translatorFor, pickLanguage };
+module.exports = { listLanguages, resolveLanguage, localeDict, hostedStrings, bundleFor, translatorFor, pickLanguage, HOSTED_LOCALES_DIR };

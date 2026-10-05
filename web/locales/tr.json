@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Türkçe",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Giriş",
+  "A word processor for authors. Distraction-free by default.": "Yazarlar için bir kelime işlemci. Varsayılan olarak dikkat dağıtmaz.",
+  "Email": "E-posta",
+  "Password": "Parola",
+  "Invitation code": "Davet kodu",
+  "Sign in": "Giriş yap",
+  "Create an account": "Hesap oluştur",
+  "Forgot your password?": "Parolanı mı unuttun?",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "NEO, {author} tarafından yazılmış, MIT lisanslı, yazarlar için kelime işlemcidir.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "Bu, onunla bağlantısı olmayan ve onun tarafından onaylanmamış bağımsız bir {edition}.",
+  "hosted edition": "barındırılan sürümdür",
+  "Your books are yours: download your whole library any time from the File menu.": "Kitapların senindir: tüm kütüphaneni istediğin zaman Dosya menüsünden indir.",
+  "Create account": "Hesap oluştur",
+  "I already have an account": "Zaten hesabım var",
+  "Email me a reset link": "Bana sıfırlama bağlantısı gönder",
+  "Back to sign in": "Girişe dön",
+  "Set new password": "Yeni parolayı ayarla",
+  "New password": "Yeni parola",
+  "Could not sign in": "Giriş yapılamadı",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Bu bağlantının süresi dolmuş ya da zaten kullanılmış. Yenisini almak için giriş yap ya da parola sıfırlama iste.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Bu adresin burada bir hesabı varsa, sıfırlama bağlantısı yolda. E-postanı kontrol et.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Az kaldı. E-postana bir onay bağlantısı gönderdik; yazmaya başlamak için aç.",
+  "Too many emails requested. Try again in a few minutes.": "Çok fazla e-posta istendi. Birkaç dakika sonra tekrar dene.",
+  "That does not look like an email address": "Bu bir e-posta adresine benzemiyor",
+  "A password needs at least {n} characters": "Parola en az {n} karakter olmalı",
+  "New accounts are not being created here": "Burada yeni hesap açılmıyor",
+  "That invitation code is not right": "Bu davet kodu doğru değil",
+  "That email already has an account": "Bu e-postanın zaten bir hesabı var",
+  "Too many attempts. Try again in a few minutes.": "Çok fazla deneme. Birkaç dakika sonra tekrar dene.",
+  "That email and password do not match": "Bu e-posta ve parola eşleşmiyor",
+  "Confirm your email first. We just sent you a new link.": "Önce e-postanı onayla. Az önce sana yeni bir bağlantı gönderdik.",
+  "That reset link has expired or was already used. Ask for a new one.": "Bu sıfırlama bağlantısının süresi dolmuş ya da zaten kullanılmış. Yenisini iste.",
+  "Password reset by email is not set up on this server": "E-posta ile parola sıfırlama bu sunucuda ayarlanmamış"
+}

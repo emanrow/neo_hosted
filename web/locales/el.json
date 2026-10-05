@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Ελληνικά",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Σύνδεση",
+  "A word processor for authors. Distraction-free by default.": "Ένας επεξεργαστής κειμένου για συγγραφείς. Χωρίς περισπασμούς, εξ ορισμού.",
+  "Email": "Email",
+  "Password": "Κωδικός πρόσβασης",
+  "Invitation code": "Κωδικός πρόσκλησης",
+  "Sign in": "Σύνδεση",
+  "Create an account": "Δημιουργία λογαριασμού",
+  "Forgot your password?": "Ξεχάσατε τον κωδικό σας;",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "Το NEO είναι ο επεξεργαστής κειμένου για συγγραφείς που έγραψε ο {author}, με άδεια MIT.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "Αυτή είναι μια ανεξάρτητη {edition}, χωρίς σχέση μαζί του και χωρίς την έγκρισή του.",
+  "hosted edition": "φιλοξενούμενη έκδοση",
+  "Your books are yours: download your whole library any time from the File menu.": "Τα βιβλία σας είναι δικά σας: κατεβάστε όλη τη βιβλιοθήκη σας όποτε θέλετε από το μενού Αρχείο.",
+  "Create account": "Δημιουργία λογαριασμού",
+  "I already have an account": "Έχω ήδη λογαριασμό",
+  "Email me a reset link": "Στείλτε μου σύνδεσμο επαναφοράς",
+  "Back to sign in": "Πίσω στη σύνδεση",
+  "Set new password": "Ορισμός νέου κωδικού",
+  "New password": "Νέος κωδικός πρόσβασης",
+  "Could not sign in": "Η σύνδεση δεν ήταν δυνατή",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Ο σύνδεσμος έληξε ή έχει ήδη χρησιμοποιηθεί. Συνδεθείτε για να λάβετε νέο, ή ζητήστε επαναφορά κωδικού.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Αν αυτή η διεύθυνση έχει λογαριασμό εδώ, ένας σύνδεσμος επαναφοράς είναι καθ’ οδόν. Ελέγξτε το email σας.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Σχεδόν έτοιμο. Σας στείλαμε σύνδεσμο επιβεβαίωσης· ανοίξτε τον για να αρχίσετε να γράφετε.",
+  "Too many emails requested. Try again in a few minutes.": "Ζητήθηκαν πάρα πολλά email. Δοκιμάστε ξανά σε λίγα λεπτά.",
+  "That does not look like an email address": "Αυτό δεν μοιάζει με διεύθυνση email",
+  "A password needs at least {n} characters": "Ο κωδικός χρειάζεται τουλάχιστον {n} χαρακτήρες",
+  "New accounts are not being created here": "Εδώ δεν δημιουργούνται νέοι λογαριασμοί",
+  "That invitation code is not right": "Ο κωδικός πρόσκλησης δεν είναι σωστός",
+  "That email already has an account": "Αυτό το email έχει ήδη λογαριασμό",
+  "Too many attempts. Try again in a few minutes.": "Πάρα πολλές προσπάθειες. Δοκιμάστε ξανά σε λίγα λεπτά.",
+  "That email and password do not match": "Το email και ο κωδικός δεν ταιριάζουν",
+  "Confirm your email first. We just sent you a new link.": "Επιβεβαιώστε πρώτα το email σας. Μόλις σας στείλαμε νέο σύνδεσμο.",
+  "That reset link has expired or was already used. Ask for a new one.": "Ο σύνδεσμος επαναφοράς έληξε ή έχει ήδη χρησιμοποιηθεί. Ζητήστε νέο.",
+  "Password reset by email is not set up on this server": "Η επαναφορά κωδικού μέσω email δεν έχει ρυθμιστεί σε αυτόν τον διακομιστή"
+}

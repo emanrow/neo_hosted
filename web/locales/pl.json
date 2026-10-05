@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Polski",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Logowanie",
+  "A word processor for authors. Distraction-free by default.": "Edytor tekstu dla autorów. Domyślnie bez rozpraszaczy.",
+  "Email": "E-mail",
+  "Password": "Hasło",
+  "Invitation code": "Kod zaproszenia",
+  "Sign in": "Zaloguj się",
+  "Create an account": "Utwórz konto",
+  "Forgot your password?": "Nie pamiętasz hasła?",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "NEO to edytor tekstu dla autorów napisany przez {author}, na licencji MIT.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "To niezależna {edition}, niezwiązana z nim ani przez niego niepolecana.",
+  "hosted edition": "edycja hostowana",
+  "Your books are yours: download your whole library any time from the File menu.": "Twoje książki są Twoje: pobierz całą bibliotekę w dowolnej chwili z menu Plik.",
+  "Create account": "Utwórz konto",
+  "I already have an account": "Mam już konto",
+  "Email me a reset link": "Wyślij mi link do zresetowania hasła",
+  "Back to sign in": "Wróć do logowania",
+  "Set new password": "Ustaw nowe hasło",
+  "New password": "Nowe hasło",
+  "Could not sign in": "Nie udało się zalogować",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Ten link wygasł lub został już użyty. Zaloguj się, aby otrzymać nowy, albo poproś o zresetowanie hasła.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Jeśli ten adres ma tu konto, link do zresetowania hasła jest w drodze. Sprawdź pocztę.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Prawie gotowe. Wysłaliśmy Ci link potwierdzający; otwórz go, aby zacząć pisać.",
+  "Too many emails requested. Try again in a few minutes.": "Zbyt wiele próśb o e-mail. Spróbuj ponownie za kilka minut.",
+  "That does not look like an email address": "To nie wygląda na adres e-mail",
+  "A password needs at least {n} characters": "Hasło musi mieć co najmniej {n} znaków",
+  "New accounts are not being created here": "Nowe konta nie są tu tworzone",
+  "That invitation code is not right": "Ten kod zaproszenia jest nieprawidłowy",
+  "That email already has an account": "Ten e-mail ma już konto",
+  "Too many attempts. Try again in a few minutes.": "Zbyt wiele prób. Spróbuj ponownie za kilka minut.",
+  "That email and password do not match": "Ten e-mail i hasło do siebie nie pasują",
+  "Confirm your email first. We just sent you a new link.": "Najpierw potwierdź swój e-mail. Właśnie wysłaliśmy Ci nowy link.",
+  "That reset link has expired or was already used. Ask for a new one.": "Ten link do zresetowania hasła wygasł lub został już użyty. Poproś o nowy.",
+  "Password reset by email is not set up on this server": "Resetowanie hasła przez e-mail nie jest skonfigurowane na tym serwerze"
+}

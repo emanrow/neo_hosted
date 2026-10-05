@@ -18,16 +18,22 @@
   const params = new URLSearchParams(location.search);
   const resetToken = params.get('reset') || '';
 
+  // The server rendered the page in the visitor's language and left the
+  // strings this script needs in a JSON block (web/lib/login-page.js).
+  let strings = {};
+  try { strings = JSON.parse(document.getElementById('login-strings').textContent); } catch { /* English, then */ }
+  const t = (key) => strings[key] || key;
+
   const NOTICES = {
-    'link-expired': 'That link has expired or was already used. Sign in to get a new one, or ask for a password reset.'
+    'link-expired': t('That link has expired or was already used. Sign in to get a new one, or ask for a password reset.')
   };
 
   // what each mode shows, posts, and says
   const MODES = {
-    signin: { fields: ['email', 'password'], submit: 'Sign in', switcher: 'Create an account', next: 'create', url: '/auth/login', passwordKind: 'current-password', passwordLabel: 'Password', forgot: true },
-    create: { fields: ['email', 'password', 'invite'], submit: 'Create account', switcher: 'I already have an account', next: 'signin', url: '/auth/signup', passwordKind: 'new-password', passwordLabel: 'Password', forgot: false },
-    forgot: { fields: ['email'], submit: 'Email me a reset link', switcher: 'Back to sign in', next: 'signin', url: '/auth/forgot', passwordKind: 'current-password', passwordLabel: 'Password', forgot: false },
-    reset: { fields: ['password'], submit: 'Set new password', switcher: 'Back to sign in', next: 'signin', url: '/auth/reset', passwordKind: 'new-password', passwordLabel: 'New password', forgot: false }
+    signin: { fields: ['email', 'password'], submit: t('Sign in'), switcher: t('Create an account'), next: 'create', url: '/auth/login', passwordKind: 'current-password', passwordLabel: t('Password'), forgot: true },
+    create: { fields: ['email', 'password', 'invite'], submit: t('Create account'), switcher: t('I already have an account'), next: 'signin', url: '/auth/signup', passwordKind: 'new-password', passwordLabel: t('Password'), forgot: false },
+    forgot: { fields: ['email'], submit: t('Email me a reset link'), switcher: t('Back to sign in'), next: 'signin', url: '/auth/forgot', passwordKind: 'current-password', passwordLabel: t('Password'), forgot: false },
+    reset: { fields: ['password'], submit: t('Set new password'), switcher: t('Back to sign in'), next: 'signin', url: '/auth/reset', passwordKind: 'new-password', passwordLabel: t('New password'), forgot: false }
   };
   let mode = resetToken ? 'reset' : 'signin';
 
@@ -73,13 +79,13 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body()), credentials: 'same-origin'
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not sign in');
+      if (!res.ok || !data.ok) throw new Error(data.error || t('Could not sign in'));
       if (current === 'forgot') {
         setMode('signin');
-        say('If that address has an account here, a reset link is on its way. Check your email.');
+        say(t('If that address has an account here, a reset link is on its way. Check your email.'));
       } else if (data.confirm) {
         setMode('signin');
-        say('Almost there. We sent a confirmation link to your email; open it to start writing.');
+        say(t('Almost there. We sent a confirmation link to your email; open it to start writing.'));
       } else {
         location.href = '/';
       }

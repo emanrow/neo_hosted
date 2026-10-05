@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Română",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Autentificare",
+  "A word processor for authors. Distraction-free by default.": "Un procesor de text pentru autori. Fără distrageri, implicit.",
+  "Email": "E-mail",
+  "Password": "Parolă",
+  "Invitation code": "Cod de invitație",
+  "Sign in": "Autentificare",
+  "Create an account": "Creează un cont",
+  "Forgot your password?": "Ai uitat parola?",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "NEO este procesorul de text pentru autori scris de {author}, sub licență MIT.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "Aceasta este o {edition} independentă, fără legătură cu el și neaprobată de el.",
+  "hosted edition": "ediție găzduită",
+  "Your books are yours: download your whole library any time from the File menu.": "Cărțile tale sunt ale tale: descarcă-ți toată biblioteca oricând din meniul Fișier.",
+  "Create account": "Creează contul",
+  "I already have an account": "Am deja un cont",
+  "Email me a reset link": "Trimite-mi un link de resetare",
+  "Back to sign in": "Înapoi la autentificare",
+  "Set new password": "Setează parola nouă",
+  "New password": "Parolă nouă",
+  "Could not sign in": "Autentificarea nu a reușit",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Linkul a expirat sau a fost deja folosit. Autentifică-te pentru a primi unul nou, sau cere resetarea parolei.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Dacă adresa are un cont aici, un link de resetare este pe drum. Verifică-ți e-mailul.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Aproape gata. Ți-am trimis un link de confirmare; deschide-l ca să începi să scrii.",
+  "Too many emails requested. Try again in a few minutes.": "Prea multe e-mailuri cerute. Încearcă din nou peste câteva minute.",
+  "That does not look like an email address": "Nu pare o adresă de e-mail",
+  "A password needs at least {n} characters": "O parolă are nevoie de cel puțin {n} caractere",
+  "New accounts are not being created here": "Aici nu se creează conturi noi",
+  "That invitation code is not right": "Codul de invitație nu este corect",
+  "That email already has an account": "Acest e-mail are deja un cont",
+  "Too many attempts. Try again in a few minutes.": "Prea multe încercări. Încearcă din nou peste câteva minute.",
+  "That email and password do not match": "E-mailul și parola nu se potrivesc",
+  "Confirm your email first. We just sent you a new link.": "Confirmă-ți mai întâi e-mailul. Tocmai ți-am trimis un link nou.",
+  "That reset link has expired or was already used. Ask for a new one.": "Linkul de resetare a expirat sau a fost deja folosit. Cere unul nou.",
+  "Password reset by email is not set up on this server": "Resetarea parolei prin e-mail nu este configurată pe acest server"
+}

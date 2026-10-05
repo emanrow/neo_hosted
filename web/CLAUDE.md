@@ -31,6 +31,7 @@ web/
     spell.js            SpellService: shared Hunspell per language; SPELL_LANGUAGES; defaultSpellLanguage
     i18n.js             listLanguages, resolveLanguage, bundleFor, translatorFor, pickLanguage
     page.js             buildHostedPage(indexHtml, i18n, hostedConfig), PAGE_CSP, MARKERS
+    login-page.js       buildLoginPage(loginHtml, {locale, t}): the sign-in page in the visitor's language; {{English text}} markers, the credits, a JSON block of strings for login.js
   public/
     web-bridge.js       window.neo for the browser; rpc(channel, ...args) → POST /api/<channel>; neoHosted.downloadLibrary() fetches /library.zip
     web-menu.js         the menu bar: template() mirrors buildMenu(); accelerators; Alt/F10; flyouts open on tap too; neoHosted.menu.open/close/toggle for web-mobile.js
@@ -38,7 +39,8 @@ web/
     web-mobile.js       a touch screen only ((hover: none)): the ☰ button that opens the menu bar, edge swipes for the chapter and notes panes; web.css's body.hosted-touch and max-width rules do the rest
     web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, restore by writing the draft back and calling the editor's refreshFromDisk
     web.css             menu bar and sign-in styles, on styles.css's tokens
-    login.html, login.js  sign in / create account / forgot / reset, one form in four modes (English only for now)
+    login.html, login.js  sign in / create account / forgot / reset, one form in four modes; rendered through login-page.js, never served raw
+  locales/<code>.json   the hosted edition's own strings (sign-in page, auth errors) per language, laid over ../locales/<code>.json by lib/i18n.js; one file per upstream language, keys are the English text
   scripts/smoke.e2e.js  optional headless-Chromium run, see docs/testing.md
   docker-entrypoint.sh  starts as root, hands the mounted volume to `node`, drops privileges (docs/deployment.md)
   test/*.test.js        node:test; server.test.js boots the real server
@@ -87,7 +89,7 @@ Bytes (uploads, images, manuscripts) are not channels: see `handleCoverUpload`, 
 - **`index.html` markers** (`page.js` `MARKERS`): the CSP meta, the drag strip, the stylesheet link (the viewport meta goes before it) and the two script tags. A moved marker throws at boot.
 - **No hover rebuild on touch.** The bar redraws on `mouseenter` so its ticks are fresh; a tap's compatibility mouse events would redraw it under the finger and the click would land on a detached button, so `web-menu.js` skips that on `(hover: none)` screens and `hosted.menu.open()` builds instead.
 - **Static roots are allowlisted** (`ROOT_FILES`, `ROOT_DIRS` in `server.js`). `main.js`, `preload.js`, `package.json` are never served.
-- **New strings** in `web-bridge.js`, `web-menu.js` and `web-history.js` are scanned by `scripts/i18n.js`; run `node scripts/i18n.js template`.
+- **New strings** in `web-bridge.js`, `web-menu.js` and `web-history.js` are scanned by `scripts/i18n.js`; run `node scripts/i18n.js template`. A string on the sign-in page or in an auth error instead goes in `web/locales/en.json` and every other `web/locales/<code>.json` (`login-page.test.js` fails on a missing one); upstream's `locales/` files are never edited here, so merges stay clean. The page's run-time strings are the `PAGE_STRINGS` list in `login-page.js`.
 - **The page's open book is not readable from outside `app.js`** (`book` and `currentChapterId` are top-level `let`s). The bridge notes the last book id it was asked about (`neoHosted.state.bookId`), and `web-history.js` finds the chapter from the DOM (`section.chapter[data-id]` holding the caret, else nearest the middle). A restore goes through `chapter:write` plus the editor's own `refreshFromDisk`, so replaced words land in Darlings exactly as an edit from another device would.
 - **Every user-store call is awaited.** `JsonUserStore` is synchronous and `PgUserStore` is not; the contract says "may return a promise", so `currentUser`, `signupAllowed` and the `/auth/*` handlers are all async. A new call site that forgets `await` passes the JSON tests and breaks on Railway.
 - **`library.bookDir()` is the active branch, `bookRoot()` is the book.** Chapters, meta, sidecars and covers go through `bookDir`; `trashBook` and the branch folders themselves use the root. A new library method that touches the folder must pick the right one. In `pg-library.js` the same rule is the join on `books.active_branch` in `readFile`/`writeFile`/`deleteFiles`; a new query that forgets it reads another draft.

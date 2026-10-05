@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "name": "Español",
+    "translators": [
+      "Claude (AI)"
+    ],
+    "status": "Machine-assisted: native-speaker review welcome"
+  },
+  "NEO — Sign in": "NEO — Iniciar sesión",
+  "A word processor for authors. Distraction-free by default.": "Un procesador de texto para autores. Sin distracciones, por defecto.",
+  "Email": "Correo electrónico",
+  "Password": "Contraseña",
+  "Invitation code": "Código de invitación",
+  "Sign in": "Iniciar sesión",
+  "Create an account": "Crear una cuenta",
+  "Forgot your password?": "¿Olvidaste tu contraseña?",
+  "NEO is the word processor for authors written by {author}, MIT licensed.": "NEO es el procesador de texto para autores escrito por {author}, con licencia MIT.",
+  "This is an independent {edition}, not affiliated with or endorsed by him.": "Esta es una {edition} independiente, sin relación con él ni respaldada por él.",
+  "hosted edition": "edición alojada",
+  "Your books are yours: download your whole library any time from the File menu.": "Tus libros son tuyos: descarga toda tu biblioteca cuando quieras desde el menú Archivo.",
+  "Create account": "Crear cuenta",
+  "I already have an account": "Ya tengo una cuenta",
+  "Email me a reset link": "Enviarme un enlace para restablecerla",
+  "Back to sign in": "Volver a iniciar sesión",
+  "Set new password": "Guardar la nueva contraseña",
+  "New password": "Nueva contraseña",
+  "Could not sign in": "No se pudo iniciar sesión",
+  "That link has expired or was already used. Sign in to get a new one, or ask for a password reset.": "Ese enlace caducó o ya se usó. Inicia sesión para recibir uno nuevo, o pide restablecer la contraseña.",
+  "If that address has an account here, a reset link is on its way. Check your email.": "Si esa dirección tiene una cuenta aquí, un enlace para restablecerla va en camino. Revisa tu correo.",
+  "Almost there. We sent a confirmation link to your email; open it to start writing.": "Casi listo. Te enviamos un enlace de confirmación; ábrelo para empezar a escribir.",
+  "Too many emails requested. Try again in a few minutes.": "Demasiados correos solicitados. Inténtalo de nuevo en unos minutos.",
+  "That does not look like an email address": "Eso no parece una dirección de correo",
+  "A password needs at least {n} characters": "Una contraseña necesita al menos {n} caracteres",
+  "New accounts are not being created here": "Aquí no se están creando cuentas nuevas",
+  "That invitation code is not right": "Ese código de invitación no es correcto",
+  "That email already has an account": "Ese correo ya tiene una cuenta",
+  "Too many attempts. Try again in a few minutes.": "Demasiados intentos. Inténtalo de nuevo en unos minutos.",
+  "That email and password do not match": "Ese correo y esa contraseña no coinciden",
+  "Confirm your email first. We just sent you a new link.": "Confirma primero tu correo. Acabamos de enviarte un enlace nuevo.",
+  "That reset link has expired or was already used. Ask for a new one.": "Ese enlace para restablecer caducó o ya se usó. Pide uno nuevo.",
+  "Password reset by email is not set up on this server": "El restablecimiento por correo no está configurado en este servidor"
+}
