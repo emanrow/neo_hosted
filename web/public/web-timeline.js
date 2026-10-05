@@ -16,9 +16,10 @@
 /*                                                                      */
 /* The file: { lanes: [{ id, name, color }], characters: [{ id, name,   */
 /* color }], sheets: [{ id, name, color }], events: [{ id, when, title, */
-/* chapterId, laneId, characterIds, sheetId }] }. Older files carry     */
-/* only events; a missing laneId draws in the "(no place)" lane, a     */
-/* missing sheetId is the main sheet. Story order is the array order;   */
+/* chapterId, endChapterId, laneId, characterIds, sheetId }] }. Older   */
+/* files carry only events; a missing laneId draws in the "(no place)"  */
+/* lane, a missing sheetId is the main sheet, and an endChapterId says  */
+/* the event is told across chapters (a siege over four of them). Story order is the array order;   */
 /* the "when" is text the writer reads, never parsed, so a story can    */
 /* run backwards, sideways or twice.                                    */
 /*                                                                      */
@@ -60,7 +61,7 @@
       characters: list(data.characters).map((c, i) => ({ id: c.id || newId('ch'), name: c.name || '', color: c.color || PALETTE[(i + 1) % PALETTE.length] })),
       sheets: list(data.sheets).map((sh, i) => ({ id: sh.id || newId('sh'), name: sh.name || '', color: sh.color || PALETTE[(i + 2) % PALETTE.length] })),
       events: list(data.events).map((e) => ({
-        id: e.id || newId('ev'), when: e.when || '', title: e.title || '', chapterId: e.chapterId || '',
+        id: e.id || newId('ev'), when: e.when || '', title: e.title || '', chapterId: e.chapterId || '', endChapterId: e.endChapterId || '',
         laneId: e.laneId || '', characterIds: Array.isArray(e.characterIds) ? e.characterIds.filter((id) => typeof id === 'string') : [], sheetId: e.sheetId || '',
       })),
     };
@@ -179,6 +180,18 @@
     const laneOf = (id) => data.lanes.find((l) => l.id === id);
     const sheetOf = (id) => data.sheets.find((sh) => sh.id === id);
     const sheetNameOf = (id) => { const sh = sheetOf(id); return sh ? (sh.name || t('(unnamed)')) : t('Main sheet'); };
+    const chapterIndex = (id) => chapters.findIndex((c) => c.id === id);
+    /** The chapter an event runs on to, when it has one after its own; a stale or earlier end is ignored. */
+    const spanEnd = (event) => {
+      const from = chapterIndex(event.chapterId);
+      const to = chapterIndex(event.endChapterId);
+      return from >= 0 && to > from ? chapters[to] : null;
+    };
+    const chapterSpanText = (event) => {
+      const start = chapters.find((c) => c.id === event.chapterId);
+      const end = spanEnd(event);
+      return start ? (end ? start.name + ' → ' + end.name : start.name) : '';
+    };
     const charOf = (id) => data.characters.find((c) => c.id === id);
     const nextColor = (set) => PALETTE[set.length % PALETTE.length];
     const cycleColor = (item) => { item.color = PALETTE[(PALETTE.indexOf(item.color) + 1) % PALETTE.length]; };
@@ -371,8 +384,17 @@
         const below = svgEl('text', { x, y: y + 22, class: 'ht-mark-title', 'text-anchor': 'middle' });
         below.textContent = clip(event.title, CHART.labelChars);
         g.appendChild(below);
+        const endChapter = spanEnd(event);
+        if (endChapter) {
+          // told across chapters: a bar runs on from the dot, and the title says where it ends
+          const lane = laneOf(event.laneId);
+          g.insertBefore(svgEl('line', { x1: x + 6, x2: x + CHART.column / 2 - 4, y1: y, y2: y, class: 'ht-span-bar', stroke: lane ? lane.color : '#9a9a9a' }), g.firstChild);
+          const until = svgEl('text', { x, y: y + 35, class: 'ht-mark-span', 'text-anchor': 'middle' });
+          until.textContent = t('to {chapter}', { chapter: clip(endChapter.name, CHART.labelChars - 3) });
+          g.appendChild(until);
+        }
         const tip = svgEl('title', {});
-        tip.textContent = [event.when, event.title, event.characterIds.map((id) => (charOf(id) || {}).name).filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+        tip.textContent = [event.when, event.title, chapterSpanText(event), event.characterIds.map((id) => (charOf(id) || {}).name).filter(Boolean).join(', ')].filter(Boolean).join(' · ');
         g.appendChild(tip);
         const reveal = () => {
           const row = list.querySelector('.ht-event[data-id="' + event.id + '"]');
@@ -413,7 +435,7 @@
             <select class="ht-place"></select>
             <select class="ht-chapter"></select>
           </div>
-          <div class="ht-extra" hidden><select class="ht-sheet" hidden></select><div class="ht-who"></div></div>
+          <div class="ht-extra" hidden><select class="ht-sheet" hidden></select><label class="ht-span" hidden><span></span><select class="ht-chapter-end"></select></label><div class="ht-who"></div></div>
         </div>
         <div class="ht-tools">
           <button class="ht-up btn-quiet" title="${t('Move up')}" aria-label="${t('Move up')}">↑</button>
@@ -428,6 +450,8 @@
       const who = li.querySelector('.ht-who');
       const extra = li.querySelector('.ht-extra');
       const sheetSel = li.querySelector('.ht-sheet');
+      const span = li.querySelector('.ht-span');
+      const chapterEnd = li.querySelector('.ht-chapter-end');
       const go = li.querySelector('.ht-go');
       const dot = li.querySelector('.ht-dot');
       when.placeholder = t('When in the story');
@@ -455,8 +479,20 @@
         if (ch) go.textContent = t('Go to {chapter}', { chapter: ch.name });
       };
       showGo();
+      span.querySelector('span').textContent = t('through');
+      /** Only chapters after the start one can end a span; the choice is kept if it still qualifies. */
+      const showSpan = () => {
+        const from = chapterIndex(chapter.value);
+        span.hidden = from < 0 || from >= chapters.length - 1;
+        chapterEnd.innerHTML = '';
+        option(chapterEnd, '', t('(this chapter only)'));
+        for (const ch of chapters.slice(from + 1)) option(chapterEnd, ch.id, ch.name);
+        chapterEnd.value = spanEnd(event) ? event.endChapterId : '';
+        extra.hidden = !data.characters.length && !data.sheets.length && span.hidden;
+      };
+      showSpan();
+      chapterEnd.onchange = () => { event.endChapterId = chapterEnd.value; changed(); drawChart(); };
 
-      extra.hidden = !data.characters.length && !data.sheets.length;
       sheetSel.hidden = !data.sheets.length;
       option(sheetSel, '', t('Main sheet'));
       for (const sheet of data.sheets) option(sheetSel, sheet.id, sheet.name || t('(unnamed)'));
@@ -480,7 +516,7 @@
       when.oninput = () => { event.when = when.value; changed(); drawChart(); };
       title.oninput = () => { event.title = title.value; changed(); drawChart(); };
       place.onchange = () => { event.laneId = place.value; tint(); changed(); drawChart(); };
-      chapter.onchange = () => { event.chapterId = chapter.value || ''; showGo(); changed(); drawChart(); };
+      chapter.onchange = () => { event.chapterId = chapter.value || ''; if (!spanEnd(event)) event.endChapterId = ''; showGo(); showSpan(); changed(); drawChart(); };
       go.onclick = () => { close(); goToChapter(chapter.value); };
       li.querySelector('.ht-up').onclick = () => move(index, index - 1);
       li.querySelector('.ht-down').onclick = () => move(index, index + 1);
@@ -512,7 +548,7 @@
 
     bd.querySelector('.ht-add').onclick = () => {
       const last = data.events[data.events.length - 1];
-      data.events.push({ id: newId('ev'), when: '', title: '', chapterId: last ? last.chapterId : '', laneId: last ? last.laneId : '', characterIds: [], sheetId: activeSheet });
+      data.events.push({ id: newId('ev'), when: '', title: '', chapterId: last ? last.chapterId : '', endChapterId: '', laneId: last ? last.laneId : '', characterIds: [], sheetId: activeSheet });
       changed();
       drawTabs(); drawList(); drawChart();
       const field = list.querySelector('.ht-event:last-child .ht-when');
