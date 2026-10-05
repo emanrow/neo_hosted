@@ -109,6 +109,8 @@ describe('the hosted server', () => {
     assert.equal((await call('GET', '/web/web-feedback.js')).status, 200);
     assert.ok(html.includes('/web/web-timeline.js'));
     assert.equal((await call('GET', '/web/web-timeline.js')).status, 200);
+    assert.ok(html.includes('/web/web-mindmap.js'));
+    assert.equal((await call('GET', '/web/web-mindmap.js')).status, 200);
     assert.match(html, /"feedback":false/, 'with email off, Send Feedback… stays off the menu');
     assert.match(html, /"welcome":""/);
     const feedback = await api('feedback:send', 'Hello?');
@@ -156,6 +158,9 @@ describe('the hosted server', () => {
     const timeline = { events: [{ id: 'ev-1', when: 'Day 1', title: 'The letter arrives', chapterId: 'ch-1' }] };
     assert.equal((await api('json:write', book.id, 'timeline', timeline)).ok, true, 'the timeline is a sidecar like any other');
     assert.deepEqual((await api('json:read', book.id, 'timeline', { events: [] })).result, timeline);
+    const map = { nodes: [{ id: 'n-1', text: 'Silo', x: 100, y: 80, chapterId: 'ch-1' }, { id: 'n-2', text: 'The lottery', x: 300, y: 80, chapterId: '' }], links: [{ from: 'n-1', to: 'n-2' }] };
+    assert.equal((await api('json:write', book.id, 'mindmap', map)).ok, true);
+    assert.deepEqual((await api('json:read', book.id, 'mindmap', { nodes: [], links: [] })).result, map);
     assert.equal((await api('json:write', book.id, 'stickies', [{ a: 1 }])).result, true);
     assert.deepEqual((await api('json:read', book.id, 'stickies', null)).result, [{ a: 1 }]);
     assert.equal(typeof (await api('book:writeMeta', book.id, { ...book, title: 'Renamed' })).result, 'string');
