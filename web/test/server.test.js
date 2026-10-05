@@ -107,6 +107,8 @@ describe('the hosted server', () => {
     assert.ok(html.includes('name="viewport"'));
     assert.ok(html.includes('/web/web-feedback.js'));
     assert.equal((await call('GET', '/web/web-feedback.js')).status, 200);
+    assert.ok(html.includes('/web/web-timeline.js'));
+    assert.equal((await call('GET', '/web/web-timeline.js')).status, 200);
     assert.match(html, /"feedback":false/, 'with email off, Send Feedback… stays off the menu');
     assert.match(html, /"welcome":""/);
     const feedback = await api('feedback:send', 'Hello?');
@@ -151,6 +153,9 @@ describe('the hosted server', () => {
     assert.equal((await api('aux:write', book.id, 'notes', '<p>n</p>')).result, true);
     assert.equal((await api('aux:read', book.id, 'notes')).result, '<p>n</p>');
     assert.deepEqual((await api('json:read', book.id, 'darlings', 'fb')).result, []);
+    const timeline = { events: [{ id: 'ev-1', when: 'Day 1', title: 'The letter arrives', chapterId: 'ch-1' }] };
+    assert.equal((await api('json:write', book.id, 'timeline', timeline)).ok, true, 'the timeline is a sidecar like any other');
+    assert.deepEqual((await api('json:read', book.id, 'timeline', { events: [] })).result, timeline);
     assert.equal((await api('json:write', book.id, 'stickies', [{ a: 1 }])).result, true);
     assert.deepEqual((await api('json:read', book.id, 'stickies', null)).result, [{ a: 1 }]);
     assert.equal(typeof (await api('book:writeMeta', book.id, { ...book, title: 'Renamed' })).result, 'string');

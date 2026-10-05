@@ -130,6 +130,8 @@
         ]),
         check(t('Vim Keys'), st.vim, { type: 'vim' }),
         sep,
+        item(t('Timeline…'), () => hosted.openTimeline && hosted.openTimeline()),
+        sep,
         sub(t('Page'), [
           radio(t('Night'), L.pageTheme !== 'paper' && L.pageTheme !== 'light', { type: 'pageTheme', value: 'night' }),
           radio(t('Paper'), L.pageTheme === 'paper', { type: 'pageTheme', value: 'paper' }),
