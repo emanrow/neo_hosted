@@ -93,6 +93,9 @@ describe('the printer over HTTP', { skip: haveChromium ? false : `no Chromium at
     const pdf = Buffer.from(await res.arrayBuffer());
     assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
     // 6 × 9 in at 72 points to the inch
-    assert.match(pdf.toString('latin1'), /\/MediaBox \[0 0 432 648\]/, 'the page is the trim size');
+    const bytes = pdf.toString('latin1');
+    assert.match(bytes, /\/MediaBox \[0 0 432 648\]/, 'the page is the trim size');
+    // the exporter's own body margin once pushed the first page onto a second sheet, and every contents number was off by one
+    assert.equal((bytes.match(/\/Type \/Page[^s]/g) || []).length, pages, 'Chromium printed exactly the pages Paged.js laid out');
   });
 });
