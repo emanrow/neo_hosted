@@ -38,7 +38,8 @@ function collect() {
     if (!keys.has(k)) keys.set(k, new Set());
     keys.get(k).add(f);
   };
-  const call = /(?<![\w$.])(?:NeoI18n\.)?tk?\(\s*'((?:[^'\\\n]|\\.)*)'/g;
+  // t(), tk() and the hosted bridge's tr()
+  const call = /(?<![\w$.])(?:NeoI18n\.)?t[kr]?\(\s*'((?:[^'\\\n]|\\.)*)'/g;
   for (const f of JS_FILES) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     for (const m of src.matchAll(call)) add(unescapeJs(m[1]), f);

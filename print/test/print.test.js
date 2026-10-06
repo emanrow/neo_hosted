@@ -79,11 +79,12 @@ describe('the printer over HTTP', { skip: haveChromium ? false : `no Chromium at
     assert.equal((await render(BOOK, { secret: 'wrong-wrong-wrong' })).status, 401);
     assert.equal((await render('just words')).status, 400, 'a fragment is not a book');
     assert.equal((await render(BOOK, { query: '?trim=tabloid' })).status, 400, 'an unknown trim');
+    assert.equal((await render(BOOK, { query: '?scene=fleuron' })).status, 400, 'an unknown scene break');
     assert.equal((await fetch(base + '/nowhere')).status, 404);
   });
 
   test('renders a book: a PDF of the trim size, paginated by Paged.js, with the contents page numbered', async () => {
-    const res = await render(BOOK, { query: '?lang=en&trim=6x9' });
+    const res = await render(BOOK, { query: '?lang=en&trim=6x9&scene=ornament' });
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('content-type'), 'application/pdf');
     assert.equal(res.headers.get('x-neo-paged'), '1');
@@ -92,6 +93,9 @@ describe('the printer over HTTP', { skip: haveChromium ? false : `no Chromium at
     const pdf = Buffer.from(await res.arrayBuffer());
     assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
     // 6 × 9 in at 72 points to the inch
-    assert.match(pdf.toString('latin1'), /\/MediaBox \[0 0 432 648\]/, 'the page is the trim size');
+    const bytes = pdf.toString('latin1');
+    assert.match(bytes, /\/MediaBox \[0 0 432 648\]/, 'the page is the trim size');
+    // the exporter's own body margin once pushed the first page onto a second sheet, and every contents number was off by one
+    assert.equal((bytes.match(/\/Type \/Page[^s]/g) || []).length, pages, 'Chromium printed exactly the pages Paged.js laid out');
   });
 });

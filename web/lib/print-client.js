@@ -10,6 +10,36 @@ const { HttpError } = require('./http');
 const RENDER_TIMEOUT_MS = 6 * 60 * 1000;   // the printer's own limits plus its queue
 
 /**
+ * What the export dialog offers, by the names the printer knows (print/book.js
+ * is the other copy; print-client.test.js keeps the two lists the same). The
+ * labels are translated in the page.
+ */
+const PRINT_CHOICES = {
+  trims: [
+    { value: '5.5x8.5', label: '5.5 × 8.5 in (trade paperback)' },
+    { value: '6x9', label: '6 × 9 in' },
+    { value: 'a5', label: 'A5' },
+    { value: 'letter', label: 'Letter' },
+    { value: 'a4', label: 'A4' }
+  ],
+  scenes: [
+    { value: 'asterisks', label: 'Three asterisks' },
+    { value: 'ornament', label: 'An ornament' },
+    { value: 'blank', label: 'A blank line' }
+  ],
+  defaults: { trim: '5.5x8.5', scene: 'asterisks' }
+};
+
+/** The writer's print settings with only the choices the printer knows kept; the rest fall back on the defaults. */
+function printSettingsFrom(saved) {
+  const allowed = (list, value) => list.some((o) => o.value === value) ? value : null;
+  return {
+    trim: allowed(PRINT_CHOICES.trims, saved && saved.trim) || PRINT_CHOICES.defaults.trim,
+    scene: allowed(PRINT_CHOICES.scenes, saved && saved.scene) || PRINT_CHOICES.defaults.scene
+  };
+}
+
+/**
  * @param {{ url: string, secret: string }} printer  from config.printer
  * @param {{ fetch?: Function }} [deps]               a stand-in fetch for the tests
  */
@@ -28,6 +58,7 @@ function createPrintClient(printer, deps = {}) {
       const query = new URLSearchParams();
       if (opts.lang) query.set('lang', opts.lang);
       if (opts.trim) query.set('trim', opts.trim);
+      if (opts.scene) query.set('scene', opts.scene);
       let res;
       try {
         res = await doFetch(`${printer.url}/render?${query}`, {
@@ -52,4 +83,4 @@ function createPrintClient(printer, deps = {}) {
 
 const NO_PRINT_CLIENT = { enabled: false, render: async () => { throw new HttpError(503, 'No PDF printer is configured'); } };
 
-module.exports = { createPrintClient, NO_PRINT_CLIENT, RENDER_TIMEOUT_MS };
+module.exports = { createPrintClient, NO_PRINT_CLIENT, PRINT_CHOICES, printSettingsFrom, RENDER_TIMEOUT_MS };
