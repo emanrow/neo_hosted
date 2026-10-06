@@ -1,13 +1,15 @@
 'use strict';
 
-// A copy of each daily zip in an S3-compatible bucket, so a writer's words
-// survive the loss of the volume. Only PUT is needed, so this is Signature
-// Version 4 over node:crypto and fetch rather than an SDK: Railway's buckets,
-// AWS S3, Cloudflare R2 and MinIO all take it.
+// A copy of each daily zip, and a book's images, in an S3-compatible bucket,
+// so a writer's words survive the loss of the volume and pictures never
+// outgrow it. Only PUT and GET are needed, so this is Signature Version 4
+// over node:crypto and fetch rather than an SDK: Railway's buckets, AWS S3,
+// Cloudflare R2 and MinIO all take it.
 //
-// Keys are `<prefix>/<writer id>/neo-backup-YYYY-MM-DD.zip`. Nothing is ever
-// deleted from the bucket by this code; a lifecycle rule on the bucket is the
-// place to expire old zips.
+// Keys are `<prefix>/<writer id>/neo-backup-YYYY-MM-DD.zip` for the zips and
+// `<prefix>/images/<writer id>/<book id>/<file>` for a book's images
+// (lib/image-store.js). Nothing is ever deleted from the bucket by this code;
+// a lifecycle rule on the bucket is the place to expire old zips.
 
 const crypto = require('node:crypto');
 
@@ -87,10 +89,23 @@ function createObjectStore({ bucket, endpoint, region, accessKeyId, secretAccess
     }
   }
 
-  return { enabled: true, bucket, put, urlFor };
+  /** The bytes under a key, or null when there is no such object. */
+  async function get(key) {
+    const url = urlFor(key);
+    const headers = signRequest({ method: 'GET', path: url.pathname, headers: { host: url.host }, payloadHash: EMPTY_HASH, region, accessKeyId, secretAccessKey });
+    const res = await doFetch(url, { method: 'GET', headers });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`object store: GET ${key} answered ${res.status}${text ? ` ${text.slice(0, 200)}` : ''}`);
+    }
+    return Buffer.from(await res.arrayBuffer());
+  }
+
+  return { enabled: true, bucket, put, get, urlFor };
 }
 
 /** What stands in for the store when no bucket is configured. */
-const NO_OBJECT_STORE = { enabled: false, bucket: '', put: async () => {}, urlFor: () => null };
+const NO_OBJECT_STORE = { enabled: false, bucket: '', put: async () => {}, get: async () => null, urlFor: () => null };
 
 module.exports = { createObjectStore, signRequest, sha256, NO_OBJECT_STORE, EMPTY_HASH };

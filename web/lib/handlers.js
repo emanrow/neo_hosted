@@ -130,7 +130,8 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir, feedback }
           provider, apiKey, text: String(text || ''),
           textModel: options && options.textModel, imageModel: options && options.imageModel, quality: options && options.quality
         });
-        const file = await ctx.library.storePainting(bookId, { buffer: out.buffer, ext: out.ext, brief: out.brief, provider, textModel: out.textModel, imageModel: out.imageModel });
+        const paint = (id, ext, buffer) => ctx.library.storePainting(id, { buffer, ext, brief: out.brief, provider, textModel: out.textModel, imageModel: out.imageModel });
+        const file = await ctx.images.put(paint, bookId, out.ext, out.buffer);   // the bytes go where the covers go
         return { file, brief: out.brief };
       } catch (err) {
         ctx.logError('paint', err);
