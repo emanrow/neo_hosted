@@ -28,7 +28,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { libName, readJSON } = require('./files');
+const { libName, readJSON } = require('../../library-disk');
 const { checkBranchName, MAIN_BRANCH: MAIN } = require('./branches');
 const { dailyZip } = require('./backups');
 

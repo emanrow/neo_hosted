@@ -12,7 +12,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { writeFileDurable } = require('./files');
+const { writeFileDurable } = require('../../library-disk');
 
 const BACKUPS_KEPT = 14;
 const OFFSITE_MARK = '.offsite';

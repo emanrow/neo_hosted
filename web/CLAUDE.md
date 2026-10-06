@@ -27,8 +27,7 @@ web/
     branch-merge.js     createMerger({branches, library}): preview(bookId, name), apply(bookId, name, resolutions); mergeOrder
     mail.js             createMailer({resendApiKey, from}): enabled, send; the confirmation, reset and feedback messages (the first two take the visitor's translator)
     secrets.js          createSecretBox(masterSecret): read/write/has, AES-256-GCM per writer
-    files.js            libName, writeFileDurable, readJSON, writeJSON  (port of main.js)
-    library.js          openLibrary({dir, t, logError}): one writer's NEO Library as a folder (port of main.js); a laptop, the tests
+    library.js          openLibrary({dir, t, logError}): one writer's NEO Library as a folder (a port of main.js's handlers over ../library-disk.js); a laptop, the tests
     handlers.js         registerHandlers(api, deps): one function per IPC channel
     spell.js            SpellService: shared Hunspell per language; SPELL_LANGUAGES; defaultSpellLanguage
     i18n.js             listLanguages, resolveLanguage, bundleFor, translatorFor, pickLanguage
@@ -58,6 +57,7 @@ web/
   docker-entrypoint.sh  starts as root, hands the mounted volume to `node`, drops privileges (docs/deployment.md)
   test/*.test.js        node:test; server.test.js boots the real server
 ../import-parse.js      NOT in web/: the manuscript parser shared with main.js (importBuffer, isImportable, CHAPTER_WORDS)
+../library-disk.js      NOT in web/: the disk rules shared with main.js (libName, writeFileDurable, readJSON, writeJSON; forLibrary({t, logError}) → writeCatalog, rebuildBookMeta, seedLostLibrary, fillZip). Every lib/ file that touches a writer's files requires it
 ```
 
 ## Request path

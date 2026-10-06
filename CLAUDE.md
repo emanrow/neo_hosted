@@ -37,7 +37,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 |-----|---------------|
 | [AGENTS.md](AGENTS.md) | **Upstream, read first.** The product's rules, where the editor's code is, files on disk, saving and sync, i18n, Pocket |
 | [HOSTED.md](HOSTED.md) | The hosted edition for humans: what it is, credits, how to run it, links into this tree |
-| [docs/architecture.md](docs/architecture.md) | Three doorways, no build step, request lifecycle, a writer's folder on the volume, what was ported from `main.js` and must stay in step |
+| [docs/architecture.md](docs/architecture.md) | Three doorways, no build step, request lifecycle, a writer's folder on the volume, the disk module shared with `main.js`, and what is still a port |
 | [docs/auth-and-users.md](docs/auth-and-users.md) | Sign-in, sessions, signup policy, the JSON user store and when to move to Postgres, API keys at rest, known gaps |
 | [docs/parity.md](docs/parity.md) | Feature-by-feature comparison with the desktop, where each difference lives, which accelerators the menu bar owns |
 | [docs/deployment.md](docs/deployment.md) | Environment variables, Railway steps, Docker, a laptop, verifying without a shell |
@@ -90,7 +90,7 @@ cd print && npm install && CHROMIUM_PATH=/path/to/chrome npm test   # the printe
 3. **Update documentation in the same PR.** The PR template's Docs section must list the doc files touched or say why none were needed.
 4. **Test and lint before pushing.** `npm run test:web` and the oxlint line above. A change to `app.js`, `main.js` or `index.html` also needs upstream's `npm test`.
 5. **Hosted behavior lives in `web/`, never behind a branch in `app.js`.** A parity gap that cannot be closed from the bridge goes in the backlog. This keeps upstream merges clean and is the same rule AGENTS.md sets for Pocket.
-6. **Keep the ports in step.** `web/lib/files.js` and `web/lib/library.js` mirror `main.js`'s disk code; a fix to one is a fix to both ([docs/architecture.md](docs/architecture.md#what-was-ported-from-mainjs-and-must-stay-in-step)).
+6. **One disk module.** `library-disk.js` at the root holds the disk rules (`libName`, durable writes, JSON recovery, the catalog, the rebuilt `book.json`, the backup walk) and both `main.js` and `web/lib/library.js` require it; a fix lands in both editions at once. What is still a port, and why, is in [docs/architecture.md](docs/architecture.md#what-is-shared-with-mainjs-and-what-is-still-a-port).
 7. **Credit stays.** Hugh Howey wrote NEO. The sign-in page, the Help menu, HOSTED.md and the README say so; do not trim it.
 8. **It is public.** Read your own diff, commit message and PR text as a stranger would before pushing ([docs/public-repo.md](docs/public-repo.md)). The pre-push scanner is a net, not a reviewer.
 
@@ -100,12 +100,12 @@ cd print && npm install && CHROMIUM_PATH=/path/to/chrome npm test   # the printe
 2. **A channel is an IPC name.** `POST /api/chapter:write` with `{ args: [bookId, chId, html] }` is `ipcMain.handle('chapter:write', ...)`. Handlers in `web/lib/handlers.js` are registered under the same names, in the same order, as in `main.js`.
 3. **A writer's context** (`contextFor` in `web/server.js`) is their locale, translator, library, settings, secrets file and error log. Handlers receive it first.
 4. **Words are never discarded.** Deleting a book moves it to `Trash/` inside the library. A failed save throws back to the page so `persistChapter` retries. The bridge never navigates away from a page with unsaved words, even when the session has expired.
-5. **Durable writes everywhere.** tmp, fsync, rename; `.bak` of the last whole JSON; reads fall back on `.tmp` then `.bak` (upstream's rules, ported).
+5. **Durable writes everywhere.** tmp, fsync, rename; `.bak` of the last whole JSON; reads fall back on `.tmp` then `.bak` (upstream's rules, in `library-disk.js`, which `main.js` runs too).
 6. **The page is upstream's `index.html`,** transformed at request time around four markers. A moved marker fails the boot and the test, loudly.
 7. **Spellcheck is shared, learned words are not.** One Hunspell per language for every writer; `customWords` from each writer's `library.json` are laid over the result.
 8. **The menu bar is `buildMenu()` in a browser.** Same labels (translated through `locales/`), same `{ type, ... }` messages to `window.neo.onMenu`, hidden until the top edge is hovered or Alt/F10 is pressed.
 9. **New strings** go through `t()` (the bridge's `tr()`) and `node scripts/i18n.js template`, which scans the two `web/public/*.js` files too.
-10. **One manuscript parser.** `import-parse.js` at the root is required by both `main.js` and `web/server.js`; chapter detection (`CHAPTER_WORDS`) lives there and nowhere else.
+10. **One manuscript parser, one disk.** `import-parse.js` and `library-disk.js` at the root are required by both `main.js` and the hosted server; chapter detection (`CHAPTER_WORDS`) and the disk rules live there and nowhere else.
 
 ## Documentation Standards
 

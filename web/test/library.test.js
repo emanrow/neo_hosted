@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { describe, test } = require('node:test');
 
-const { libName, readJSON, writeJSON, writeFileDurable } = require('../lib/files');
+const { libName, readJSON, writeJSON, writeFileDurable } = require('../../library-disk');
 const { openLibrary } = require('../lib/library');
 
 const t = (key, vars) => key.replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? vars[k] : m));

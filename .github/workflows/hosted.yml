@@ -51,7 +51,7 @@ jobs:
         # lives beside upstream's tests and needs only JSZip from the root
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund jszip
-          node --test scripts/import-parse.test.js
+          node --test scripts/import-parse.test.js scripts/library-disk.test.js
       - name: Lint
         run: npx --yes oxlint@1 -c .oxlintrc.json web/server.js web/lib web/public web/test print/server.js print/book.js print/hyphenate.js print/test
 
