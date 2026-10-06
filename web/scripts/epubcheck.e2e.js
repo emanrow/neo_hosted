@@ -10,6 +10,7 @@
 //
 //   cd web && npm i --no-save playwright-core   (once; not a runtime dependency)
 //   EPUBCHECK_JAR=/path/to/epubcheck.jar CHROMIUM_PATH=... node web/scripts/epubcheck.e2e.js
+//   EXPORT_DIR=/somewhere keeps the book.epub and book.docx it built, to open by hand
 //
 // Without EPUBCHECK_JAR the EPUB is still built and inspected, and the
 // epubcheck step is skipped with a note. docs/testing.md.
@@ -140,6 +141,18 @@ function tinyPng() {
     const chapterFiles = entries.filter((e) => /^OEBPS\/ch\d+\.xhtml$/.test(e.path) && e.content.includes('<figure class="figure">'));
     if (chapterFiles.length !== 2) fail('the pictures are not in their chapter files');
     if (!entries.some((e) => e.content.includes('<figcaption>The house on the hill</figcaption>'))) fail('the EPUB lost the caption');
+    if (entries.some((e) => typeof e.content === 'string' && e.content.includes('\uE000'))) fail('a picture mark is left in the EPUB');
+    // the Word file too: an inline drawing per picture, the bytes in word/media/
+    const docx = await page.evaluate(async () => window.neoHosted.figures.docxExport((await shelfPayload(bookExportData(), 'docx')).zipEntries));
+    const docXml = docx.find((e) => e.path === 'word/document.xml').content;
+    if ((docXml.match(/<w:drawing>/g) || []).length !== 2) fail('the Word file does not carry both pictures');
+    if (docXml.includes('\uE000')) fail('a picture mark is left in the Word file');
+    if (docx.filter((e) => e.path.startsWith('word/media/')).length !== 2) fail('the Word file lacks the picture bytes');
+    const docxZip = new JSZip();
+    for (const e of docx) docxZip.file(e.path, e.content, { base64: !!e.base64 });
+    const outDir = process.env.EXPORT_DIR || dataDir;
+    fs.writeFileSync(path.join(outDir, 'book.docx'), await docxZip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
+    console.log('built ' + path.join(outDir, 'book.docx'));
     const paths = entries.map((e) => e.path);
     const fonts = paths.filter((p) => p.startsWith('OEBPS/fonts/'));
     if (fonts.length !== 4) fail(`expected Libron's four faces in the EPUB, found ${fonts.length}: ${fonts.join(', ')}`);
@@ -151,7 +164,7 @@ function tinyPng() {
     if ((opf.match(/media-type="image\/png"/g) || []).length !== 2) fail('the manifest does not list the pictures');
     const zip = new JSZip();
     for (const e of entries) zip.file(e.path, e.content, { base64: !!e.base64, compression: e.store ? 'STORE' : 'DEFLATE' });
-    const file = path.join(dataDir, 'book.epub');
+    const file = path.join(process.env.EXPORT_DIR || dataDir, 'book.epub');
     fs.writeFileSync(file, await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', mimeType: 'application/epub+zip' }));
     console.log(`built ${file}: ${entries.length} entries, ${fs.statSync(file).size} bytes, faces: ${fonts.map((f) => f.split('/').pop()).join(', ')}`);
     const jar = process.env.EPUBCHECK_JAR;
