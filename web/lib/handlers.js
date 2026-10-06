@@ -166,6 +166,8 @@ function registerHandlers(api, { spell, secretBox, versions, rootDir, feedback }
   // ---------- feedback and the welcome (hosted only; web-feedback.js is the caller) ----------
   api.handle('feedback:send', (ctx, message) => feedback.send(ctx, message));
   api.handle('welcome:seen', (ctx) => ctx.markWelcomed());
+  // hosted only: the writer's print choices for Export → PDF (web-print.js); a patch saves, no patch reads
+  api.handle('print:settings', (ctx, patch) => ctx.printSettings(patch));
 }
 
 module.exports = { registerHandlers };

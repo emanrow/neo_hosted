@@ -18,7 +18,7 @@
 //   POST /api/<channel>            { args: [...] } → { ok, result | error }   (see lib/handlers.js)
 //   POST /api/cover:upload?bookId=&ext=            raw image bytes → file name
 //   POST /api/import:upload?name=<file name>       raw .docx/.txt/.md bytes → the parsed book
-//   POST /api/export:pdf?trim=<name>               the export HTML → the PDF, by the printer (print/); 503 without one
+//   POST /api/export:pdf?trim=<name>&scene=<name>  the export HTML → the PDF, by the printer (print/); 503 without one
 //   GET  /library/<bookId>/<cover, art, map or fig file>  cover images for the shelf, the map map's sheet, a chapter's pictures
 //   POST /api/map:upload?bookId=&ext=   the map map's sheet, raw image body (hosted only)
 //   POST /api/figure:upload?bookId=&ext=   a picture for a chapter, raw image body → file name (hosted only; web-figures.js)
@@ -44,7 +44,7 @@ const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
 const { openPgLibrary } = require('./lib/pg-library');
 const { createObjectStore, NO_OBJECT_STORE } = require('./lib/object-store');
-const { createPrintClient, NO_PRINT_CLIENT } = require('./lib/print-client');
+const { createPrintClient, NO_PRINT_CLIENT, PRINT_CHOICES, printSettingsFrom } = require('./lib/print-client');
 const { JsonShareStore, PgShareStore, isToken } = require('./lib/share-store');
 const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
@@ -194,6 +194,15 @@ function createApp(config, deps = {}) {
         fs.mkdirSync(root, { recursive: true });
         writeJSON(settingsFile, { ...readJSON(settingsFile, {}), uiLanguage: resolved });
         return resolved;
+      },
+      /** The writer's print choices (trim size, scene breaks), saved when a patch is given; unknown values fall back on the defaults. */
+      printSettings(patch) {
+        const current = printSettingsFrom(readJSON(settingsFile, {}).print);
+        if (!patch || typeof patch !== 'object') return current;
+        const next = printSettingsFrom({ ...current, ...patch });
+        fs.mkdirSync(root, { recursive: true });
+        writeJSON(settingsFile, { ...readJSON(settingsFile, {}), print: next });
+        return next;
       },
       /** The welcome was shown (or waved away); it is not shown again. */
       markWelcomed() {
@@ -387,7 +396,7 @@ function createApp(config, deps = {}) {
       source: 'https://github.com/emanrow/neo_hosted',
       upstream: 'https://github.com/hughhowey/neo',
       feedback: feedback.enabled(),                       // Help → Send Feedback… is on the menu
-      print: printer.enabled,                             // Export → PDF is made by the printer, not the browser's print dialog
+      print: printer.enabled ? PRINT_CHOICES : false,     // Export → PDF is made by the printer, with these choices; false: the browser's print dialog
       welcome: ctx.welcomePending ? 'honored' : ''       // web-feedback.js opens the one-time welcome
     };
   }
@@ -445,9 +454,10 @@ function createApp(config, deps = {}) {
     if (!printer.enabled) throw new HttpError(503, 'No PDF printer is configured');
     const html = (await readBody(req, EXPORT_BODY_LIMIT)).toString('utf8');
     if (!/<html[\s>]/i.test(html.slice(0, 2000))) throw new HttpError(400, 'Send the book as a whole HTML document');
-    const trim = String(url.searchParams.get('trim') || '');
+    // the writer's saved choices, unless the dialog sent others along
+    const choices = printSettingsFrom({ ...ctx.printSettings(), ...Object.fromEntries(['trim', 'scene'].filter((k) => url.searchParams.has(k)).map((k) => [k, url.searchParams.get(k)])) });
     try {
-      const { pdf, pages, paged } = await printer.render(html, { lang: ctx.locale, trim: trim || undefined });
+      const { pdf, pages, paged } = await printer.render(html, { lang: ctx.locale, ...choices });
       send(res, 200, pdf, { 'Content-Type': 'application/pdf', 'X-Neo-Pages': String(pages), 'X-Neo-Paged': paged ? '1' : '0', 'Cache-Control': 'no-store' });
     } catch (err) {
       ctx.logError('export:pdf', err);

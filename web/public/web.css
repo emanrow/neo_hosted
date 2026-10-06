@@ -403,3 +403,9 @@ body.light .hw-ink.hw-on { border-color: #222; box-shadow: 0 0 0 1px #fff; }
   .hw-side { width: auto; max-height: 30%; }
   .hw-pages { border-right: 0; border-bottom: 1px solid #333; }
 }
+
+/* ===================== NEO, HOSTED: PRINT DIALOG ===================== */
+.hosted-print-modal { width: min(460px, 94vw); }
+.hosted-print-modal label { display: flex; flex-direction: column; gap: 6px; }
+.hosted-print-modal select { padding: 6px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 13px; }
+body.light .hosted-print-modal select { background: #fff; color: #222; border-color: #ddd8ce; }

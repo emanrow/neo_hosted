@@ -8,9 +8,9 @@ A second, smaller service beside the app: one headless Chromium with [Paged.js](
 
 ```
 print/
-  server.js        POST /render?lang=&trim= (text/html in, application/pdf out, X-Neo-Pages on the answer), GET /healthz; createApp(config), renderBook(browser, html, opts)
-  book.js          TRIMS (5.5x8.5, 6x9, a5, letter, a4: page size, mirrored margins, type size and leading) and bookStyles(name), the stylesheet Paged.js lays the book out with
-  book.css         the book's page laid over the exporter's own styles: justified book type, widows and orphans, hyphenation, headings scaled to the trim, the contents page numbered by target-counter
+  server.js        POST /render?lang=&trim=&scene= (text/html in, application/pdf out, X-Neo-Pages on the answer), GET /healthz; createApp(config), renderBook(browser, html, opts)
+  book.js          TRIMS (5.5x8.5, 6x9, a5, letter, a4: page size, mirrored margins, type size and leading), SCENES (asterisks, ornament, blank) and bookStyles(name), the stylesheet Paged.js lays the book out with
+  book.css         the book's page laid over the exporter's own styles: justified book type, widows and orphans, hyphenation, headings scaled to the trim; running heads (author on the verso, title on the recto, from string-set on the title page), folios in the outer corner, none on front matter, a chapter's first page or a blank verso; chapters open on a recto (break-before: right); the contents page numbered by target-counter; scene breaks by body.scene-<name>
   Dockerfile       node:22-bookworm-slim + Debian's chromium; Railway builds it with the service's Root Directory set to `print`
   railway.json     the health check for that service
   test/            node:test; the render test runs only where a Chromium is at hand (CHROMIUM_PATH, or /usr/bin/chromium in the image)
@@ -31,4 +31,6 @@ If Paged.js throws on a book, the document is printed as Chromium alone would (t
 - **The viewport is the content box, not the trim.** The exporter's `.copyright { min-height: 98vh }` and the `padding-top: 2Xvh` openers were written for a screen; `book.css` trims the copyright page to `94vh` so it stays on one page.
 - **Chromium runs with `--no-sandbox`:** the image runs as `node` in a container without user namespaces. The document is the writer's own and fetches nothing, which is the boundary.
 - **The service listens on every address** (no host given to `listen`), because Railway's private network is IPv6; a laptop reaches it at `localhost`.
+- **Named pages carry the conventions.** The exporter names its front matter `page: front`; `book.css` names chapters `page: chapter`, and Paged.js honours `@page chapter:first` (no running head on an opener) and `@page :blank` (nothing on the verso it inserts before a recto opener). A new kind of page wants a name here before a margin rule.
+- **The scene-break choice is a body class,** set by `renderBook` from the `scene` query before Paged.js runs, so `book.css` can style `.brk` without knowing the document; `web/lib/print-client.js` carries the same list of names for the dialog, and `web/test/print-client.test.js` fails when the two drift.
 - **Concurrency is a gate, not a pool.** `NEO_PRINT_CONCURRENCY` books render at once in one browser, each in its own page; the rest wait in order. The app's request timeout (`print-client.js`) allows for the wait.

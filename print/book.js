@@ -21,6 +21,14 @@ const TRIMS = {
 };
 const DEFAULT_TRIM = '5.5x8.5';
 
+/** How a scene break (the exporter's ***) is set on the page; the body gets class scene-<name> */
+const SCENES = {
+  asterisks: { label: 'Three asterisks' },
+  ornament: { label: 'An ornament (❦)' },
+  blank: { label: 'A blank line' }
+};
+const DEFAULT_SCENE = 'asterisks';
+
 for (const trim of Object.values(TRIMS)) {
   const [top, outer, bottom, inner] = trim.margins;
   trim.contentWidthIn = trim.widthIn - inner - outer;
@@ -38,4 +46,4 @@ function bookStyles(name) {
 ${BOOK_CSS}`;
 }
 
-module.exports = { TRIMS, DEFAULT_TRIM, bookStyles };
+module.exports = { TRIMS, DEFAULT_TRIM, SCENES, DEFAULT_SCENE, bookStyles };

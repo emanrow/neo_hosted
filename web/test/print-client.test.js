@@ -6,7 +6,8 @@
 const assert = require('node:assert/strict');
 const { describe, test } = require('node:test');
 
-const { createPrintClient, NO_PRINT_CLIENT } = require('../lib/print-client');
+const { createPrintClient, NO_PRINT_CLIENT, PRINT_CHOICES, printSettingsFrom } = require('../lib/print-client');
+const printerBook = require('../../print/book');
 
 const printer = { url: 'http://neo-print.internal:8080', secret: 'open-sesame-open' };
 const answer = (status, body, headers = {}) => ({
@@ -21,11 +22,11 @@ describe('the print client', () => {
     const sent = [];
     const client = createPrintClient(printer, { fetch: async (url, init) => { sent.push({ url, init }); return answer(200, '%PDF-1.4', { 'x-neo-pages': '212', 'x-neo-paged': '1' }); } });
     assert.equal(client.enabled, true);
-    const out = await client.render('<html><body>A book</body></html>', { lang: 'fr', trim: 'a5' });
+    const out = await client.render('<html><body>A book</body></html>', { lang: 'fr', trim: 'a5', scene: 'blank' });
     assert.equal(out.pdf.toString(), '%PDF-1.4');
     assert.equal(out.pages, 212);
     assert.equal(out.paged, true);
-    assert.equal(sent[0].url, 'http://neo-print.internal:8080/render?lang=fr&trim=a5');
+    assert.equal(sent[0].url, 'http://neo-print.internal:8080/render?lang=fr&trim=a5&scene=blank');
     assert.equal(sent[0].init.method, 'POST');
     assert.equal(sent[0].init.headers.Authorization, 'Bearer open-sesame-open');
     assert.equal(sent[0].init.body, '<html><body>A book</body></html>');
@@ -41,6 +42,15 @@ describe('the print client', () => {
     await assert.rejects(unhappy.render('<html></html>'), (err) => err.status === 502 && /401.*NEO_PRINT_SECRET/.test(err.message));
     const unpaged = createPrintClient(printer, { fetch: async () => answer(200, '%PDF-1.4', { 'x-neo-paged': '0' }) });
     assert.equal((await unpaged.render('<html></html>')).paged, false, 'Chromium alone printed it');
+  });
+
+  test('the choices the page offers are the names the printer knows', () => {
+    assert.deepEqual(PRINT_CHOICES.trims.map((o) => o.value), Object.keys(printerBook.TRIMS));
+    assert.deepEqual(PRINT_CHOICES.scenes.map((o) => o.value), Object.keys(printerBook.SCENES));
+    assert.equal(PRINT_CHOICES.defaults.trim, printerBook.DEFAULT_TRIM);
+    assert.equal(PRINT_CHOICES.defaults.scene, printerBook.DEFAULT_SCENE);
+    assert.deepEqual(printSettingsFrom(undefined), PRINT_CHOICES.defaults);
+    assert.deepEqual(printSettingsFrom({ trim: '6x9', scene: 'nope' }), { trim: '6x9', scene: 'asterisks' });
   });
 
   test('without a printer, the client says so and renders nothing', async () => {

@@ -39,10 +39,41 @@ p { text-align-last: auto; }
 .coverpage { margin: 0; }
 .coverpage img { max-width: 100%; max-height: 100vh; }
 
-/* a page that is not a chapter (the title page, a dedication, the contents)
-   stands alone and carries no number; the exporter names them `front` */
-.chapter, .page, .contents, .titlepage, .coverpage { break-before: page; }
+/* Running heads and folios. The exporter sets one centred folio on every
+   page but the front matter; a book carries the author on the verso, the
+   title on the recto, the number in the outer corner, and nothing on the
+   front matter, a chapter's first page or a blank verso. The title page
+   names the book and its author for the heads (string-set). */
+.titlepage h1 { string-set: book-title content(text); }
+.titlepage .auth { string-set: book-author content(text); }
+@page :left {
+  @top-left { content: string(book-author); font-size: 0.75em; letter-spacing: 0.15em; text-transform: uppercase; color: #555; }
+  @bottom-left { content: counter(page); font-size: 0.85em; color: #555; }
+  @bottom-center { content: none; }
+}
+@page :right {
+  @top-right { content: string(book-title); font-size: 0.75em; letter-spacing: 0.15em; text-transform: uppercase; color: #555; }
+  @bottom-right { content: counter(page); font-size: 0.85em; color: #555; }
+  @bottom-center { content: none; }
+}
+@page front { @top-left { content: none; } @top-right { content: none; } @bottom-left { content: none; } @bottom-right { content: none; } }
+@page :blank { @top-left { content: none; } @top-right { content: none; } @bottom-left { content: none; } @bottom-right { content: none; } }
+@page chapter:first { @top-left { content: none; } @top-right { content: none; } }
+
+/* A chapter opens on a recto (Paged.js leaves a blank verso before it when
+   it must); the pages that are not chapters (the title page, a dedication,
+   the contents) stand alone and carry no number; the exporter names them
+   `front`. The title a third of the way down is the exporter's own rule. */
+.chapter { break-before: right; page: chapter; }
+.page, .contents, .titlepage, .coverpage { break-before: page; }
 .coverpage { break-before: auto; }
+
+/* Scene breaks: the exporter writes *** between scenes. The printer sets
+   them as the writer chose (body.scene-<name>, from the export dialog):
+   three asterisks as they are, a centred ornament, or a blank line. */
+body.scene-ornament .brk { letter-spacing: 0; color: #777; font-size: 0; }
+body.scene-ornament .brk::before { content: '\2766'; font-size: 1.1rem; }
+body.scene-blank .brk { visibility: hidden; margin: 1.6em 0; }
 
 /* Contents: the exporter leaves an empty .toc-pg for the desktop's two-pass
    printer to fill. Here Paged.js finds the page each entry starts on once
