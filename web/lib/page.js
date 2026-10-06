@@ -74,7 +74,7 @@ function buildHostedPage({ indexHtml, i18n, hostedConfig, assetVersion }) {
     '  <script src="/jszip.min.js"></script>\n' +
     '  <script src="i18n.js"></script>\n' +
     '  <script src="/web/web-bridge.js"></script>');
-  html = html.replace(MARKERS.appScript, '<script src="app.js"></script>\n  <script src="/web/web-menu.js"></script>\n  <script src="/web/web-history.js"></script>\n  <script src="/web/web-branches.js"></script>\n  <script src="/web/web-share.js"></script>\n  <script src="/web/web-feedback.js"></script>\n  <script src="/web/web-print.js"></script>\n  <script src="/web/web-timeline.js"></script>\n  <script src="/web/web-mindmap.js"></script>\n  <script src="/web/web-map.js"></script>\n  <script src="/web/web-handwriting.js"></script>\n  <script src="/web/web-mobile.js"></script>');
+  html = html.replace(MARKERS.appScript, '<script src="app.js"></script>\n  <script src="/web/web-menu.js"></script>\n  <script src="/web/web-history.js"></script>\n  <script src="/web/web-branches.js"></script>\n  <script src="/web/web-share.js"></script>\n  <script src="/web/web-feedback.js"></script>\n  <script src="/web/web-print.js"></script>\n  <script src="/web/web-timeline.js"></script>\n  <script src="/web/web-mindmap.js"></script>\n  <script src="/web/web-map.js"></script>\n  <script src="/web/web-handwriting.js"></script>\n  <script src="/web/web-mobile.js"></script>\n  <script src="/web/web-epub.js"></script>');
   return versionAssets(html, assetVersion);
 }
 
