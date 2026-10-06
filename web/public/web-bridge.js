@@ -255,8 +255,10 @@
       }
       if (zipEntries) {
         if (!window.JSZip) throw new Error('Zip support missing');
+        // an EPUB leaves with the writer's face and drop cap laid in (web-epub.js)
+        const entries = format === 'epub' && window.neoHosted && window.neoHosted.epub ? await window.neoHosted.epub.polish(zipEntries) : zipEntries;
         const zip = new window.JSZip();
-        for (const e of zipEntries) zip.file(e.path, e.content, { base64: !!e.base64, compression: e.store ? 'STORE' : 'DEFLATE' });
+        for (const e of entries) zip.file(e.path, e.content, { base64: !!e.base64, compression: e.store ? 'STORE' : 'DEFLATE' });
         download(await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: ZIP_MIME[format] || 'application/zip' }), name);
         return name;
       }

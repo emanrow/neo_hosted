@@ -101,3 +101,20 @@ jobs:
           head -c 5 book.pdf | grep -q '%PDF-' || { echo "::error::the printer did not answer with a PDF"; docker logs print; exit 1; }
           grep -qi '^x-neo-paged: 1' headers.txt || { echo "::error::Paged.js did not lay the book out"; docker logs print; exit 1; }
           echo "printed $(wc -c < book.pdf) bytes"
+
+  epub:
+    name: EPUB export passes epubcheck
+    runs-on: ubuntu-latest
+    # Playwright's image has the Chromium the exporter runs in; epubcheck wants a JRE
+    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the hosted edition's runtime dependencies
+        run: cd web && npm ci --no-audit --no-fund
+      - name: Install a JRE and epubcheck
+        run: |
+          apt-get update -q && apt-get install -y -q --no-install-recommends default-jre-headless unzip > /dev/null
+          curl -fsSL -o epubcheck.zip https://github.com/w3c/epubcheck/releases/download/v5.2.1/epubcheck-5.2.1.zip
+          unzip -q epubcheck.zip
+      - name: Export a book as EPUB through the real exporter and check it
+        run: EPUBCHECK_JAR=$PWD/epubcheck-5.2.1/epubcheck.jar node web/scripts/epubcheck.e2e.js
