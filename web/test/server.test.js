@@ -426,11 +426,16 @@ describe('the hosted server', () => {
     const book = '<!DOCTYPE html><html><head><title>A Book</title></head><body><section class="chapter"><p>Words.</p></section></body></html>';
     const print = (body, query = '') => call('POST', '/api/export:pdf' + query, { raw: body, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     assert.match(await (await call('GET', '/')).text(), /"print":false/, 'without a printer the bridge opens the print view');
+    assert.equal((await api('print:settings')).status, 200, 'the choices can still be read');
     assert.equal((await print(book)).status, 503, 'and the route says there is none');
 
     printer.enabled = true;
     try {
-      assert.match(await (await call('GET', '/')).text(), /"print":true/, 'with one, the bridge sends the book up');
+      assert.match(await (await call('GET', '/')).text(), /"print":\{"trims":\[\{"value":"5\.5x8\.5"/, 'with one, the page is told the choices');
+      assert.deepEqual((await api('print:settings')).result, { trim: '5.5x8.5', scene: 'asterisks' }, 'the defaults before any choice');
+      assert.deepEqual((await api('print:settings', { trim: '6x9', scene: 'ornament', other: 'ignored' })).result, { trim: '6x9', scene: 'ornament' }, 'a choice is kept');
+      assert.deepEqual((await api('print:settings', { trim: 'tabloid' })).result, { trim: '5.5x8.5', scene: 'ornament' }, 'an unknown trim falls back, the rest stays');
+      assert.deepEqual((await api('print:settings', { trim: 'a5' })).result, { trim: 'a5', scene: 'ornament' });
       const res = await print(book, '?trim=6x9');
       assert.equal(res.status, 200);
       assert.equal(res.headers.get('content-type'), 'application/pdf');
@@ -439,7 +444,11 @@ describe('the hosted server', () => {
       assert.equal(await res.text(), '%PDF-1.4 stand-in');
       assert.equal(printer.calls.length, 1);
       assert.equal(printer.calls[0].html, book, 'the document goes up as it is');
-      assert.deepEqual(printer.calls[0].opts, { lang: 'en', trim: '6x9' }, 'with the writer\'s language and the trim');
+      assert.deepEqual(printer.calls[0].opts, { lang: 'en', trim: '6x9', scene: 'ornament' }, 'with the writer\'s language, the trim sent along and the saved scene break');
+      await print(book);
+      assert.deepEqual(printer.calls[1].opts, { lang: 'en', trim: 'a5', scene: 'ornament' }, 'nothing sent along: the saved choices');
+      await print(book, '?trim=tabloid&scene=none');
+      assert.deepEqual(printer.calls[2].opts, { lang: 'en', trim: '5.5x8.5', scene: 'asterisks' }, 'unknown names fall back on the defaults rather than reaching the printer');
       assert.equal((await print('not a document')).status, 400);
       const signedIn = cookie;
       cookie = '';

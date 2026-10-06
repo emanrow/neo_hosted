@@ -84,14 +84,23 @@
 
   // With a printer behind the server (config.print), the export's HTML goes
   // up and a book comes back: a PDF laid out as pages of a chosen trim, with
-  // page numbers, a numbered contents page and bookmarks. The browser saves
-  // it as a download. Resolves false when the printer is off or failed, so
-  // the caller can fall back on the print view below.
-  async function printBook(html, name) {
+  // running heads, page numbers, a numbered contents page and bookmarks.
+  // The browser saves it as a download. With `ask`, web-print.js's dialog
+  // takes the trim size and the scene-break style first (and remembers
+  // them); without it the saved choices are used. Resolves false when the
+  // printer is off or failed, so the caller can fall back on the print
+  // view below, and null when the writer cancelled.
+  async function printBook(html, name, { ask = false } = {}) {
     if (!config.print) return false;
+    let query = '';
+    if (ask && window.neoHosted && window.neoHosted.print) {
+      const choice = await window.neoHosted.print.choose();
+      if (!choice) return null;
+      query = '?' + new URLSearchParams(choice);
+    }
     say(tr('Printing the book…'), 4000);
     try {
-      const res = await fetch('/api/export:pdf', {
+      const res = await fetch('/api/export:pdf' + query, {
         method: 'POST', body: html, credentials: 'same-origin', headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
       if (!res.ok) throw new Error((await res.text().catch(() => '')) || res.statusText);
@@ -193,6 +202,7 @@
     readRevision: (id) => rpc('revision:read', id),
     compareRevision: (bookId, chId, id) => rpc('revision:compare', bookId, chId, id),
     sendFeedback: (message) => rpc('feedback:send', message),
+    printSettings: (patch) => rpc('print:settings', patch),
     welcomeSeen: () => rpc('welcome:seen'),
     deleteChapter: (bookId, chId) => rpc('chapter:delete', bookId, chId),
     readAux: (bookId, name) => rpc('aux:read', bookId, name),
@@ -248,7 +258,9 @@
     exportSave: async ({ format, defaultName, content, zipEntries }) => {
       const name = (defaultName || 'book') + '.' + format;
       if (format === 'pdf') {
-        if (await printBook(content, name)) return name;
+        const printed = await printBook(content, name, { ask: true });
+        if (printed) return name;
+        if (printed === null) return null;             // the writer closed the dialog
         if (!openPrintView(content)) return null;
         say(tr('Choose “Save as PDF” in the print dialog'), 6000);
         return name;
