@@ -7,7 +7,7 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 ## Next
 
 1. **Images to object storage**: covers and paintings are bytes in `book_files` since stage D; move them to a bucket when they outgrow the table.
-2. **Server-side PDF** for exports and the email snapshot, with a headless Chromium only if the image stays reasonable; otherwise keep the print view.
+2. **Print conventions**: a print stylesheet for the PDF the print service makes (5.5 × 8.5 in default, 6 × 9 and A5 offered; mirrored margins; 11/15 justified with hyphenation; widows and orphans 2; chapter openers on a recto; running heads; a scene-break ornament) and a trim-size choice in the export dialog. Then EPUB polish with epubcheck in CI, illustrations, footnotes, and a pretext.js page-count spike.
 
 ## Storage
 
@@ -26,6 +26,7 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 
 ## Done
 
+- **The print service** (2026-10-06): File → Export → PDF and ⌘E made by headless Chromium + Paged.js in `print/`, deployed as a second Railway service and reached through `POST /api/export:pdf` ([print-service.md](print-service.md)); folios, a numbered contents page (CSS `target-counter` instead of the desktop's print-twice trick), bookmarks, Letter or A4; the browser's print view stays as the fallback. The service is Evan's to add on Railway (two variables on the web service, one on the printer).
 - **Book faces** (2026-10-06), the first step of the typography work: Libron, Literata, EB Garamond and Crimson Pro under Format → Body Font, each in four styles, OFL licences in `fonts/`, declared in `web/public/web.css` and listed by `web/public/web-menu.js`; an EPUB or print export embeds the chosen one. Next in that order: the print service (Chromium + Paged.js as a second Railway service behind `export:pdf`), a print stylesheet with a trim-size choice, EPUB polish with epubcheck in CI, then illustrations, footnotes and a pretext.js page-count spike.
 - **Handwriting** (2026-10-05), the fourth room off the hallway: View → Handwriting… (`web/public/web-handwriting.js`) is a pad of pages for a stylus, a finger or a mouse: four inks, three widths, an eraser, undo, a title and a chapter per page. Strokes are kept as their points in `handwriting.json` beside `stickies.json` (the desktop's own sidecar channels) and drawn as SVG paths; nothing is ever read as text. A pen's pressure sets each point's width (a mouse draws evenly), and Export SVG… downloads a page as a file.
 - **Map map** (2026-10-05), the third room off the hallway: View → Map… (`web/public/web-map.js`) is a sheet, an uploaded image or a blank grid, with pins dropped where things are; each pin has a label, a note and a chapter, and jumps to it. Pins are `maps.json` beside `darlings.json` as fractions of the sheet (the desktop's own sidecar channels); the image is `map-<ts>.<ext>` beside the cover, uploaded raw at `POST /api/map:upload` and served with the covers (`setMapImage` in both libraries). Still to come: drawing on the sheet, and more than one map per book.

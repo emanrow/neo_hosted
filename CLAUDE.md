@@ -41,6 +41,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 | [docs/auth-and-users.md](docs/auth-and-users.md) | Sign-in, sessions, signup policy, the JSON user store and when to move to Postgres, API keys at rest, known gaps |
 | [docs/parity.md](docs/parity.md) | Feature-by-feature comparison with the desktop, where each difference lives, which accelerators the menu bar owns |
 | [docs/deployment.md](docs/deployment.md) | Environment variables, Railway steps, Docker, a laptop, verifying without a shell |
+| [docs/print-service.md](docs/print-service.md) | File → Export → PDF made by headless Chromium + Paged.js in `print/`, a second Railway service: how the HTML is prepared, the route, deploying it, verifying it, the security posture |
 | [docs/testing.md](docs/testing.md) | The hosted suite, the Chromium smoke run, upstream's suite, what a good test here looks like |
 | [docs/backlog.md](docs/backlog.md) | Import first, then downloads and off-site backups, then the rooms off the hallway (mind map, map map, timelines, handwriting, opt-in AI) |
 | [docs/public-repo.md](docs/public-repo.md) | **This repository is public**: what never goes in, what is fine, the hooks that enforce it, what to do if something slips, the audit log |
@@ -51,6 +52,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 ## Package Navigation
 
 - [web/CLAUDE.md](web/CLAUDE.md) -- the server, its libraries, the browser bridge and menu bar: file tree, request path, how to add a channel, gotchas
+- [docs/print-service.md](docs/print-service.md) -- `print/`, the PDF printer: `server.js`, `lib/prepare.js`, `lib/renderer.js`, its Dockerfile and tests
 - The editor itself (`app.js`, `main.js`, `styles.css`, `index.html`) is mapped by the "Where the code is" table in [AGENTS.md](AGENTS.md); `app.js` is navigated by its banner comments
 
 ## Tech Stack
@@ -64,6 +66,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 | Auth | scrypt passwords, HMAC-signed HttpOnly cookies (`node:crypto` only) |
 | Spellcheck | Hunspell via `@farscrl/hunspell-wasm`, upstream's `dictionary-*` packages |
 | Zips | JSZip (exports in the page, backups on the server) |
+| PDF | `print/`: headless Chromium (Playwright's image) + Paged.js, its own Railway service; the browser's print view without it |
 | Lint | oxlint with upstream's `.oxlintrc.json` |
 | Tests | `node:test`; Playwright for the optional smoke run |
 | Deploy | Dockerfile, `railway.json`, a Railway volume at `/data` |
@@ -74,7 +77,8 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 cd web && npm install && cd ..   # the hosted edition's runtime deps (no Electron)
 npm run start:web                # NEO_DEV=1 NEO_SIGNUP=open for a laptop; http://localhost:8080
 npm run test:web                 # node --test web/test/*.test.js, one file at a time  (must be green before pushing)
-npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test
+npm run test:print               # the PDF printer's tests (cd print && npm install first; the real renderer runs with CHROMIUM_PATH set)
+npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test print/server.js print/lib print/test
 node scripts/i18n.js template    # after adding a writer-visible string (t() / tr())
 node web/scripts/smoke.e2e.js    # optional: headless Chromium end to end (needs Playwright)
 ```

@@ -1,0 +1,19 @@
+{
+  "name": "neo-print",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The PDF printer for NEO, hosted: headless Chromium and Paged.js behind one POST, run as its own service.",
+  "license": "MIT",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "pagedjs": "0.4.3",
+    "playwright-core": "1.63.0"
+  }
+}

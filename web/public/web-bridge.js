@@ -94,6 +94,30 @@
     return true;
   }
 
+  // With the print service set up, the export's HTML goes to the server and
+  // the PDF comes back as a download, laid out as a book (page numbers, a
+  // numbered contents page, bookmarks). Without it, or if it fails, the
+  // browser's print view above is the fallback. Resolves to true when a
+  // file was downloaded.
+  async function printPdf(html, name) {
+    if (!config.print) return false;
+    try {
+      const res = await fetch(`/api/export:pdf?name=${encodeURIComponent(name)}`, { method: 'POST', headers: { 'Content-Type': 'text/html; charset=utf-8' }, body: html, credentials: 'same-origin' });
+      if (!res.ok) {
+        let reason = '';
+        try { reason = (await res.json()).error || ''; } catch { /* not a JSON refusal */ }
+        throw new Error(reason || `HTTP ${res.status}`);
+      }
+      download(await res.blob(), name + '.pdf');
+      const pages = Number(res.headers.get('X-Pages')) || 0;
+      say(pages ? tr('PDF saved: {n} pages', { n: pages }) : tr('PDF saved'), 5000);
+      return true;
+    } catch (err) {
+      say(tr('The print service could not make the PDF ({error}); opening the print view instead', { error: err.message }), 8000);
+      return false;
+    }
+  }
+
   // Manuscripts go up as raw bytes and come back parsed, one request each,
   // in the shape import:pick answers with on the desktop: a book per file,
   // or { name, error } for one that would not parse, so the rest still land.
@@ -225,6 +249,7 @@
     exportSave: async ({ format, defaultName, content, zipEntries }) => {
       const name = (defaultName || 'book') + '.' + format;
       if (format === 'pdf') {
+        if (await printPdf(content, defaultName || 'book')) return name;
         if (!openPrintView(content)) return null;
         say(tr('Choose “Save as PDF” in the print dialog'), 6000);
         return name;
@@ -239,10 +264,10 @@
       download(new Blob([content], { type: (TEXT_MIME[format] || 'text/plain') + ';charset=utf-8' }), name);
       return name;
     },
-    // ⌘E on the desktop hands a PDF to Mail. Here the browser opens the
-    // print view (save it as PDF) and a mail draft to drag it into.
+    // ⌘E on the desktop hands a PDF to Mail. Here the PDF downloads (or the
+    // print view opens, to save it as PDF) and a mail draft opens to drag it into.
     emailDraft: async ({ to, subject, body, html, method }) => {
-      const opened = openPrintView(html);
+      const opened = (await printPdf(html, 'snapshot')) || openPrintView(html);
       const q = (s) => encodeURIComponent(s || '');
       if (method === 'gmail') window.open('https://mail.google.com/mail/?view=cm&fs=1&to=' + q(to) + '&su=' + q(subject) + '&body=' + q(body), '_blank');
       else location.href = 'mailto:' + q(to) + '?subject=' + q(subject) + '&body=' + q(body);

@@ -1,6 +1,8 @@
 # The hosted edition's checks on every pull request and every push to main:
-# the node:test suite, the lint, the shared manuscript parser's tests, and a
-# build of the Docker image Railway deploys, booted once to answer /healthz.
+# the node:test suite, the lint, the shared manuscript parser's tests, a
+# build of the Docker image Railway deploys, booted once to answer /healthz,
+# and the same for the PDF printer in print/ (its tests against Playwright's
+# Chromium, its image booted and asked for one book).
 # The owner has no local environment, so this is the only place these run
 # before a merge reaches Railway.
 
@@ -51,7 +53,7 @@ jobs:
           npm install --no-save --ignore-scripts --no-audit --no-fund jszip
           node --test scripts/import-parse.test.js
       - name: Lint
-        run: npx --yes oxlint@1 -c .oxlintrc.json web/server.js web/lib web/public web/test
+        run: npx --yes oxlint@1 -c .oxlintrc.json web/server.js web/lib web/public web/test print/server.js print/lib print/test
 
   image:
     name: Docker image boots
@@ -68,3 +70,37 @@ jobs:
             sleep 1
           done
           echo "::error::the image never answered /healthz"; docker logs neo; exit 1
+
+  print:
+    name: Print service
+    runs-on: ubuntu-latest
+    # Playwright's image carries the Chromium print/lib/renderer.js drives, so
+    # the real-renderer tests run here; the version must match print/package.json
+    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the printer's dependencies
+        run: cd print && npm ci --no-audit --no-fund
+      - name: Print service suite (with Chromium)
+        run: cd print && npm test
+
+  print-image:
+    name: Print image boots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the printer's image
+        run: docker build -t neo-print print/
+      - name: Boot it, ask /healthz, print one page
+        run: |
+          docker run -d --name print -p 8081:8081 -e NEO_PRINT_SECRET=a-secret-for-the-check neo-print
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8081/healthz; then echo; echo "healthy"; break; fi
+            sleep 1
+          done
+          curl -fsS -o out.pdf -D headers.txt -H "Authorization: Bearer a-secret-for-the-check" -H "Content-Type: text/html" \
+            --data-binary '<!DOCTYPE html><html><head><meta charset="utf-8"><title>One</title></head><body><h1>One page</h1><p>Words.</p></body></html>' \
+            "http://127.0.0.1:8081/render?size=A5" || { echo "::error::the printer did not answer"; docker logs print; exit 1; }
+          head -c 5 out.pdf | grep -q '%PDF-' || { echo "::error::not a PDF"; docker logs print; exit 1; }
+          grep -i '^x-pages: 1' headers.txt || { echo "::error::expected one page"; cat headers.txt; exit 1; }
+          echo "printed one page"

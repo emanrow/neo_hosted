@@ -40,6 +40,10 @@
 //                        NEO_BACKUP_ACCESS_KEY_ID, NEO_BACKUP_SECRET_ACCESS_KEY.
 //   NEO_BACKUP_PREFIX    Optional folder inside the bucket. NEO_BACKUP_PATH_STYLE=1
 //                        for a service that wants the bucket on the path (MinIO).
+//   NEO_PRINT_URL        The PDF printer (print/, its own service): "http://neo-print.railway.internal:8081".
+//                        Unset, File → Export → PDF opens the browser's print view instead.
+//   NEO_PRINT_SECRET     The word the printer expects; required with NEO_PRINT_URL and
+//                        set to the same value on both services.
 //
 // Whatever the signup setting, the very first account can always be created:
 // someone has to own a fresh deployment.
@@ -86,6 +90,15 @@ function backupBucket(env) {
   return store;
 }
 
+function printService(env) {
+  const url = String(env.NEO_PRINT_URL || '').trim().replace(/\/+$/, '');
+  const secret = String(env.NEO_PRINT_SECRET || '');
+  if (!url) return null;
+  if (!/^https?:\/\//.test(url)) throw new Error('NEO_PRINT_URL must start with http:// or https://');
+  if (secret.length < 16) throw new Error('NEO_PRINT_URL needs NEO_PRINT_SECRET (16+ characters), the same value the print service has');
+  return { url, secret };
+}
+
 /** A comma-separated list of addresses, trimmed and lowercased, as the user store normalizes them. */
 const addressList = (value) => String(value || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
@@ -114,6 +127,7 @@ function loadConfig(env = process.env) {
     publicUrl: publicUrlFrom(env, dev),
     databaseUrl: String(env.DATABASE_URL || env.NEO_DATABASE_URL || '').trim(),
     backupBucket: backupBucket(env),
+    print: printService(env),
     adminEmails: addressList(env.NEO_ADMIN_EMAILS),
     guestsOfHonor: addressList(env.NEO_GUESTS_OF_HONOR)
   };

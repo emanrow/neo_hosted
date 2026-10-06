@@ -9,7 +9,8 @@ Two suites, one tool: `node:test`. The hosted suite, the lint, the shared parser
 ```
 cd web && npm install && cd ..      # once
 npm run test:web                    # node --test web/test/*.test.js, one file at a time (two files share the scratch database)
-npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test
+npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test print/server.js print/lib print/test
+npm run test:print                  # the PDF printer (cd print && npm install once); CHROMIUM_PATH=... also runs the real renderer
 NEO_TEST_DATABASE_URL=postgres://neo:neo@127.0.0.1:5432/neo_test npm run test:web   # also the Postgres store, against a scratch database
 ```
 
@@ -29,6 +30,10 @@ NEO_TEST_DATABASE_URL=postgres://neo:neo@127.0.0.1:5432/neo_test npm run test:we
 | `web/test/login-page.test.js` | the sign-in page in the visitor's language: every `web/locales/<code>.json` is complete with its placeholders intact, the overlay sits on upstream's dictionary, the template renders in German with the credits' links kept and no marker left, a hostile translation is escaped, English is itself |
 | `web/test/object-store.test.js` | the off-site copy: the signature against the GET Object vector in AWS's SigV4 documentation, a `PUT` against a local stand-in bucket that recomputes the signature and the payload hash, a wrong secret refused, the `.offsite` marker and the retry in `backups.js`, and the bucket's environment variables in `config.js` |
 | `web/test/server.test.js` | the real server on a free port with a temporary data folder, email off: health, static fencing, signup policy, CSRF refusal, the page, every channel's shape, cover upload and serving, the library download, manuscript upload (.txt, .md, a .docx built in the test), Trash, secrets, spellcheck, language, throttle, password reset refused with no email, logout, the owner's page (listed accounts, Not found for anyone else, an account removed with its library zipped and its folder moved), a published page served to a stranger with its policy and taken down by its owner, the backup sweep landing on the volume and in a stand-in bucket |
+| `web/test/print-client.test.js` | the web server's side of the PDF printer against a stub `fetch`: what is posted (secret, size, the page), the PDF and page count read back, a printer that is down or failing as a 502 that names nothing, a refusal (413, 400) passed on with its message, `NO_PRINTER`, and the two settings in `config.js` |
+| `web/test/print-route.test.js` | `POST /api/export:pdf` on the real server with a stub printer: the page's `print` flag with and without one, the download's headers and file name, Letter for an English interface, `?size=` passed on, a fragment, a stranger and a cross-site post refused, 503 without a printer |
+| `print/test/prepare.test.js` | the printer's own: page sizes allowed and refused, the rules injected ahead of the book's stylesheet, the hook, the contents spans given their anchors, a fragment refused |
+| `print/test/server.test.js` | the printer's routes against a stub renderer (health, the secret in constant time, a bad size, a fragment, the body limit, the PDF and `X-Pages`); with a Chromium at hand (`CHROMIUM_PATH`, or Playwright's own install, as in CI's container), the real renderer on a small book: pages, A5 sheets, bookmarks, a second book on the same browser |
 | `web/test/dockerfile.test.js` | the `Dockerfile` copies every root file the server serves or requires (`styles.css` once went missing from the image and nothing in the repository noticed), and names nothing that does not exist |
 | `scripts/import-parse.test.js` | the shared manuscript parser on its own: chapter and scene-break detection, titles, .docx italics and styles. Lives beside upstream's tests because `main.js` uses the same module; needs the root `npm install` (JSZip) |
 

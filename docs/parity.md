@@ -11,7 +11,7 @@ What a writer gets in a browser compared with desktop NEO. ✔ same code, same f
 | Painted covers (OpenAI) | ✔ | `art.js` runs on the server with the writer's own key, encrypted at rest |
 | Spellcheck pass, suggestions, learned words | ✔ | one Hunspell per language shared by all writers; a writer's `customWords` are laid on top at check time, never added to the shared instance |
 | Export txt, md, html, docx, epub | ✔ | built by `app.js` as before; the browser downloads the file |
-| Export PDF, ⌘E email snapshot | ◐ | the browser opens the export as a print view ("Save as PDF") and a mail draft; no server-side PDF yet |
+| Export PDF, ⌘E email snapshot | ◐ | with the print service ([print-service.md](print-service.md)) the PDF downloads, laid out by Chromium + Paged.js: folios, a numbered contents page, bookmarks, Letter or A4 by interface language until the export dialog offers a trim size; ⌘E downloads it and opens a mail draft to drag it into. Without the service the export opens as a print view ("Save as PDF") |
 | Import .docx / .txt / .md | ✔ | the browser uploads each file as raw bytes to `POST /api/import:upload`; the parser is `import-parse.js` at the repository root, the same module `main.js` uses, so chapter detection cannot drift between editions |
 | Daily zip backups | ✔ | per writer, on the volume; with Postgres the zip is written from the rows. Off-site copies are on the backlog |
 | Delete a book | ✔ | with Postgres the rows are marked trashed and kept; without, the folder moves to `Trash/` inside the library, named with a timestamp. The bridge says where it went |
