@@ -142,6 +142,13 @@ describe('a writer\'s library', () => {
     assert.equal(lib.setMapImage(book.id, 'gif', Buffer.from('x')), null);
     assert.equal(lib.setMapImage(book.id, '', null), '');
     assert.equal(lib.readCover(book.id, sheet), null, 'and removed on request');
+    const fig1 = lib.addFigure(book.id, 'jpeg', Buffer.from('one picture'));
+    const fig2 = lib.addFigure(book.id, 'png', Buffer.from('another'));
+    assert.match(fig1, /^fig-\d+\.jpg$/);
+    assert.notEqual(fig1, fig2, 'pictures uploaded in the same instant get their own names');
+    assert.deepEqual(lib.readCover(book.id, fig1), Buffer.from('one picture'), 'a chapter\'s picture is served like a cover');
+    assert.deepEqual(lib.readCover(book.id, fig2), Buffer.from('another'), 'and adding one keeps the others');
+    assert.equal(lib.addFigure(book.id, 'gif', Buffer.from('x')), null);
     assert.equal(lib.readCover(book.id, 'book.json'), null, 'only cover-* and art-* images are served');
     lib.removeCover(book.id);
     assert.equal(lib.readCover(book.id, second), null);

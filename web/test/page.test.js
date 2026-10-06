@@ -14,7 +14,7 @@ describe('the hosted page', () => {
     const html = buildHostedPage({ indexHtml, i18n: { locale: 'fr', dict: { Shelf: 'Étagère' }, base: {} }, hostedConfig: { email: 'w@x.y' } });
     assert.ok(!html.includes('Content-Security-Policy'), 'the meta policy is gone; the header carries it');
     assert.ok(!html.includes('id="dragstrip"'));
-    const order = ['/web/web.css', 'id="neo-i18n"', 'id="neo-hosted-config"', '/jszip.min.js', 'src="i18n.js"', '/web/web-bridge.js', 'src="covers.js"', 'src="app.js"', '/web/web-menu.js', '/web/web-history.js', '/web/web-branches.js', '/web/web-share.js', '/web/web-feedback.js', '/web/web-print.js', '/web/web-timeline.js', '/web/web-mindmap.js', '/web/web-map.js', '/web/web-handwriting.js', '/web/web-mobile.js', '/web/web-epub.js']
+    const order = ['/web/web.css', 'id="neo-i18n"', 'id="neo-hosted-config"', '/jszip.min.js', 'src="i18n.js"', '/web/web-bridge.js', 'src="covers.js"', 'src="app.js"', '/web/web-menu.js', '/web/web-history.js', '/web/web-branches.js', '/web/web-share.js', '/web/web-feedback.js', '/web/web-print.js', '/web/web-timeline.js', '/web/web-mindmap.js', '/web/web-map.js', '/web/web-handwriting.js', '/web/web-mobile.js', '/web/web-epub.js', '/web/web-figures.js']
       .map((needle) => html.indexOf(needle));
     assert.ok(order.every((i) => i >= 0), 'every piece is present');
     assert.deepEqual([...order].sort((a, b) => a - b), order, 'bridge before app.js, menu after');

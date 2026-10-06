@@ -19,8 +19,9 @@
 //   POST /api/cover:upload?bookId=&ext=            raw image bytes → file name
 //   POST /api/import:upload?name=<file name>       raw .docx/.txt/.md bytes → the parsed book
 //   POST /api/export:pdf?trim=<name>&scene=<name>  the export HTML → the PDF, by the printer (print/); 503 without one
-//   GET  /library/<bookId>/<cover, art or map file>  cover images for the shelf, the map map's sheet
+//   GET  /library/<bookId>/<cover, art, map or fig file>  cover images for the shelf, the map map's sheet, a chapter's pictures
 //   POST /api/map:upload?bookId=&ext=   the map map's sheet, raw image body (hosted only)
+//   POST /api/figure:upload?bookId=&ext=   a picture for a chapter, raw image body → file name (hosted only; web-figures.js)
 //   GET  /library.zip              the writer's whole library as the desktop folder
 //   GET  /healthz
 
@@ -422,7 +423,7 @@ function createApp(config, deps = {}) {
     }
   }
 
-  /** A raw image body in, its file name out: the cover (setCoverBytes) or the map map's sheet (setMapImage). */
+  /** A raw image body in, its file name out: the cover (setCoverBytes), the map map's sheet (setMapImage) or a chapter's picture (addFigure). */
   async function handleImageUpload(ctx, url, req, res, store) {
     const bookId = url.searchParams.get('bookId');
     const ext = String(url.searchParams.get('ext') || '').toLowerCase();
@@ -533,6 +534,7 @@ function createApp(config, deps = {}) {
       const ctx = contextFor(user, req);
       if (method === 'POST' && p === '/api/cover:upload') return handleImageUpload(ctx, url, req, res, ctx.library.setCoverBytes);
       if (method === 'POST' && p === '/api/map:upload') return handleImageUpload(ctx, url, req, res, ctx.library.setMapImage);
+      if (method === 'POST' && p === '/api/figure:upload') return handleImageUpload(ctx, url, req, res, ctx.library.addFigure);
       if (method === 'POST' && p === '/api/import:upload') return handleImportUpload(ctx, url, req, res);
       if (method === 'POST' && p === '/api/export:pdf') return handleExportPdf(ctx, url, req, res);
       if (method === 'POST' && p.startsWith('/api/')) return handleApi(ctx, p.slice(5), req, res);

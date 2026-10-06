@@ -33,7 +33,7 @@ const { checkBranchName, MAIN_BRANCH: MAIN } = require('./branches');
 const { dailyZip } = require('./backups');
 
 const COVER_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
-const COVER_FILE = /^(cover|art|map)-\d+\.(png|jpg|webp)$/;   // the images NEO made and serves: covers, paintings, the map map's sheet
+const COVER_FILE = /^(cover|art|map|fig)-\d+\.(png|jpg|webp)$/;   // the images NEO made and serves: covers, paintings, the map map's sheet, a chapter's pictures
 const IMAGE_EXT = /\.(png|jpe?g|webp)$/i;
 const BASE_PATHS = "(path = 'book.json' OR path LIKE 'chapters/%')";
 const TRASHED_PREFIX = 'Trash/';
@@ -214,6 +214,17 @@ function openPgLibrary({ db, userId, dir, t }) {
     ext = String(ext || '').toLowerCase();
     if (!COVER_EXTS.includes(ext)) return null;
     const fname = 'map-' + Date.now() + '.' + (ext === 'jpeg' ? 'jpg' : ext);
+    await writeFile(bookId, fname, { bytes });
+    return fname;
+  }
+
+  /** A picture in a chapter (hosted only): fig-<ts>.<ext> beside the cover, one more each time, never replaced. Returns the file name. */
+  async function addFigure(bookId, ext, bytes) {
+    if (!(await readBookMeta(bookId)) || !bytes) return null;
+    ext = String(ext || '').toLowerCase();
+    if (!COVER_EXTS.includes(ext)) return null;
+    let fname;
+    do fname = 'fig-' + Date.now() + '.' + (ext === 'jpeg' ? 'jpg' : ext); while (await readFile(bookId, fname));
     await writeFile(bookId, fname, { bytes });
     return fname;
   }
@@ -426,7 +437,7 @@ function openPgLibrary({ db, userId, dir, t }) {
     createBook, readBookMeta, writeBookMeta, trashBook,
     chapterStamps, readChapter, writeChapter, deleteChapter,
     readAux, writeAux, readSidecar, writeSidecar,
-    setCoverBytes, removeCover, readCover, setMapImage, storePainting,
+    setCoverBytes, removeCover, readCover, setMapImage, addFigure, storePainting,
     branches, dailyBackup, exportZip, isEmpty, importFolder, footprint, erase
   };
 }

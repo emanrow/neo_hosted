@@ -158,6 +158,10 @@
     return file || null;
   }
 
+  // the pictures in a chapter travel inside the export HTML (web-figures.js): a
+  // web page file and the printer have no session to fetch them with
+  const withPictures = (html) => (typeof html === 'string' && window.neoHosted && window.neoHosted.figures ? window.neoHosted.figures.inlineExport(html) : Promise.resolve(html));
+
   const ZIP_MIME = { epub: 'application/epub+zip', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
   const TEXT_MIME = { txt: 'text/plain', md: 'text/markdown', html: 'text/html' };
 
@@ -187,7 +191,7 @@
     writeChapter: (bookId, chId, html) => rpc('chapter:write', noting(bookId), chId, html),
     /* ---------- public pages (hosted only; web-share.js is the caller) ---------- */
     listShares: (bookId) => rpc('share:list', bookId),
-    publishShare: (bookId, chapterId, title, html) => rpc('share:publish', bookId, chapterId, title, html),
+    publishShare: async (bookId, chapterId, title, html) => rpc('share:publish', bookId, chapterId, title, await withPictures(html)),
     removeShare: (token) => rpc('share:remove', token),
     /* ---------- history (hosted only; web-history.js is the reader) ---------- */
     listRevisions: (bookId, chId) => rpc('revision:list', bookId, chId),
@@ -240,6 +244,15 @@
       return body.result;
     },
     removeMapImage: (bookId) => rpc('map:removeImage', bookId),
+    /* ---------- a chapter's pictures (hosted only; web-figures.js is the caller) ---------- */
+    uploadFigure: async (bookId, file, ext) => {
+      const res = await fetch('/api/figure:upload?bookId=' + encodeURIComponent(bookId) + '&ext=' + encodeURIComponent(ext || ''), {
+        method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' }
+      });
+      const body = await res.json().catch(() => ({ ok: false }));
+      if (!body.ok) throw new Error(body.error || tr('Couldn’t save that picture'));
+      return body.result;
+    },
     readCover: async (bookId, fname) => {
       try {
         const res = await fetch('/library/' + encodeURIComponent(bookId) + '/' + encodeURIComponent(fname), { credentials: 'same-origin' });
@@ -257,6 +270,7 @@
     /* ---------- export: the page builds the file, the browser downloads it ---------- */
     exportSave: async ({ format, defaultName, content, zipEntries }) => {
       const name = (defaultName || 'book') + '.' + format;
+      if (format === 'html' || format === 'pdf') content = await withPictures(content);
       if (format === 'pdf') {
         const printed = await printBook(content, name, { ask: true });
         if (printed) return name;
@@ -268,7 +282,8 @@
       if (zipEntries) {
         if (!window.JSZip) throw new Error('Zip support missing');
         // an EPUB leaves with the writer's face and drop cap laid in (web-epub.js)
-        const entries = format === 'epub' && window.neoHosted && window.neoHosted.epub ? await window.neoHosted.epub.polish(zipEntries) : zipEntries;
+        let entries = format === 'epub' && window.neoHosted && window.neoHosted.epub ? await window.neoHosted.epub.polish(zipEntries) : zipEntries;
+        if (format === 'epub' && window.neoHosted && window.neoHosted.figures) entries = await window.neoHosted.figures.epubExport(entries);
         const zip = new window.JSZip();
         for (const e of entries) zip.file(e.path, e.content, { base64: !!e.base64, compression: e.store ? 'STORE' : 'DEFLATE' });
         download(await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: ZIP_MIME[format] || 'application/zip' }), name);
@@ -281,6 +296,7 @@
     // (or, without a printer, the print view opens to save it from) and a
     // mail draft opens to drag it into.
     emailDraft: async ({ to, subject, body, html, method }) => {
+      html = await withPictures(html);
       const opened = (await printBook(html, (subject || 'snapshot').replace(/[\\/:*?"<>|]+/g, ' ').trim() + '.pdf')) || openPrintView(html);
       const q = (s) => encodeURIComponent(s || '');
       if (method === 'gmail') window.open('https://mail.google.com/mail/?view=cm&fs=1&to=' + q(to) + '&su=' + q(subject) + '&body=' + q(body), '_blank');

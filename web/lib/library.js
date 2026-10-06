@@ -15,7 +15,7 @@ const { libName, writeFileDurable, readJSON, writeJSON } = require('./files');
 const { dailyZip } = require('./backups');
 
 const COVER_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
-const COVER_FILE = /^(cover|art|map)-\d+\.(png|jpg|webp)$/;   // the images NEO made and serves: covers, paintings, the map map's sheet
+const COVER_FILE = /^(cover|art|map|fig)-\d+\.(png|jpg|webp)$/;   // the images NEO made and serves: covers, paintings, the map map's sheet, a chapter's pictures
 const SKIP_IN_BACKUP = new Set(['Backups', 'Exports', 'Trash']);
 
 /**
@@ -282,6 +282,18 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     return fname;
   }
 
+  /** A picture in a chapter (hosted only): fig-<ts>.<ext> beside the cover, one more each time, never replaced. The chapter's HTML names it; a picture no chapter names any more stays, like words in the Trash. Returns the file name. */
+  function addFigure(bookId, ext, bytes) {
+    const folder = bookDir(bookId);
+    if (!fs.existsSync(folder) || !bytes) return null;
+    ext = String(ext || '').toLowerCase();
+    if (!COVER_EXTS.includes(ext)) return null;
+    let fname;
+    do fname = 'fig-' + Date.now() + '.' + (ext === 'jpeg' ? 'jpg' : ext); while (fs.existsSync(path.join(folder, fname)));
+    writeFileDurable(path.join(folder, fname), bytes);
+    return fname;
+  }
+
   /** The bytes of a cover or painting by its file name, or null when the name is not one NEO made or the file is gone. */
   function readCover(bookId, fname) {
     if (!COVER_FILE.test(String(fname))) return null;
@@ -367,7 +379,7 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     readLibrary, writeLibrary, listBooks,
     createBook, readBookMeta, writeBookMeta, trashBook,
     chapterStamps, readChapter, writeChapter, deleteChapter,
-    readAux, writeAux, readSidecar, writeSidecar, setMapImage,
+    readAux, writeAux, readSidecar, writeSidecar, setMapImage, addFigure,
     setCoverBytes, removeCover, readCover, storePainting,
     appendErrorLog, dailyBackup, exportZip, footprint
   };

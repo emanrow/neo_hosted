@@ -6,8 +6,9 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 
 ## Next
 
-1. **Images to object storage**: covers and paintings are bytes in `book_files` since stage D; move them to a bucket when they outgrow the table.
-2. ~~**Server-side PDF** for exports and the email snapshot~~ Done 2026-10-06 as the printer (`print/`), a second Railway service rather than a fatter image; the print view stays as the fallback. The conventions followed the same day: a trim-size and scene-break choice in a small dialog, running heads, folios in the outer corners, recto chapter openers.
+1. **Images to object storage**: covers, paintings and now a chapter's pictures are bytes in `book_files` since stage D; move them to a bucket when they outgrow the table.
+2. **Pictures in Word**: the `.docx` export carries a picture's caption only; a `<w:drawing>` with the image in `word/media/` is the next step of the illustration work, then footnotes.
+3. ~~**Server-side PDF** for exports and the email snapshot~~ Done 2026-10-06 as the printer (`print/`), a second Railway service rather than a fatter image; the print view stays as the fallback. The conventions followed the same day: a trim-size and scene-break choice in a small dialog, running heads, folios in the outer corners, recto chapter openers.
 
 ## Storage
 
@@ -26,6 +27,7 @@ Each of these is a sidecar beside the book's files and a tab or pane that stays 
 
 ## Done
 
+- **Pictures in a chapter** (2026-10-06), the illustration step of the typography work: Format → Insert Picture… (`web/public/web-figures.js`) uploads an image to `fig-<ts>.<ext>` beside the cover (`POST /api/figure:upload`, `addFigure` in both libraries, never deleted) and plants a paragraph at the caret that the page draws the picture above; its words are the caption, Enter under it goes on with the chapter. The web page, the PDF and the EPUB carry a `<figure>` with the caption in place (the bytes inlined for the page and the printer, `OEBPS/images/` in the EPUB); the epubcheck run exports a book with two pictures. Word gets the caption only (above).
 - **EPUB polish** (2026-10-06): the EPUB export carries the writer's body face as font files (the four hosted book faces and the desktop's bundled ones; readers may still override) and opens each chapter with a drop cap unless the editor hides it, laid over `app.js`'s own entries at download time by `web/public/web-epub.js`. Every pull request now exports a book through the real exporter and runs epubcheck on it with warnings as failures ([testing.md](testing.md#the-epub-under-epubcheck)). The EPUB 3 navigation was already there.
 - **Book faces** (2026-10-06), the first step of the typography work: Libron, Literata, EB Garamond and Crimson Pro under Format → Body Font, each in four styles, OFL licences in `fonts/`, declared in `web/public/web.css` and listed by `web/public/web-menu.js`; an EPUB or print export embeds the chosen one.
 - **The printer** (2026-10-06), the second step: `print/`, headless Chromium with Paged.js as its own Railway service, behind `POST /api/export:pdf`; Export → PDF and the ⌘E snapshot download a book laid out at 5.5 × 8.5 in with mirrored margins, 11-on-15 justified type, widow and orphan control, page numbers, a numbered contents page and bookmarks, the chosen face embedded; the browser's print view remains the fallback. `print/book.js` already knows 6 × 9, A5, Letter and A4.

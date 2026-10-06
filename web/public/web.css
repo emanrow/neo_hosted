@@ -341,6 +341,11 @@ body.light .mm-node { background: #fff; color: #222; border-color: #ddd8ce; }
 body.light .mm-line { stroke: #b8b0a2; }
 body.light .mm-toolbar select, body.light .mm-edit { background: #fff; color: #222; border-color: #ddd8ce; }
 
+/* ---------- pictures in a chapter (Format → Insert Picture…, web-figures.js) ---------- */
+/* the paragraph is the caption; the image is drawn above it from a per-picture rule in #hosted-figures */
+.chapter-body p.figure { text-align: center; text-indent: 0; font-size: 0.85em; font-style: italic; opacity: .85; margin: 1.4em 0; --fig-ratio: 3 / 2; }
+.chapter-body p.figure::before { content: ''; display: block; width: 100%; max-height: 60vh; aspect-ratio: var(--fig-ratio); margin: 0 auto 0.6em; background: center / contain no-repeat; }
+
 /* ---------- map map (View → Map…) ---------- */
 .hosted-map-modal { width: min(1100px, 96vw); height: 85vh; display: flex; flex-direction: column; }
 .mp-body { display: flex; gap: 14px; flex: 1; min-height: 0; }

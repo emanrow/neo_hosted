@@ -92,6 +92,13 @@ describe('PgLibrary', { skip: DATABASE_URL ? false : 'NEO_TEST_DATABASE_URL is n
     assert.deepEqual(await lib.readCover(book.id, sheet), Buffer.from('world'), 'the map map\'s sheet is served like a cover');
     assert.equal(await lib.setMapImage(book.id, '', null), '');
     assert.equal(await lib.readCover(book.id, sheet), null, 'and removed on request');
+    const fig1 = await lib.addFigure(book.id, 'jpeg', Buffer.from('one picture'));
+    const fig2 = await lib.addFigure(book.id, 'png', Buffer.from('another'));
+    assert.match(fig1, /^fig-\d+\.jpg$/);
+    assert.notEqual(fig1, fig2);
+    assert.deepEqual(await lib.readCover(book.id, fig1), Buffer.from('one picture'), 'a chapter\'s picture is served like a cover');
+    assert.deepEqual(await lib.readCover(book.id, fig2), Buffer.from('another'), 'and adding one keeps the others');
+    assert.equal(await lib.addFigure(book.id, 'gif', Buffer.from('x')), null);
   });
 
   test('a writer\'s footprint is counted, and erase leaves no row behind', async () => {
