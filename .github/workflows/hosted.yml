@@ -53,7 +53,7 @@ jobs:
           npm install --no-save --ignore-scripts --no-audit --no-fund jszip
           node --test scripts/import-parse.test.js
       - name: Lint
-        run: npx --yes oxlint@1 -c .oxlintrc.json web/server.js web/lib web/public web/test print/server.js print/book.js print/test
+        run: npx --yes oxlint@1 -c .oxlintrc.json web/server.js web/lib web/public web/test print/server.js print/book.js print/hyphenate.js print/test
 
   image:
     name: Docker image boots

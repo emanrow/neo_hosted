@@ -1,4 +1,4 @@
-# neo-print: the hosted edition's PDF printer. Debian's Chromium and the two
+# neo-print: the hosted edition's PDF printer. Debian's Chromium and the three
 # npm packages print/server.js needs; nothing of the app itself. Railway
 # builds this from the repository with the service's Root Directory set to
 # `print`, so the build context is this folder.
@@ -17,7 +17,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-COPY server.js book.js book.css ./
+COPY server.js book.js book.css hyphenate.js ./
 
 ENV NODE_ENV=production \
     PORT=8080 \
