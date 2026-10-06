@@ -284,6 +284,7 @@
         // an EPUB leaves with the writer's face and drop cap laid in (web-epub.js)
         let entries = format === 'epub' && window.neoHosted && window.neoHosted.epub ? await window.neoHosted.epub.polish(zipEntries) : zipEntries;
         if (format === 'epub' && window.neoHosted && window.neoHosted.figures) entries = await window.neoHosted.figures.epubExport(entries);
+        if (format === 'docx' && window.neoHosted && window.neoHosted.figures) entries = await window.neoHosted.figures.docxExport(entries);
         const zip = new window.JSZip();
         for (const e of entries) zip.file(e.path, e.content, { base64: !!e.base64, compression: e.store ? 'STORE' : 'DEFLATE' });
         download(await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: ZIP_MIME[format] || 'application/zip' }), name);
