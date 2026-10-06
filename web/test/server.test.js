@@ -14,7 +14,9 @@ const { createApp } = require('../server');
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-server-'));
 const bucketPuts = [];                                 // what the stand-in bucket was sent
 const objectStore = { enabled: true, bucket: 'words', put: async (key, bytes, type) => { bucketPuts.push({ key, size: bytes.length, type }); } };
-const app = createApp({ dev: true, dataDir, sessionSecret: 's'.repeat(40), signup: 'invite', inviteCode: 'come-in', trustProxy: false, port: 0 }, { objectStore });
+// the stand-in printer: off until a test turns it on and says what it renders
+const printer = { enabled: false, calls: [], render: async (html, opts) => { printer.calls.push({ html, opts }); return { pdf: Buffer.from('%PDF-1.4 stand-in'), pages: 12, paged: true }; } };
+const app = createApp({ dev: true, dataDir, sessionSecret: 's'.repeat(40), signup: 'invite', inviteCode: 'come-in', trustProxy: false, port: 0 }, { objectStore, printer });
 let base = '';
 let cookie = '';
 
@@ -418,6 +420,34 @@ describe('the hosted server', () => {
     assert.equal((await api('share:remove', share.token)).result, true);
     assert.equal((await call('GET', '/s/' + share.token)).status, 404, 'taken down');
     assert.equal((await api('share:remove', share.token)).result, false);
+  });
+
+  test('Export → PDF goes to the printer when there is one, and says so to the page', async () => {
+    const book = '<!DOCTYPE html><html><head><title>A Book</title></head><body><section class="chapter"><p>Words.</p></section></body></html>';
+    const print = (body, query = '') => call('POST', '/api/export:pdf' + query, { raw: body, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    assert.match(await (await call('GET', '/')).text(), /"print":false/, 'without a printer the bridge opens the print view');
+    assert.equal((await print(book)).status, 503, 'and the route says there is none');
+
+    printer.enabled = true;
+    try {
+      assert.match(await (await call('GET', '/')).text(), /"print":true/, 'with one, the bridge sends the book up');
+      const res = await print(book, '?trim=6x9');
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get('content-type'), 'application/pdf');
+      assert.equal(res.headers.get('x-neo-pages'), '12');
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+      assert.equal(await res.text(), '%PDF-1.4 stand-in');
+      assert.equal(printer.calls.length, 1);
+      assert.equal(printer.calls[0].html, book, 'the document goes up as it is');
+      assert.deepEqual(printer.calls[0].opts, { lang: 'en', trim: '6x9' }, 'with the writer\'s language and the trim');
+      assert.equal((await print('not a document')).status, 400);
+      const signedIn = cookie;
+      cookie = '';
+      assert.equal((await print(book)).status, 401);
+      cookie = signedIn;
+    } finally {
+      printer.enabled = false;
+    }
   });
 
   test('the backup sweep zips every writer\'s library and sends each zip to the bucket', async () => {

@@ -82,8 +82,31 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   }
 
-  // The browser is the PDF printer: the export's HTML opens in a tab with
-  // the print dialog up, and "Save as PDF" is one click away.
+  // With a printer behind the server (config.print), the export's HTML goes
+  // up and a book comes back: a PDF laid out as pages of a chosen trim, with
+  // page numbers, a numbered contents page and bookmarks. The browser saves
+  // it as a download. Resolves false when the printer is off or failed, so
+  // the caller can fall back on the print view below.
+  async function printBook(html, name) {
+    if (!config.print) return false;
+    say(tr('Printing the book…'), 4000);
+    try {
+      const res = await fetch('/api/export:pdf', {
+        method: 'POST', body: html, credentials: 'same-origin', headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+      if (!res.ok) throw new Error((await res.text().catch(() => '')) || res.statusText);
+      download(await res.blob(), name);
+      const pages = Number(res.headers.get('X-Neo-Pages')) || 0;
+      say(pages ? tr('{name} saved, {n} pages', { name, n: pages }) : tr('{name} saved', { name }), 5000);
+      return true;
+    } catch (err) {
+      say(tr('The printer couldn’t make the PDF ({error}) — opening the print view instead', { error: String((err && err.message) || err).slice(0, 120) }), 8000);
+      return false;
+    }
+  }
+
+  // Without a printer, the browser is one: the export's HTML opens in a tab
+  // with the print dialog up, and "Save as PDF" is one click away.
   function openPrintView(html) {
     const w = window.open('', '_blank');
     if (!w) { say(tr('The browser blocked the print window — allow pop-ups for this site and try again'), 8000); return false; }
@@ -225,6 +248,7 @@
     exportSave: async ({ format, defaultName, content, zipEntries }) => {
       const name = (defaultName || 'book') + '.' + format;
       if (format === 'pdf') {
+        if (await printBook(content, name)) return name;
         if (!openPrintView(content)) return null;
         say(tr('Choose “Save as PDF” in the print dialog'), 6000);
         return name;
@@ -239,10 +263,11 @@
       download(new Blob([content], { type: (TEXT_MIME[format] || 'text/plain') + ';charset=utf-8' }), name);
       return name;
     },
-    // ⌘E on the desktop hands a PDF to Mail. Here the browser opens the
-    // print view (save it as PDF) and a mail draft to drag it into.
+    // ⌘E on the desktop hands a PDF to Mail. Here the PDF is downloaded
+    // (or, without a printer, the print view opens to save it from) and a
+    // mail draft opens to drag it into.
     emailDraft: async ({ to, subject, body, html, method }) => {
-      const opened = openPrintView(html);
+      const opened = (await printBook(html, (subject || 'snapshot').replace(/[\\/:*?"<>|]+/g, ' ').trim() + '.pdf')) || openPrintView(html);
       const q = (s) => encodeURIComponent(s || '');
       if (method === 'gmail') window.open('https://mail.google.com/mail/?view=cm&fs=1&to=' + q(to) + '&su=' + q(subject) + '&body=' + q(body), '_blank');
       else location.href = 'mailto:' + q(to) + '?subject=' + q(subject) + '&body=' + q(body);

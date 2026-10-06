@@ -1,0 +1,19 @@
+{
+  "name": "neo-print",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The hosted edition's PDF printer: headless Chromium with Paged.js, one small service beside the app.",
+  "license": "MIT",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "pagedjs": "^0.4.3",
+    "puppeteer-core": "^24.0.0"
+  }
+}

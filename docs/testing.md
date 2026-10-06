@@ -34,6 +34,10 @@ NEO_TEST_DATABASE_URL=postgres://neo:neo@127.0.0.1:5432/neo_test npm run test:we
 
 The server test is the one to extend when a channel changes: it asserts the shapes `app.js` relies on.
 
+## The printer's suite
+
+`cd print && npm test` runs `print/test/print.test.js`: the secret and the boot checks, the concurrency gate, every trim size's page, and, when a Chromium is found (`CHROMIUM_PATH`, or `/usr/bin/chromium` in the image), the service over HTTP: a stranger turned away, a fragment refused, a small book rendered to a PDF of the trim's size with Paged.js's page count and a numbered contents page. CI (`hosted.yml`, job `print`) runs it against the runner's Chrome, then builds `print/Dockerfile`, boots the image and prints a book through it, so a Debian package or a Paged.js upgrade that breaks the printer shows as a red check.
+
 ## A browser smoke run
 
 `web/scripts/smoke.e2e.js` boots the server with a throwaway data folder, signs up in headless Chromium, walks the first-run questions, opens a menu, changes the page theme, creates a book and a chapter, types a sentence, opens each room off the hallway (Timeline, Mind Map, Map, Handwriting, History, Share) and does one thing in it, and checks that the chapter HTML and each room's sidecar landed on disk with no console errors. It needs Playwright and a Chromium:

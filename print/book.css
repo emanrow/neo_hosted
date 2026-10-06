@@ -1,0 +1,58 @@
+/* The printed book's page, laid over the exporter's own styles (buildHtml
+   in app.js) before Paged.js runs. The exporter's rules make a screen page
+   and a browser printout; these make a book: a trim size with mirrored
+   margins, book type, page numbers, and a contents page whose numbers are
+   found by Paged.js once the book is laid out. The trim's @page size and
+   margins are added by book.js from TRIMS; everything else is here. */
+
+html, body { max-width: none; margin: 0; padding: 0; }
+body {
+  font-size: var(--book-type-size);
+  line-height: var(--book-leading);
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  widows: 2;
+  orphans: 2;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+}
+/* Paged.js marks the element it split across pages so its last line on
+   the page is justified too; a section split that way passes the mark
+   down (text-align-last inherits) and every paragraph's last line would be
+   stretched. A plain element rule loses to Paged.js's attribute rule, so a
+   paragraph it splits itself still gets its last line justified. */
+p { text-align-last: auto; }
+
+/* the exporter sizes these for a 13pt screen page; scale them to the book */
+.chapter .hd, .contents .hd { font-size: 1.45em; margin: 3.2em 0 2.4em; }
+.titlepage h1 { font-size: 2.6em; }
+.opener .hd { font-size: 2.2em; }
+.part .pt { font-size: 2em; }
+.part .pl { font-size: 1.3em; }
+.contents li.t-part { font-size: 1.25em; }
+.contents .toc-pg { font-size: 1em; }
+.copyright { font-size: 0.8em; min-height: 94vh; }
+.titlepage .auth, .opener .byline, .chapter p.byline, .page p.attr { font-size: 0.85em; }
+
+/* the cover fills its page, edge to edge */
+.coverpage { margin: 0; }
+.coverpage img { max-width: 100%; max-height: 100vh; }
+
+/* a page that is not a chapter (the title page, a dedication, the contents)
+   stands alone and carries no number; the exporter names them `front` */
+.chapter, .page, .contents, .titlepage, .coverpage { break-before: page; }
+.coverpage { break-before: auto; }
+
+/* Contents: the exporter leaves an empty .toc-pg for the desktop's two-pass
+   printer to fill. Here Paged.js finds the page each entry starts on once
+   the book is laid out, so the number is drawn after the link instead. */
+.contents .toc-pg { display: none; }
+.contents a::after {
+  content: target-counter(attr(href), page);
+  flex: none;
+  width: 3em;
+  text-align: right;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.contents a { break-inside: avoid; }

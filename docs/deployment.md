@@ -2,7 +2,7 @@
 
 # Deployment
 
-The hosted edition is one Node process and one folder. There is no database to provision.
+The hosted edition is one Node process and one folder. There is no database to provision. The PDF printer (`print/`) is a second, optional process; without it Export → PDF uses the browser's print dialog.
 
 ## Environment
 
@@ -23,6 +23,8 @@ All read once in `web/lib/config.js`; the server refuses to boot on a bad combin
 | `NEO_ADMIN_EMAILS` | Who may open `/admin`, comma-separated addresses. Unset, the oldest account is the owner. [auth-and-users.md](auth-and-users.md#the-owners-page). With `RESEND_API_KEY` set too, Help → Send Feedback… appears in the writing room and emails these addresses what a writer typed, under the same rations as the sign-in emails. |
 | `NEO_GUESTS_OF_HONOR` | Comma-separated addresses that get a one-time welcome the first time they open the writing room: a thank-you for NEO and the books, with the feedback form inline when feedback is on. Meant for the author of NEO, should he ever sign up; the server never names anyone, so the list lives here and nowhere in the repository. |
 | `NEO_BACKUP_BUCKET` | An S3-compatible bucket that gets a copy of every writer's daily zip, under `<writer id>/neo-backup-<date>.zip`. Unset, the zips stay on the volume. With it, `AWS_ENDPOINT_URL` (`https://storage.railway.app`), `AWS_REGION` (`auto` on Railway), `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are required; the server refuses to boot without them and says which is missing. Each is also read as `NEO_BACKUP_ENDPOINT`, `NEO_BACKUP_REGION`, `NEO_BACKUP_ACCESS_KEY_ID`, `NEO_BACKUP_SECRET_ACCESS_KEY`. Optional: `NEO_BACKUP_PREFIX`, a folder inside the bucket; `NEO_BACKUP_PATH_STYLE=1` for a service that wants the bucket on the path (MinIO). |
+| `NEO_PRINT_URL` | The PDF printer's address on the private network, `http://neo-print.railway.internal:8080` (step 9). Unset, Export → PDF and the ⌘E snapshot open the browser's print view ("Save as PDF"), as before. With it, the export HTML goes to the printer and a book-shaped PDF comes back as a download. |
+| `NEO_PRINT_SECRET` | The word the printer expects, the same value on both services. Required with `NEO_PRINT_URL`. The printer itself reads `NEO_PRINT_SECRET`, `PORT`, and optionally `NEO_PRINT_CONCURRENCY` (books rendered at once, default 2) and `CHROMIUM_PATH` (the image sets it). |
 | `DATABASE_URL` | Postgres for accounts, history and every writer's words. Railway sets it when the Postgres service is referenced from this one. Unset, accounts stay in `users.json` and libraries are folders on the volume. The first boot with it set imports `users.json` ([auth-and-users.md](auth-and-users.md#where-users-live)) and each writer's library folder ([architecture.md](architecture.md#where-a-writers-words-live)). `NEO_DATABASE_URL` is read too, for a hand-named variable. Put `?sslmode=require` on it when connecting over Railway's public proxy; the private network needs no TLS. |
 
 Generate a secret with:
@@ -42,6 +44,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 7. For email (optional, but needed for confirmed addresses and password reset): create a [Resend](https://resend.com) account, add and verify the sending domain there, make an API key, and set `RESEND_API_KEY`, `NEO_MAIL_FROM` and `NEO_PUBLIC_URL` on the service. Accounts made before email was on keep working; only new ones wait for a confirmation link. The server refuses to boot if one of the three is missing and says which. [auth-and-users.md](auth-and-users.md#email) has the flow.
 
 8. For off-site copies of the daily zips: add a **Storage Bucket** to the project (Railway → New → Bucket), open its Variables, pick the **AWS SDK** preset to hand this service `AWS_ENDPOINT_URL`, `AWS_REGION`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as references, and add `NEO_BACKUP_BUCKET` = `${{Bucket.BUCKET}}` (the bucket's generated name). Any S3-compatible bucket works the same way with its own endpoint and keys. The zips are never deleted from the bucket by the server; a lifecycle rule there is the place to expire them.
+
+9. For real PDFs (page numbers, a numbered contents page, mirrored margins, bookmarks): add a second service from the **same GitHub repository** (Railway → New → GitHub Repo → this one), open its Settings and set **Root Directory** to `print` (Railway then builds `print/Dockerfile`; `print/railway.json` gives it the health check). It needs no domain and no volume. Give it a variable `NEO_PRINT_SECRET` (32 random characters, generated as above). On the app service add `NEO_PRINT_URL` = `http://<the print service's name>.railway.internal:8080` (Settings → Networking shows the private hostname) and the same `NEO_PRINT_SECRET`. The app's next boot logs `pdf: printer at http://...`; Export → PDF now downloads a file instead of opening the print dialog.
 
 Railway auto-deploys `main`. With Postgres, the database holds the accounts, the history and the words, and the volume holds settings, encrypted keys, error logs and the daily zips; turn on Railway's Postgres backups. The zips on the volume protect against a writer's mistake; the copies in the bucket (step 8) protect against losing the volume.
 
@@ -81,6 +85,7 @@ Things the owner can do from a browser and the Railway dashboard:
 - Railway → Volume shows `users/<id>/NEO Library/` after the first save (with Postgres only `Backups/` and `neo-errors.log` inside it; the words are in the database).
 - With a bucket: within an hour of the deploy (the first sweep runs a minute after boot) Railway → the Bucket's browser shows `<writer id>/neo-backup-<today>.zip` for every writer, and `Backups/` on the volume holds a `.offsite` marker beside each copied zip. A copy that failed leaves a `backup` line in that writer's `neo-errors.log` and is retried on the next hourly sweep.
 - A failing save shows a toast in the page and a line in that writer's `neo-errors.log` on the volume.
+- With the printer (step 9): the deploy log's boot line ends in `pdf: printer at http://...` (`browser print view` without one); the print service's own log says `neo-print listening on :8080, 2 at a time, secret set`. File → Export → PDF shows "Printing the book…", then a `<title>.pdf` lands in the downloads and the toast gives its page count; the print service's log adds a line per book (`[print] 5.5x8.5 212 pages, ... ms`). Opened in a PDF reader: 5.5 × 8.5 in pages, a page number at the foot of each chapter page, chapter headings in the sidebar's bookmarks, and the Contents page (a book with several titles, or a Contents page of its own) numbered. Stop the print service and export again: a toast says the printer couldn't make the PDF and the browser's print view opens instead.
 
 ## Upgrading
 

@@ -18,6 +18,7 @@
 //   POST /api/<channel>            { args: [...] } → { ok, result | error }   (see lib/handlers.js)
 //   POST /api/cover:upload?bookId=&ext=            raw image bytes → file name
 //   POST /api/import:upload?name=<file name>       raw .docx/.txt/.md bytes → the parsed book
+//   POST /api/export:pdf?trim=<name>               the export HTML → the PDF, by the printer (print/); 503 without one
 //   GET  /library/<bookId>/<cover, art or map file>  cover images for the shelf, the map map's sheet
 //   POST /api/map:upload?bookId=&ext=   the map map's sheet, raw image body (hosted only)
 //   GET  /library.zip              the writer's whole library as the desktop folder
@@ -42,6 +43,7 @@ const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
 const { openPgLibrary } = require('./lib/pg-library');
 const { createObjectStore, NO_OBJECT_STORE } = require('./lib/object-store');
+const { createPrintClient, NO_PRINT_CLIENT } = require('./lib/print-client');
 const { JsonShareStore, PgShareStore, isToken } = require('./lib/share-store');
 const { registerHandlers } = require('./lib/handlers');
 const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
@@ -59,6 +61,7 @@ const SESSION_COOKIE = 'neo_session';
 const API_BODY_LIMIT = 24 * 1024 * 1024;            // a whole library.json or one very long chapter
 const COVER_BODY_LIMIT = 12 * 1024 * 1024;
 const IMPORT_BODY_LIMIT = 25 * 1024 * 1024;         // a whole manuscript as .docx, pictures and all
+const EXPORT_BODY_LIMIT = 64 * 1024 * 1024;         // a long novel with four embedded font weights and a cover
 const AUTH_BODY_LIMIT = 16 * 1024;
 const FEEDBACK_LIMIT = 5000;                    // characters in one Help → Send Feedback… note
 const MIN_PASSWORD = 8;
@@ -90,6 +93,7 @@ function createApp(config, deps = {}) {
   const users = db ? new PgUserStore(db) : new JsonUserStore(usersFile);
   const revisions = db ? new RevisionLog(db) : new NullRevisionLog();
   const objectStore = deps.objectStore || (config.backupBucket ? createObjectStore(config.backupBucket) : NO_OBJECT_STORE);
+  const printer = deps.printer || (config.printer ? createPrintClient(config.printer) : NO_PRINT_CLIENT);
   const shares = db ? new PgShareStore(db) : new JsonShareStore(path.join(config.dataDir, 'shares'));
   // Migrate, then take over a users.json if one is there and the table is
   // empty, and every writer's library folder whose rows are still empty.
@@ -382,6 +386,7 @@ function createApp(config, deps = {}) {
       source: 'https://github.com/emanrow/neo_hosted',
       upstream: 'https://github.com/hughhowey/neo',
       feedback: feedback.enabled(),                       // Help → Send Feedback… is on the menu
+      print: printer.enabled,                             // Export → PDF is made by the printer, not the browser's print dialog
       welcome: ctx.welcomePending ? 'honored' : ''       // web-feedback.js opens the one-time welcome
     };
   }
@@ -429,6 +434,23 @@ function createApp(config, deps = {}) {
     } catch (err) {
       ctx.logError('import', err);
       sendJSON(res, 500, { ok: false, error: String((err && err.message) || err) });
+    }
+  }
+
+  // The book as the page exported it (buildHtml in app.js, fonts and cover
+  // inside), printed by the second service. Nothing is kept; the bytes go
+  // back to the browser, which saves them as a download.
+  async function handleExportPdf(ctx, url, req, res) {
+    if (!printer.enabled) throw new HttpError(503, 'No PDF printer is configured');
+    const html = (await readBody(req, EXPORT_BODY_LIMIT)).toString('utf8');
+    if (!/<html[\s>]/i.test(html.slice(0, 2000))) throw new HttpError(400, 'Send the book as a whole HTML document');
+    const trim = String(url.searchParams.get('trim') || '');
+    try {
+      const { pdf, pages, paged } = await printer.render(html, { lang: ctx.locale, trim: trim || undefined });
+      send(res, 200, pdf, { 'Content-Type': 'application/pdf', 'X-Neo-Pages': String(pages), 'X-Neo-Paged': paged ? '1' : '0', 'Cache-Control': 'no-store' });
+    } catch (err) {
+      ctx.logError('export:pdf', err);
+      throw err;
     }
   }
 
@@ -502,6 +524,7 @@ function createApp(config, deps = {}) {
       if (method === 'POST' && p === '/api/cover:upload') return handleImageUpload(ctx, url, req, res, ctx.library.setCoverBytes);
       if (method === 'POST' && p === '/api/map:upload') return handleImageUpload(ctx, url, req, res, ctx.library.setMapImage);
       if (method === 'POST' && p === '/api/import:upload') return handleImportUpload(ctx, url, req, res);
+      if (method === 'POST' && p === '/api/export:pdf') return handleExportPdf(ctx, url, req, res);
       if (method === 'POST' && p.startsWith('/api/')) return handleApi(ctx, p.slice(5), req, res);
       if (method === 'GET' && p === '/library.zip') return serveLibraryZip(ctx, res);
       if (method === 'GET' && p.startsWith('/library/')) {
@@ -649,7 +672,7 @@ function createApp(config, deps = {}) {
   }
 
   return {
-    server, users, db, revisions, ready, spell, mailer, objectStore, config, backupEveryone, startBackups,
+    server, users, db, revisions, ready, spell, mailer, objectStore, printer, config, backupEveryone, startBackups,
     close: async () => {
       await new Promise((resolve) => { timers.forEach(clearTimeout); server.close(() => resolve()); });
       if (db && !deps.db) await db.close();
@@ -666,7 +689,7 @@ if (require.main === module) {
     const librariesLabel = store === 'postgres' ? 'postgres' : 'volume';   // folders on the volume when accounts are in users.json
     app.server.listen(config.port, () => {
       console.log(`NEO hosted ${VERSIONS.hosted} (NEO ${VERSIONS.neo}) listening on :${config.port}`);
-      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${librariesLabel}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}  backups: ${app.objectStore.enabled ? `volume + bucket ${app.objectStore.bucket}` : 'volume only'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
+      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${librariesLabel}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}  backups: ${app.objectStore.enabled ? `volume + bucket ${app.objectStore.bucket}` : 'volume only'}  pdf: ${app.printer.enabled ? `printer at ${config.printer.url}` : 'browser print view'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
     });
     app.startBackups();
   }).catch((err) => {

@@ -1,6 +1,8 @@
 # The hosted edition's checks on every pull request and every push to main:
-# the node:test suite, the lint, the shared manuscript parser's tests, and a
-# build of the Docker image Railway deploys, booted once to answer /healthz.
+# the node:test suite, the lint, the shared manuscript parser's tests, a
+# build of the Docker image Railway deploys, booted once to answer /healthz,
+# and the PDF printer (print/): its suite against the runner's Chrome, then
+# its own image built, booted and handed a small book.
 # The owner has no local environment, so this is the only place these run
 # before a merge reaches Railway.
 
@@ -51,7 +53,7 @@ jobs:
           npm install --no-save --ignore-scripts --no-audit --no-fund jszip
           node --test scripts/import-parse.test.js
       - name: Lint
-        run: npx --yes oxlint@1 -c .oxlintrc.json web/server.js web/lib web/public web/test
+        run: npx --yes oxlint@1 -c .oxlintrc.json web/server.js web/lib web/public web/test print/server.js print/book.js print/test
 
   image:
     name: Docker image boots
@@ -68,3 +70,34 @@ jobs:
             sleep 1
           done
           echo "::error::the image never answered /healthz"; docker logs neo; exit 1
+
+  print:
+    name: PDF printer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: print/package-lock.json
+      - name: Install the printer's dependencies
+        run: cd print && npm ci --no-audit --no-fund
+      - name: The printer's suite, with the runner's Chrome
+        # ubuntu-latest ships Google Chrome; the image uses Debian's chromium
+        run: cd print && CHROMIUM_PATH=/usr/bin/google-chrome npm test
+      - name: Build the printer's image
+        run: docker build -t neo-print print
+      - name: Boot it and print a book
+        run: |
+          docker run -d --name print -p 8081:8080 -e NEO_PRINT_SECRET=open-sesame-open neo-print
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8081/healthz; then echo; echo "healthy"; break; fi
+            sleep 1
+          done
+          printf '<!DOCTYPE html><html><head><title>CI</title></head><body><section class="chapter"><h2>One</h2>%s</section></body></html>' "$(printf '<p>The lighthouse keeper counted the ships as they passed.</p>%.0s' $(seq 1 200))" > book.html
+          curl -fsS -o book.pdf -D headers.txt -H 'Authorization: Bearer open-sesame-open' -H 'Content-Type: text/html' --data-binary @book.html 'http://127.0.0.1:8081/render?trim=5.5x8.5' || { docker logs print; exit 1; }
+          cat headers.txt
+          head -c 5 book.pdf | grep -q '%PDF-' || { echo "::error::the printer did not answer with a PDF"; docker logs print; exit 1; }
+          grep -qi '^x-neo-paged: 1' headers.txt || { echo "::error::Paged.js did not lay the book out"; docker logs print; exit 1; }
+          echo "printed $(wc -c < book.pdf) bytes"
