@@ -707,7 +707,7 @@ if (require.main === module) {
     const librariesLabel = store === 'postgres' ? 'postgres' : 'volume';   // folders on the volume when accounts are in users.json
     app.server.listen(config.port, () => {
       console.log(`NEO hosted ${VERSIONS.hosted} (NEO ${VERSIONS.neo}) listening on :${config.port}`);
-      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${librariesLabel}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}  backups: ${app.objectStore.enabled ? `volume + bucket ${app.objectStore.bucket}` : 'volume only'}  images: ${app.objectStore.enabled ? 'bucket' : db ? 'rows' : 'volume'}  pdf: ${app.printer.enabled ? `printer at ${config.printer.url}` : 'browser print view'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
+      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${librariesLabel}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}  backups: ${app.objectStore.enabled ? `volume + bucket ${app.objectStore.bucket}` : 'volume only'}  images: ${app.objectStore.enabled ? 'bucket' : store === 'postgres' ? 'rows' : 'volume'}  pdf: ${app.printer.enabled ? `printer at ${config.printer.url}` : 'browser print view'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
     });
     app.startBackups();
   }).catch((err) => {
