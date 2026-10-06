@@ -9,6 +9,7 @@ NEO is [Hugh Howey's](https://github.com/hughhowey/neo) word processor for autho
 - **NEO** -- Hugh Howey, [hughhowey/neo](https://github.com/hughhowey/neo), MIT. The editor, the shelf, the covers, the export formats, the translations, the whole philosophy. Everything a writer sees is his work.
 - **Hunspell** -- the spellcheck engine, via [`@farscrl/hunspell-wasm`](https://www.npmjs.com/package/@farscrl/hunspell-wasm). Licenses in `licenses/hunspell`.
 - **Dictionaries** -- the `dictionary-*` packages by Titus Wormer and the original dictionary authors (see `licenses/`).
+- **Book faces** -- [Libron](https://github.com/nicoverbruggen/libron) by Nico Verbruggen (after Production Type's Newsreader), [Literata](https://github.com/googlefonts/literata), [EB Garamond](https://github.com/octaviopardo/EBGaramond12) and [Crimson Pro](https://github.com/Fonthausen/CrimsonPro), all under the SIL Open Font License; each has a `LICENSE-<family>.txt` in `fonts/`. Libron is built from its sources with its own `build.py`; the other three are the `latin` subsets published by [Fontsource](https://fontsource.org).
 - **JSZip** -- Stuart Knightley, for EPUB, Word and backups.
 - **The hosted edition** -- `web/`, `Dockerfile`, `railway.json`, this tree of docs. MIT, same as NEO.
 

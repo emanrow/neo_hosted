@@ -46,7 +46,7 @@ web/
     web-handwriting.js  View → Handwriting…: pages of strokes (pointer events, coalesced, pressure per point drawn as a ribbon; inks, widths, eraser, undo, Export SVG…), a title and chapter per page; handwriting.json through json:read/json:write, drawn as SVG
     web-mobile.js       a touch screen only ((hover: none)): the ☰ button that opens the menu bar, edge swipes for the chapter and notes panes; web.css's body.hosted-touch and max-width rules do the rest
     web-history.js      the History panel: a chapter's revisions (revision:list/read through the bridge), preview, Show Changes (revision:compare: that save against the draft now, a blackline from merge.js), restore by writing the draft back and calling the editor's refreshFromDisk
-    web.css             menu bar and sign-in styles, on styles.css's tokens
+    web.css             menu bar and sign-in styles, on styles.css's tokens; the @font-face rules for the hosted edition's own book faces (Libron, Literata, EB Garamond, Crimson Pro in ../fonts/), absolute /fonts/ URLs so app.js's exportFontFaces can embed them
     login.html, login.js  sign in / create account / forgot / reset, one form in four modes; rendered through login-page.js, never served raw
   locales/<code>.json   the hosted edition's own strings (sign-in page, auth errors, the emails) per language, laid over ../locales/<code>.json by lib/i18n.js; one file per upstream language, keys are the English text
   scripts/smoke.e2e.js  optional headless-Chromium run, see docs/testing.md
