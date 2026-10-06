@@ -269,124 +269,23 @@ function ensureLibrary() {
   }
 }
 
-// Every book, chapter and sidecar name the page sends is one plain name
-// inside the library: ".", ".." and path separators never reach the disk.
-// Any name NEO ever made passes, and so does a folder named by hand.
-function libName(name) {
-  if (typeof name !== 'string' || !name || name === '.' || name === '..' || /[\\/\0]/.test(name)) {
-    throw new Error('Invalid library name');
-  }
-  return name;
-}
+// The disk's rules (one plain name, durable writes, reads that fall back on
+// the copies a write leaves) live in library-disk.js, shared with the hosted
+// edition. The error log and the translator are handed over lazily: both
+// are declared further down this file.
+const libraryDisk = require('./library-disk');
+const { libName, writeFileDurable, writeJSON } = libraryDisk;
+const readJSON = (file, fallback) => libraryDisk.readJSON(file, fallback, (what) => logError('recovered', what));
+const libraryFiles = libraryDisk.forLibrary({ t: (key, vars) => t(key, vars), logError: (source, err) => logError(source, err) });
 
 function bookDir(bookId) {
   return path.join(LIBRARY_DIR, libName(bookId));
 }
 
-// A human-readable map of the library, regenerated on every change:
-// which folder is which book, and what shelf it lives on. Sorts to the
-// top of the folder so browsing writers can always find their way.
-function writeCatalog() {
-  try {
-    const lib = readJSON(LIBRARY_FILE, { shelves: [] });
-    const onShelf = {};
-    for (const s of lib.shelves || []) {
-      for (const id of s.bookIds) onShelf[id] = s.name;
-    }
-    const lines = [];
-    for (const d of fs.readdirSync(LIBRARY_DIR)) {
-      if (!d.startsWith('book-')) continue;
-      try {
-        const m = JSON.parse(fs.readFileSync(path.join(LIBRARY_DIR, d, 'book.json'), 'utf8'));
-        lines.push(`${m.title || t('Untitled')}  —  ${d}  —  ${t('shelf:')} ${onShelf[m.id] || t('(none — removed from shelves)')}`);
-      } catch { /* not a valid book folder */ }
-    }
-    lines.sort((a, b) => a.localeCompare(b));
-    fs.writeFileSync(path.join(LIBRARY_DIR, '_catalog.txt'),
-      t('NEO LIBRARY CATALOG — which folder is which book') + '\n' +
-      t('(regenerated automatically; edits here do nothing)') + '\n\n' +
-      lines.join('\n') + '\n');
-  } catch (err) {
-    logError('catalog', err);
-  }
-}
-
-// Writing that survives the power going out. A new file is written beside
-// the old one, pushed all the way to the disk (fsync), and only then swapped
-// in. Without the push, a power cut right after the swap can leave the swap
-// done and the words not: an empty book.json, and the book gone from its
-// shelf (#219). A missing file or an unlucky moment never costs more than
-// the last few seconds.
-function writeFileDurable(file, data) {
-  const tmp = file + '.tmp';
-  const fd = fs.openSync(tmp, 'w');
-  try {
-    fs.writeSync(fd, typeof data === 'string' ? data : Buffer.from(data));
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
-  }
-  fs.renameSync(tmp, file);
-  // the swap itself, on systems that let a folder be pushed too
-  if (process.platform !== 'win32') {
-    try { const d = fs.openSync(path.dirname(file), 'r'); try { fs.fsyncSync(d); } finally { fs.closeSync(d); } } catch { /* fine */ }
-  }
-}
-
-// JSON reads fall back on the copies a write leaves: the .tmp a write was
-// making when it stopped, then .bak, the last version that read whole. What
-// they recover is put back as the file itself.
-function parseJSONFile(file) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return undefined; }
-}
-function readJSON(file, fallback) {
-  const main = parseJSONFile(file);
-  if (main !== undefined) return main;
-  if (!fs.existsSync(file) && !fs.existsSync(file + '.bak')) return fallback;
-  for (const spare of [file + '.tmp', file + '.bak']) {
-    const v = parseJSONFile(spare);
-    if (v === undefined) continue;
-    logError('recovered', `${file} was unreadable; restored from ${path.basename(spare)}`);
-    try { writeFileDurable(file, JSON.stringify(v, null, 2)); } catch (err) { logError('recover write', err); }
-    return v;
-  }
-  return fallback;
-}
-
-function writeJSON(file, data) {
-  // the version on disk, while it reads whole, becomes the .bak
-  if (parseJSONFile(file) !== undefined) {
-    try { fs.copyFileSync(file, file + '.bak'); } catch { /* the write still goes ahead */ }
-  }
-  writeFileDurable(file, JSON.stringify(data, null, 2));
-}
-
-// A book whose book.json is gone for good (and no .bak) still has its
-// chapters: the book comes back with them in the order they were made, its
-// title from the catalog, rather than vanishing from the shelf.
-function rebuildBookMeta(bookId) {
-  const dir = bookDir(bookId);
-  const chDir = path.join(dir, 'chapters');
-  if (!fs.existsSync(chDir)) return null;
-  let title = '';
-  try {
-    const cat = fs.readFileSync(path.join(LIBRARY_DIR, '_catalog.txt'), 'utf8');
-    const line = cat.split('\n').find((l) => l.includes('  —  ' + bookId + '  —  '));
-    if (line) title = line.split('  —  ')[0].trim();
-  } catch { /* no catalog */ }
-  const order = fs.readdirSync(chDir).filter((f) => f.endsWith('.html')).map((f) => f.slice(0, -5)).sort();
-  const meta = {
-    id: bookId,
-    title: title || t('Untitled'),
-    subtitle: '', series: '', author: t('Anonymous'), wordGoal: 0,
-    created: new Date().toISOString(), modified: new Date().toISOString(),
-    chapterOrder: order,
-    tabNames: { notes: 'Notes', outline: 'Outline' }
-  };
-  logError('recovered', `${bookId}/book.json was lost; rebuilt from ${order.length} chapter files`);
-  try { writeJSON(path.join(dir, 'book.json'), meta); } catch (err) { logError('recover write', err); }
-  return meta;
-}
+// _catalog.txt, a human-readable map of the library; book.json rebuilt from
+// its chapters when it is lost for good. Both in library-disk.js.
+function writeCatalog() { libraryFiles.writeCatalog(LIBRARY_DIR, LIBRARY_FILE); }
+function rebuildBookMeta(bookId) { return libraryFiles.rebuildBookMeta(bookId, bookDir(bookId), LIBRARY_DIR); }
 
 // ---------------------------------------------------------------------------
 // IPC — the renderer's whole view of the disk
@@ -398,17 +297,7 @@ ipcMain.handle('library:read', () => {
   if (lib) return lib;
   // library.json lost with no copy to fall back on: every book in the
   // folder goes onto one shelf, so nothing disappears
-  const ids = [];
-  try {
-    for (const d of fs.readdirSync(LIBRARY_DIR)) {
-      if (d.startsWith('book-') && fs.existsSync(path.join(LIBRARY_DIR, d, 'chapters'))) ids.push(d);
-    }
-  } catch { /* empty */ }
-  const seed = { authorName: '', penNames: [], firstRunDone: ids.length > 0, pageTheme: 'night',
-    shelves: [{ id: 'shelf-1', name: t('Works in Progress'), bookIds: ids }] };
-  logError('recovered', `library.json was lost; ${ids.length} books put back on one shelf`);
-  try { writeJSON(LIBRARY_FILE, seed); } catch (err) { logError('recover write', err); }
-  return seed;
+  return libraryFiles.seedLostLibrary(LIBRARY_DIR, LIBRARY_FILE);
 });
 
 ipcMain.handle('library:write', (_e, data) => {
@@ -980,33 +869,7 @@ async function dailyBackup() {
 
     const JSZip = require('jszip');
     const zip = new JSZip();
-    const skip = new Set(['Backups', 'Exports']);
-    // One file the system won't hand over (in iCloud but not downloaded yet,
-    // held by a sync tool) used to throw, and cost the whole day's backup,
-    // every day. Now it's left out, named in the zip and in the error log.
-    const missed = [];
-    const walk = (dir, rel) => {
-      let names = [];
-      try { names = fs.readdirSync(dir); } catch (err) { missed.push(`${rel || '.'} (${err.code || err.message})`); return; }
-      for (const name of names) {
-        if (rel === '' && skip.has(name)) continue;
-        if (name === '.DS_Store' || /^\..+\.icloud$/.test(name)) continue; // Finder litter; iCloud's stand-in for a file not downloaded
-        const full = path.join(dir, name);
-        const relPath = rel ? rel + '/' + name : name;
-        try {
-          const stat = fs.statSync(full);
-          if (stat.isDirectory()) walk(full, relPath);
-          else zip.file(relPath, fs.readFileSync(full));
-        } catch (err) {
-          missed.push(`${relPath} (${err.code || err.message})`);
-        }
-      }
-    };
-    walk(LIBRARY_DIR, '');
-    if (missed.length) {
-      zip.file('_left-out-of-this-backup.txt', missed.join('\n') + '\n');
-      logError('backup', new Error('left out of today\'s backup: ' + missed.join(', ')));
-    }
+    libraryFiles.fillZip(zip, LIBRARY_DIR); // a file the system won't hand over is left out and named, not fatal
     fs.writeFileSync(target, await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
 
     // prune old backups

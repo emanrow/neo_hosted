@@ -8,7 +8,7 @@
 // outcome: writers paste theirs in again.
 
 const crypto = require('node:crypto');
-const { readJSON, writeJSON } = require('./files');
+const { readJSON, writeJSON } = require('../../library-disk');
 
 function createSecretBox(masterSecret) {
   const key = Buffer.from(crypto.hkdfSync('sha256', String(masterSecret), 'neo-hosted', 'secrets', 32));

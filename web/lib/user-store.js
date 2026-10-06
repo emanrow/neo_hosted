@@ -18,7 +18,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { readJSON, writeJSON } = require('./files');
+const { readJSON, writeJSON } = require('../../library-disk');
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 const newUserId = () => 'u-' + crypto.randomBytes(8).toString('hex');

@@ -13,7 +13,7 @@ COPY web/package.json web/package-lock.json ./web/
 RUN cd web && npm ci --omit=dev --no-audit --no-fund
 
 # the desktop app's shared files, served as they are
-COPY package.json index.html app.js styles.css covers.js i18n.js spell-ro.js art.js import-parse.js ./
+COPY package.json index.html app.js styles.css covers.js i18n.js spell-ro.js art.js import-parse.js library-disk.js ./
 COPY fonts ./fonts
 COPY build/icon.png ./build/icon.png
 COPY locales ./locales

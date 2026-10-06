@@ -51,7 +51,7 @@ const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
 const { buildHostedPage, assetVersionFor, PAGE_CSP } = require('./lib/page');
 const { buildLoginPage } = require('./lib/login-page');
 const { buildAdminPage } = require('./lib/admin-page');
-const { readJSON, writeJSON, writeFileDurable, libName } = require('./lib/files');
+const { readJSON, writeJSON, writeFileDurable, libName } = require('../library-disk');
 // the desktop's own manuscript parser, shared with main.js
 const { importBuffer, isImportable } = require('../import-parse');
 const i18n = require('./lib/i18n');

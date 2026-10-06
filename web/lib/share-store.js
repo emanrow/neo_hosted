@@ -23,7 +23,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { writeFileDurable, readJSON, writeJSON } = require('./files');
+const { writeFileDurable, readJSON, writeJSON } = require('../../library-disk');
 
 const TOKEN = /^[A-Za-z0-9_-]{22}$/;
 const WHOLE_BOOK = '';                      // chapterId of a whole-book page; '' keeps the unique key simple

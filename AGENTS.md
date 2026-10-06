@@ -20,6 +20,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before adding a feature. The product is 
 |---|---|
 | `main.js` | Window, menus, every filesystem operation, PDF, backups |
 | `import-parse.js` | The manuscript parser: .docx / .txt / .md → chapters, on a buffer. Shared by `main.js` and the hosted server. `CHAPTER_WORDS` lives here |
+| `library-disk.js` | The disk under a NEO Library: one-segment names, durable writes, JSON that recovers from `.tmp` and `.bak`, the catalog, a lost `book.json` or `library.json` rebuilt, the backup walk. Shared by `main.js` and the hosted server |
 | `preload.js` | The entire renderer API, `window.neo` |
 | `index.html` | Two views: `#bookshelf-view` and `#editor-view`. CSP is `script-src 'self'` |
 | `app.js` | The whole UI, in banner-marked sections. Search for the banner before reading the file |
