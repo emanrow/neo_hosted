@@ -115,7 +115,26 @@ function tinyPng() {
       const bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
       return window.neoHosted.figures.placePicture(new File([bytes], 'lamps.png', { type: 'image/png' }));
     }, png);
+    // a footnote, placed as Format → Insert Footnote… places it: a call at
+    // the caret, the note typed on the pad under it
+    await placeAt('ch-1', 1);
+    await page.evaluate(() => { const p = document.querySelector('.chapter[data-id="ch-1"] .chapter-body p:nth-of-type(1)'); placeCaret(p.firstChild, 9); });
+    const noted = await page.evaluate(() => window.neoHosted.insertFootnote());
+    if (noted !== true) fail('the footnote was not placed');
+    await page.waitForSelector('.hosted-fn-pad textarea');
+    await page.keyboard.type('Lamps were lit by hand then.');
+    await page.click('.hosted-fn-pad .hosted-fn-done');
     await page.waitForTimeout(1200); // the editor's save
+    const footnoteSaved = await page.evaluate(async () => {
+      const id = window.neoHosted.state.bookId;
+      const sup = document.querySelector('.chapter[data-id="ch-1"] sup.fn-ref');
+      const sidecar = await window.neo.readJSON(id, 'footnotes', null);
+      return { count: document.querySelectorAll('sup.fn-ref').length, number: sup && getComputedStyle(sup, '::before').content, text: sidecar && sidecar.notes && sidecar.notes[sup.dataset.fn] && sidecar.notes[sup.dataset.fn].text, html: await window.neo.readChapter(id, 'ch-1') };
+    });
+    if (footnoteSaved.count !== 1) fail('expected one footnote call, found ' + footnoteSaved.count);
+    if (footnoteSaved.number !== 'counter(hosted-fn)') fail('the call does not show its number: ' + footnoteSaved.number);
+    if (footnoteSaved.text !== 'Lamps were lit by hand then.') fail('the note did not reach footnotes.json: ' + JSON.stringify(footnoteSaved.text));
+    if (!/<p>The light<sup class="fn-ref" data-fn="[a-z0-9]+" contenteditable="false">\uE002[\uE100-\uE1FF]+\uE003<\/sup> failed early/.test(footnoteSaved.html)) fail('the call is not in the chapter as expected: ' + footnoteSaved.html.slice(0, 300));
     const onDisk = await page.evaluate(async () => {
       const id = window.neoHosted.state.bookId;
       return { one: await window.neo.readChapter(id, 'ch-1'), two: await window.neo.readChapter(id, 'ch-2') };
@@ -127,26 +146,34 @@ function tinyPng() {
     const shown = await page.evaluate(() => document.getElementById('hosted-figures').textContent);
     if ((shown.match(/background-image: url\("\/library\//g) || []).length !== 2) fail('the editor does not draw both pictures: ' + shown);
     // the web page (and the printer's input) carries the bytes
-    const webPage = await page.evaluate(async () => window.neoHosted.figures.inlineExport(buildHtml(bookExportData())));
+    const webPage = await page.evaluate(async () => window.neoHosted.footnotes.html(await window.neoHosted.figures.inlineExport(buildHtml(bookExportData()))));
+    if (!webPage.includes('<sup class="fn-ref" id="fnref-')) fail('the web page has no footnote call');
+    if (!webPage.includes('<aside class="fn-endnotes"><ol><li id="fn-') || !webPage.includes('Lamps were lit by hand then.')) fail('the web page has no notes at the chapter end');
+    if (webPage.includes('\uE002')) fail('a footnote mark is left in the web page');
+    const txt = await page.evaluate(async () => window.neoHosted.footnotes.txt(buildTxt(bookExportData())));
+    if (!txt.includes('The light[1] failed') || !txt.includes('[1] Lamps were lit by hand then.')) fail('plain text lost the footnote: ' + txt.slice(0, 200));
+    if (process.env.EXPORT_DIR) fs.writeFileSync(path.join(process.env.EXPORT_DIR, 'book.html'), webPage);
     if ((webPage.match(/<img src="data:image\/png;base64,/g) || []).length !== 2) fail('the web page does not carry both pictures');
     if (!webPage.includes('<figcaption>The house on the hill</figcaption>')) fail('the web page lost the caption');
     // what exportSave does for an EPUB, minus the download
     const entries = await page.evaluate(async () => {
       const payload = await shelfPayload(bookExportData(), 'epub');
-      return window.neoHosted.figures.epubExport(await window.neoHosted.epub.polish(payload.zipEntries));
+      return window.neoHosted.footnotes.epub(await window.neoHosted.figures.epubExport(await window.neoHosted.epub.polish(payload.zipEntries)));
     });
+    if (!entries.some((e) => e.content.includes('<a epub:type="noteref" href="#fn-') && e.content.includes('<aside epub:type="footnote"'))) fail('the EPUB has no footnote');
     if (errors.length) fail('page errors: ' + errors.join('; '));
     const images = entries.filter((e) => e.path.startsWith('OEBPS/images/'));
     if (images.length !== 2) fail(`expected two pictures in the EPUB, found ${images.length}`);
     const chapterFiles = entries.filter((e) => /^OEBPS\/ch\d+\.xhtml$/.test(e.path) && e.content.includes('<figure class="figure">'));
     if (chapterFiles.length !== 2) fail('the pictures are not in their chapter files');
     if (!entries.some((e) => e.content.includes('<figcaption>The house on the hill</figcaption>'))) fail('the EPUB lost the caption');
-    if (entries.some((e) => typeof e.content === 'string' && e.content.includes('\uE000'))) fail('a picture mark is left in the EPUB');
+    if (entries.some((e) => typeof e.content === 'string' && /[\uE000-\uE1FF]/.test(e.content))) fail('a mark is left in the EPUB');
     // the Word file too: an inline drawing per picture, the bytes in word/media/
-    const docx = await page.evaluate(async () => window.neoHosted.figures.docxExport((await shelfPayload(bookExportData(), 'docx')).zipEntries));
+    const docx = await page.evaluate(async () => window.neoHosted.footnotes.docx(await window.neoHosted.figures.docxExport((await shelfPayload(bookExportData(), 'docx')).zipEntries)));
+    if (!docx.some((e) => e.path === 'word/footnotes.xml' && e.content.includes('Lamps were lit by hand then.'))) fail('the Word file has no footnotes part');
     const docXml = docx.find((e) => e.path === 'word/document.xml').content;
     if ((docXml.match(/<w:drawing>/g) || []).length !== 2) fail('the Word file does not carry both pictures');
-    if (docXml.includes('\uE000')) fail('a picture mark is left in the Word file');
+    if (/[\uE000-\uE1FF]/.test(docXml)) fail('a mark is left in the Word file');
     if (docx.filter((e) => e.path.startsWith('word/media/')).length !== 2) fail('the Word file lacks the picture bytes');
     const docxZip = new JSZip();
     for (const e of docx) docxZip.file(e.path, e.content, { base64: !!e.base64 });
