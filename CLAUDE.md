@@ -29,7 +29,7 @@ Consequences:
 
 ## What This Project Does
 
-Serves NEO, a distraction-free word processor for books, as an authenticated website. The editor is upstream's `app.js`, unchanged. `web/` adds a third doorway beside the desktop preload and the Pocket bridge: `web/public/web-bridge.js` implements `window.neo` over HTTP, `web/server.js` answers each IPC channel at `POST /api/<channel>`, and every writer has a plain-file `NEO Library` on a Railway volume, laid out exactly as the desktop app's. No framework, no bundler, no database.
+Serves NEO, a distraction-free word processor for books, as an authenticated website. The editor is upstream's `app.js`, unchanged. `web/` adds a third doorway beside the desktop preload and the Pocket bridge: `web/public/web-bridge.js` implements `window.neo` over HTTP, `web/server.js` answers each IPC channel at `POST /api/<channel>`, and every writer has a plain-file `NEO Library` on a Railway volume, laid out exactly as the desktop app's. No framework, no bundler, no database. `print/` is a second, optional service: headless Chromium with Paged.js that turns the export HTML into a book-shaped PDF.
 
 ## Documentation Index
 
@@ -51,6 +51,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 ## Package Navigation
 
 - [web/CLAUDE.md](web/CLAUDE.md) -- the server, its libraries, the browser bridge and menu bar: file tree, request path, how to add a channel, gotchas
+- [print/CLAUDE.md](print/CLAUDE.md) -- the PDF printer: one Chromium with Paged.js behind `POST /render`, the trim sizes, how a book becomes a PDF, gotchas
 - The editor itself (`app.js`, `main.js`, `styles.css`, `index.html`) is mapped by the "Where the code is" table in [AGENTS.md](AGENTS.md); `app.js` is navigated by its banner comments
 
 ## Tech Stack
@@ -64,6 +65,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 | Auth | scrypt passwords, HMAC-signed HttpOnly cookies (`node:crypto` only) |
 | Spellcheck | Hunspell via `@farscrl/hunspell-wasm`, upstream's `dictionary-*` packages |
 | Zips | JSZip (exports in the page, backups on the server) |
+| PDF | `print/`: Debian's Chromium driven by puppeteer-core, Paged.js for the pagination; a second Railway service the app reaches over the private network |
 | Lint | oxlint with upstream's `.oxlintrc.json` |
 | Tests | `node:test`; Playwright for the optional smoke run |
 | Deploy | Dockerfile, `railway.json`, a Railway volume at `/data` |
@@ -77,6 +79,7 @@ npm run test:web                 # node --test web/test/*.test.js, one file at a
 npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test
 node scripts/i18n.js template    # after adding a writer-visible string (t() / tr())
 node web/scripts/smoke.e2e.js    # optional: headless Chromium end to end (needs Playwright)
+cd print && npm install && CHROMIUM_PATH=/path/to/chrome npm test   # the printer; its render test needs a Chromium
 ```
 
 ## Workflow Rules
