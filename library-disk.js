@@ -187,8 +187,9 @@ function forLibrary({ t, logError }) {
    * named in the zip and in the error log.
    *
    * @param {string[]} [skip]  top-level folders to leave out
+   * @param {(relPath: string, bytes: Buffer) => Buffer | Promise<Buffer>} [fileBytes]  what the zip carries for a file (the hosted edition fetches a picture the bucket holds); JSZip takes a promise
    */
-  function fillZip(zip, libraryDir, skip = DEFAULT_BACKUP_SKIP) {
+  function fillZip(zip, libraryDir, skip = DEFAULT_BACKUP_SKIP, fileBytes = null) {
     const skipped = new Set(skip);
     const missed = [];
     const walk = (folder, rel) => {
@@ -202,7 +203,7 @@ function forLibrary({ t, logError }) {
         try {
           const stat = fs.statSync(full);
           if (stat.isDirectory()) walk(full, relPath);
-          else zip.file(relPath, fs.readFileSync(full));
+          else { const bytes = fs.readFileSync(full); zip.file(relPath, fileBytes ? fileBytes(relPath, bytes) : bytes); }
         } catch (err) {
           missed.push(`${relPath} (${err.code || err.message})`);
         }

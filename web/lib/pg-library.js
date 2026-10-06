@@ -326,7 +326,7 @@ function openPgLibrary({ db, userId, dir, t }) {
   // ---------- the folder, out and in ----------
 
   /** Adds the whole library to a JSZip in the desktop layout (main at the book's root, branches under .branches/). Trashed books and branches stay out. */
-  async function fillZip(zip) {
+  async function fillZip(zip, fileBytes = null) {
     const library = await readLibrary();
     zip.file('library.json', pretty(library));
     const books = await rows('SELECT id, active_branch FROM books WHERE user_id = $1 AND trashed_at IS NULL ORDER BY created_at', [userId]);
@@ -345,7 +345,11 @@ function openPgLibrary({ db, userId, dir, t }) {
     for (const r of branchRows) {
       if (r.name !== MAIN && books.some((b) => b.id === r.book_id)) zip.file(`${prefixOf(r.book_id, r.name)}branch.json`, pretty({ name: r.name, from: r.created_from, createdAt: new Date(r.created_at).toISOString() }));
     }
-    for (const f of files) if (books.some((b) => b.id === f.book_id)) zip.file(prefixOf(f.book_id, f.branch) + f.path, f.bytes || f.body || '');
+    for (const f of files) {
+      if (!books.some((b) => b.id === f.book_id)) continue;
+      const relPath = prefixOf(f.book_id, f.branch) + f.path;
+      zip.file(relPath, f.bytes && fileBytes ? fileBytes(relPath, f.bytes) : f.bytes || f.body || '');
+    }
     for (const b of bases) if (books.some((bk) => bk.id === b.book_id)) zip.file(`${prefixOf(b.book_id, b.branch)}.base/${b.path}`, b.body);
     catalog.sort((a, b) => a.localeCompare(b));
     zip.file('_catalog.txt', t('NEO LIBRARY CATALOG — which folder is which book') + '\n' + t('(regenerated automatically; edits here do nothing)') + '\n\n' + catalog.join('\n') + '\n');
@@ -365,10 +369,11 @@ function openPgLibrary({ db, userId, dir, t }) {
     });
   }
 
-  async function exportZip() {
+  /** The library as one zip, for the download; `fileBytes(relPath, bytes)` may swap a file's bytes (a picture the bucket holds, image-store.js). */
+  async function exportZip(fileBytes) {
     const JSZip = require('jszip');
     const zip = new JSZip();
-    await fillZip(zip);
+    await fillZip(zip, fileBytes);
     return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   }
 

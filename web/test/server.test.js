@@ -13,7 +13,8 @@ const { createApp } = require('../server');
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neo-hosted-server-'));
 const bucketPuts = [];                                 // what the stand-in bucket was sent
-const objectStore = { enabled: true, bucket: 'words', put: async (key, bytes, type) => { bucketPuts.push({ key, size: bytes.length, type }); } };
+const bucketObjects = new Map();                       // and keeps, by key
+const objectStore = { enabled: true, bucket: 'words', put: async (key, bytes, type) => { bucketPuts.push({ key, size: bytes.length, type }); bucketObjects.set(key, Buffer.from(bytes)); }, get: async (key) => bucketObjects.get(key) || null };
 // the stand-in printer: off until a test turns it on and says what it renders
 const printer = { enabled: false, calls: [], render: async (html, opts) => { printer.calls.push({ html, opts }); return { pdf: Buffer.from('%PDF-1.4 stand-in'), pages: 12, paged: true }; } };
 const app = createApp({ dev: true, dataDir, sessionSecret: 's'.repeat(40), signup: 'invite', inviteCode: 'come-in', trustProxy: false, port: 0 }, { objectStore, printer });
@@ -248,6 +249,15 @@ describe('the hosted server', () => {
     assert.equal(img.headers.get('content-type'), 'image/png');
     assert.deepEqual(Buffer.from(await img.arrayBuffer()), png);
     assert.equal((await call('GET', `/library/${book.id}/book.json`)).status, 404, 'only images are served from a book folder');
+    // the bytes went to the bucket under the writer's id; the folder holds the stub in their place
+    const userDirs = fs.readdirSync(path.join(dataDir, 'users'));
+    const writerId = userDirs.find((d) => fs.existsSync(path.join(dataDir, 'users', d, 'NEO Library', book.id)));
+    assert.deepEqual(bucketObjects.get(`images/${writerId}/${book.id}/${fname}`), png, 'the bucket has the cover');
+    assert.equal(fs.readFileSync(path.join(dataDir, 'users', writerId, 'NEO Library', book.id, fname), 'utf8'), 'neo-image-in-bucket\n', 'the folder has the stub');
+    // the download puts the cover back in the stub's place
+    const JSZip = require('jszip');
+    const zip = await JSZip.loadAsync(Buffer.from(await (await call('GET', '/library.zip')).arrayBuffer()));
+    assert.deepEqual(await zip.file(`${book.id}/${fname}`).async('nodebuffer'), png, 'the zip carries the picture');
     const gif = await call('POST', `/api/cover:upload?bookId=${book.id}&ext=gif`, { raw: png, headers: { 'Content-Type': 'application/octet-stream' } });
     assert.equal(gif.status, 400);
     assert.equal((await api('cover:remove', book.id)).result, true);
@@ -483,6 +493,6 @@ describe('the hosted server', () => {
       assert.equal(files.filter((f) => f.endsWith('.zip.offsite')).length, 1, 'marked as copied');
       assert.ok(put.some((p) => p.key.startsWith(`${u}/neo-backup-`) && p.key.endsWith('.zip') && p.type === 'application/zip' && p.size > 0), `${u} was sent`);
     }
-    assert.equal(put.length, withLibrary.length);
+    assert.equal(put.filter((p) => !p.key.startsWith('images/')).length, withLibrary.length);
   });
 });

@@ -270,7 +270,7 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
   // Trash, which is its own safety net.
   // the library's files into a zip, Backups, Exports and Trash left out; a
   // file the disk won't hand over is named in the zip rather than fatal
-  const fillZip = (zip) => shared.fillZip(zip, dir, SKIP_IN_BACKUP);
+  const fillZip = (zip, fileBytes) => shared.fillZip(zip, dir, SKIP_IN_BACKUP, fileBytes);
 
   /** One zip of the whole library per day (backups.js keeps 14); `copy(name, bytes)` sends it off-site. */
   function dailyBackup(copy) {
@@ -293,12 +293,12 @@ function openLibrary({ dir, t, logError, bookDirFor }) {
     return walk(dir);
   }
 
-  /** The library as one zip, for the download. */
-  async function exportZip() {
+  /** The library as one zip, for the download; `fileBytes(relPath, bytes)` may swap a file's bytes (a picture the bucket holds, image-store.js). */
+  async function exportZip(fileBytes) {
     ensure();
     const JSZip = require('jszip');
     const zip = new JSZip();
-    fillZip(zip);
+    fillZip(zip, fileBytes);
     return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   }
 
