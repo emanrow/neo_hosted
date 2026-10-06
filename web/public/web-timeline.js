@@ -29,6 +29,12 @@
 /* it); a character whose next or previous event is on another sheet   */
 /* gets a marker at the jump, naming the sheet they came from or went   */
 /* to, so a crossing is visible from either side.                       */
+/*                                                                      */
+/* Print Chart… makes a sheet of the same chart for paper: every sheet  */
+/* of time, cut into page-wide segments (the lane names repeated at the */
+/* left of each, a character's stroke running on to the edge), with the */
+/* events listed under it; it goes to the printer as a sheet of its own */
+/* size (landscape) or, without one, to the browser's print view.       */
 
 (function () {
   'use strict';
@@ -39,6 +45,9 @@
   const EMPTY = { lanes: [], characters: [], sheets: [], events: [] };
   const PALETTE = ['#c9a86a', '#5fb3d9', '#8fd17a', '#e07a7a', '#c58fe0', '#f0a35e', '#6ad1c4', '#d9d9d9'];
   const CHART = { laneLeft: 24, column: 120, row: 72, top: 30, bottom: 26, labelChars: 18 };
+  /** the printed chart: a gutter for the lane names at the left of each segment, and how many events a segment holds */
+  const PRINT = { gutter: 130, perPage: 8 };
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const say = (msg) => { if (typeof window.toast === 'function') window.toast(msg); };
   const newId = (prefix) => prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -116,6 +125,7 @@
         <div class="hh-actions">
           <span class="hh-note"></span>
           <button class="ht-add btn-quiet">${t('Add Event')}</button>
+          <button class="ht-print btn-quiet" hidden>${t('Print Chart…')}</button>
           <button class="ht-close btn-gold">${t('Close')}</button>
         </div>
       </div>`;
@@ -136,7 +146,8 @@
     const chart = bd.querySelector('.ht-chart');
     const laneNames = bd.querySelector('.ht-lane-names');
     const svg = bd.querySelector('.ht-svg');
-    const close = () => { flush(); bd.remove(); open = null; };
+    const printBtn = bd.querySelector('.ht-print');
+    const close = () => { flush(); bd.remove(); open = null; delete hosted.timelinePrintDocument; };
     bd.querySelector('.ht-close').onclick = close;
     bd.addEventListener('click', (e) => { if (e.target === bd) close(); });
     bd.addEventListener('keydown', (e) => {
@@ -301,8 +312,10 @@
     };
 
     // ---- the chart: lanes across, story order along, a stroke per character ----
+    let drawn = null; // what the last drawChart laid out, for the printed sheet
     function drawChart() {
       chart.hidden = !data.events.length;
+      printBtn.hidden = chart.hidden;
       if (chart.hidden) return;
       const shown = data.events.filter((e) => (sheetOf(e.sheetId) ? e.sheetId : '') === activeSheet);
       const lanes = data.lanes.slice();
@@ -318,6 +331,7 @@
       laneNames.style.paddingTop = CHART.top + 'px';
       const xOf = (i) => CHART.laneLeft + i * CHART.column + CHART.column / 2;
       const yOf = (row) => CHART.top + row * CHART.row + CHART.row / 2;
+      drawn = { lanes, shown, width, height, yOf };
 
       lanes.forEach((lane, row) => {
         const label = document.createElement('div');
@@ -410,6 +424,72 @@
         svg.appendChild(g);
       });
     }
+
+    // ---- paper: every sheet's chart in page-wide segments, the events under it ----
+    /** The chart as a document of its own: landscape pages, the lane names at the left of every segment. */
+    function printDocument() {
+      const keep = activeSheet;
+      const sheets = [{ id: '', name: t('Main sheet') }, ...data.sheets].filter((sh) => data.events.some((e) => (sheetOf(e.sheetId) ? e.sheetId : '') === sh.id));
+      const parts = [];
+      for (const sheet of sheets) {
+        activeSheet = sheet.id;
+        drawChart();
+        const { lanes, shown, height, yOf } = drawn;
+        const copy = svg.cloneNode(true);
+        copy.removeAttribute('width'); copy.removeAttribute('height'); copy.removeAttribute('aria-hidden');
+        for (const g of copy.querySelectorAll('.ht-mark')) { g.removeAttribute('tabindex'); g.removeAttribute('role'); }
+        const segments = [];
+        const segWidth = PRINT.gutter + PRINT.perPage * CHART.column + 20;
+        for (let from = 0; from < shown.length; from += PRINT.perPage) {
+          const x0 = CHART.laneLeft + from * CHART.column - PRINT.gutter;
+          // the lane names, dark on paper with the lane's colour as a dot (a pale lane colour is no name to read)
+          const names = lanes.map((lane, row) => `<circle cx="${x0 + 12}" cy="${yOf(row)}" r="4" fill="${esc(lane.color)}"/><text x="${x0 + 22}" y="${yOf(row) + 4}" class="ht-print-lane">${esc(clip(lane.name || t('(unnamed)'), 18))}</text>`).join('');
+          segments.push(`<figure class="seg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="${x0} 0 ${segWidth} ${height}" class="ht-svg">`
+            + copy.innerHTML + `<rect x="${x0}" y="0" width="${PRINT.gutter}" height="${height}" fill="#fff"/>${names}</svg></figure>`);
+        }
+        const rows = shown.map((event) => `<tr><td>${esc(event.when)}</td><td>${esc(event.title)}</td><td>${esc((laneOf(event.laneId) || {}).name || '')}</td><td>${esc(chapterSpanText(event))}</td><td>${esc(event.characterIds.map((id) => (charOf(id) || {}).name).filter(Boolean).join(', '))}</td></tr>`).join('');
+        parts.push((sheets.length > 1 ? `<h2>${esc(sheet.name || t('(unnamed)'))}</h2>` : '') + segments.join('')
+          + `<table><thead><tr><th>${t('When in the story')}</th><th>${t('What happens')}</th><th>${t('Place')}</th><th>${t('Chapter')}</th><th>${t('Characters')}</th></tr></thead><tbody>${rows}</tbody></table>`);
+      }
+      activeSheet = keep;
+      drawChart();
+      const paper = /^en-(us|ca|ph)/i.test(navigator.language || '') ? 'letter' : 'A4';
+      const title = (meta && meta.title) || t('Untitled');
+      return `<!DOCTYPE html><html lang="${esc(document.documentElement.lang || 'en')}"><head><meta charset="utf-8"><title>${esc(title)} — ${t('Timeline')}</title>
+<style>
+  @page { size: ${paper} landscape; margin: 0.5in; }
+  html, body { margin: 0; padding: 0; }
+  body { font: 11pt/1.4 Georgia, 'Times New Roman', serif; color: #111; background: #fff; }
+  h1 { font-size: 18pt; font-weight: normal; margin: 0 0 2pt; }
+  .sub { color: #555; font-size: 10pt; margin: 0 0 12pt; }
+  h2 { font-size: 13pt; font-weight: normal; margin: 14pt 0 6pt; break-after: avoid; page-break-after: avoid; }
+  figure.seg { margin: 0 0 8pt; break-inside: avoid; page-break-inside: avoid; }
+  .ht-svg { display: block; width: 100%; height: auto; font-family: Helvetica, Arial, sans-serif; font-size: 11px; }
+  .ht-lane-line { stroke-width: 1.5; opacity: .5; }
+  .ht-chapter-line { stroke: #888; stroke-width: 1; stroke-dasharray: 2 4; }
+  .ht-chapter-label { fill: #666; font-size: 10px; letter-spacing: .04em; }
+  .ht-path { fill: none; stroke-width: 2.5; stroke-linecap: round; opacity: .9; }
+  .ht-mark-dot { fill: #fff; stroke: #333; stroke-width: 2; }
+  .ht-mark-when { fill: #555; }
+  .ht-mark-title { fill: #111; }
+  .ht-jump { font-size: 10px; font-style: italic; }
+  .ht-span-bar { stroke-width: 4; stroke-linecap: round; opacity: .55; }
+  .ht-mark-span { fill: #666; font-size: 10px; font-style: italic; }
+  .ht-print-lane { fill: #222; font-size: 12px; font-weight: bold; letter-spacing: .02em; }
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; margin: 4pt 0 14pt; }
+  th, td { text-align: left; vertical-align: top; padding: 3pt 8pt 3pt 0; border-bottom: 1px solid #ddd; }
+  th { color: #666; font-weight: normal; font-size: 8pt; letter-spacing: .08em; text-transform: uppercase; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+</style></head><body>
+<h1>${esc(title)}</h1><p class="sub">${t('Timeline')}${meta && meta.author ? ' · ' + esc(meta.author) : ''}</p>
+${parts.join('')}</body></html>`;
+    }
+    hosted.timelinePrintDocument = printDocument;
+    printBtn.onclick = () => {
+      flush();
+      const name = (((meta && meta.title) || t('Untitled')) + ' - ' + t('Timeline') + '.pdf').replace(/[\\/:*?"<>|]+/g, ' ').trim();
+      hosted.printSheet(printDocument(), name);
+    };
 
     // ---- the list: one row per event, in story order ----
     const move = (from, to) => {

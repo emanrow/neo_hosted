@@ -90,9 +90,9 @@
   // them); without it the saved choices are used. Resolves false when the
   // printer is off or failed, so the caller can fall back on the print
   // view below, and null when the writer cancelled.
-  async function printBook(html, name, { ask = false } = {}) {
+  async function printBook(html, name, { ask = false, sheet = false } = {}) {
     if (!config.print) return false;
-    let query = '';
+    let query = sheet ? '?layout=sheet' : '';
     if (ask && window.neoHosted && window.neoHosted.print) {
       const choice = await window.neoHosted.print.choose();
       if (!choice) return null;
@@ -112,6 +112,12 @@
       say(tr('The printer couldn’t make the PDF ({error}) — opening the print view instead', { error: String((err && err.message) || err).slice(0, 120) }), 8000);
       return false;
     }
+  }
+
+  // A sheet of the document's own size (the timeline chart) goes to the
+  // printer as it is, with no trim dialog; without one, the print view.
+  async function printSheet(html, name) {
+    return (await printBook(html, name, { sheet: true })) || openPrintView(html);
   }
 
   // Without a printer, the browser is one: the export's HTML opens in a tab
@@ -375,6 +381,7 @@
     config,
     state,
     sendMenu: (msg) => { if (menuListener) menuListener(msg); },
-    downloadLibrary
+    downloadLibrary,
+    printSheet
   };
 })();

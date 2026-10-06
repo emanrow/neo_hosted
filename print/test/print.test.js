@@ -90,6 +90,7 @@ describe('the printer over HTTP', { skip: haveChromium ? false : `no Chromium at
     assert.equal((await render('just words')).status, 400, 'a fragment is not a book');
     assert.equal((await render(BOOK, { query: '?trim=tabloid' })).status, 400, 'an unknown trim');
     assert.equal((await render(BOOK, { query: '?scene=fleuron' })).status, 400, 'an unknown scene break');
+    assert.equal((await render(BOOK, { query: '?layout=poster' })).status, 400, 'an unknown layout');
     assert.equal((await fetch(base + '/nowhere')).status, 404);
   });
 
@@ -107,5 +108,16 @@ describe('the printer over HTTP', { skip: haveChromium ? false : `no Chromium at
     assert.match(bytes, /\/MediaBox \[0 0 432 648\]/, 'the page is the trim size');
     // the exporter's own body margin once pushed the first page onto a second sheet, and every contents number was off by one
     assert.equal((bytes.match(/\/Type \/Page[^s]/g) || []).length, pages, 'Chromium printed exactly the pages Paged.js laid out');
+  });
+
+  test('a sheet is printed as it comes: its own @page, no book styles, no soft hyphens', async () => {
+    const sheet = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>A Chart</title>
+<style>@page { size: letter landscape; margin: 0.5in; } body { font: 13pt serif; }</style></head>
+<body><h1>A Chart</h1><p>extraordinary responsibility</p><svg width="400" height="100"><rect width="400" height="100" fill="#eee"/></svg></body></html>`;
+    const res = await render(sheet, { query: '?lang=en&layout=sheet' });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('x-neo-pages'), '1');
+    const bytes = Buffer.from(await res.arrayBuffer()).toString('latin1');
+    assert.match(bytes, /\/MediaBox \[0 0 792 612\]/, 'landscape letter, as the sheet asked');
   });
 });

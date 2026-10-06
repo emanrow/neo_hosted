@@ -31,6 +31,8 @@ describe('the print client', () => {
     assert.equal(sent[0].init.headers.Authorization, 'Bearer open-sesame-open');
     assert.equal(sent[0].init.body, '<html><body>A book</body></html>');
     assert.ok(sent[0].init.signal instanceof AbortSignal, 'with a timeout');
+    await client.render('<html><body>A chart</body></html>', { lang: 'en', layout: 'sheet' });
+    assert.equal(sent[1].url, 'http://neo-print.internal:8080/render?lang=en&layout=sheet', 'a sheet goes up with no trim');
   });
 
   test('a printer that is down, slow or unhappy becomes an HttpError the route can pass on', async () => {

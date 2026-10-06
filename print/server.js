@@ -9,7 +9,8 @@
 //   node print/server.js            (NEO_PRINT_SECRET set, or NEO_DEV=1)
 //
 // Routes
-//   POST /render?lang=<code>&trim=<name>&scene=<name>   text/html in → application/pdf out
+//   POST /render?lang=<code>&trim=<name>&scene=<name>&layout=book|sheet   text/html in → application/pdf out
+//        (a sheet brings its own @page and is printed as it comes: a chart, a plan)
 //        Authorization: Bearer <NEO_PRINT_SECRET>
 //        X-Neo-Pages on the answer: how many pages the book made
 //   GET  /healthz                          ok
@@ -29,7 +30,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const puppeteer = require('puppeteer-core');
-const { bookStyles, TRIMS, DEFAULT_TRIM, SCENES, DEFAULT_SCENE } = require('./book');
+const { bookStyles, TRIMS, DEFAULT_TRIM, SCENES, DEFAULT_SCENE, LAYOUTS, DEFAULT_LAYOUT } = require('./book');
 const { softHyphens } = require('./hyphenate');
 
 // (the package's exports map hides dist/, so the file is found by path)
@@ -121,20 +122,21 @@ function createBrowserKeeper(chromiumPath) {
  * content box, so the exporter's `vh` paddings (a dedication a third of
  * the way down, the copyright at the foot) mean a share of the printed page.
  */
-async function renderBook(browser, html, { lang, trim, scene } = {}) {
+async function renderBook(browser, html, { lang, trim, scene, layout } = {}) {
   const geometry = TRIMS[trim] || TRIMS[DEFAULT_TRIM];
+  const book = layout !== 'sheet';
   const page = await browser.newPage();
   try {
     await page.setRequestInterception(true);
     page.on('request', (r) => { if (r.url().startsWith('data:')) r.continue(); else r.abort(); });
     await page.setViewport({ width: Math.round(geometry.contentWidthIn * 96), height: Math.round(geometry.contentHeightIn * 96) });
     page.setDefaultTimeout(LAYOUT_TIMEOUT_MS);
-    await page.setContent(softHyphens(html, lang), { waitUntil: 'load', timeout: LOAD_TIMEOUT_MS });
+    await page.setContent(book ? softHyphens(html, lang) : html, { waitUntil: 'load', timeout: LOAD_TIMEOUT_MS });
     await page.evaluate(({ code, sceneClass }) => {
       if (code) document.documentElement.lang = code;
       document.body.classList.add(sceneClass);
     }, { code: String(lang || '').slice(0, 12), sceneClass: `scene-${SCENES[scene] ? scene : DEFAULT_SCENE}` });
-    await page.addStyleTag({ content: bookStyles(trim) });
+    if (book) await page.addStyleTag({ content: bookStyles(trim) });
     await page.evaluate(() => document.fonts.ready);
     let pages = 0;
     let paged = true;
@@ -166,9 +168,11 @@ function createApp(config, deps = {}) {
     if (!TRIMS[trim]) { res.writeHead(400, { 'Content-Type': 'text/plain' }); res.end(`Unknown trim size; one of ${Object.keys(TRIMS).join(', ')}`); return; }
     const scene = String(url.searchParams.get('scene') || DEFAULT_SCENE);
     if (!SCENES[scene]) { res.writeHead(400, { 'Content-Type': 'text/plain' }); res.end(`Unknown scene break; one of ${Object.keys(SCENES).join(', ')}`); return; }
+    const layout = String(url.searchParams.get('layout') || DEFAULT_LAYOUT);
+    if (!LAYOUTS[layout]) { res.writeHead(400, { 'Content-Type': 'text/plain' }); res.end(`Unknown layout; one of ${Object.keys(LAYOUTS).join(', ')}`); return; }
     const started = Date.now();
-    const { pdf, pages, paged } = await gate(async () => renderBook(await keeper.get(), html, { lang: url.searchParams.get('lang'), trim, scene }));
-    console.log(`[print] ${trim} ${scene} ${pages || '?'} pages, ${pdf.length} bytes, ${Date.now() - started} ms${paged ? '' : ', unpaginated'}`);
+    const { pdf, pages, paged } = await gate(async () => renderBook(await keeper.get(), html, { lang: url.searchParams.get('lang'), trim, scene, layout }));
+    console.log(`[print] ${layout === 'sheet' ? 'sheet' : `${trim} ${scene}`} ${pages || '?'} pages, ${pdf.length} bytes, ${Date.now() - started} ms${paged ? '' : ', unpaginated'}`);
     res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'X-Neo-Pages': String(pages), 'X-Neo-Paged': paged ? '1' : '0' });
     res.end(pdf);
   }

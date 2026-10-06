@@ -29,6 +29,10 @@ const SCENES = {
 };
 const DEFAULT_SCENE = 'asterisks';
 
+/** What the document is: a book, set with the trim's page and book.css; or a sheet (a chart, a plan) that brings its own @page and is printed as it comes */
+const LAYOUTS = { book: { label: 'A book' }, sheet: { label: 'A sheet of its own size' } };
+const DEFAULT_LAYOUT = 'book';
+
 for (const trim of Object.values(TRIMS)) {
   const [top, outer, bottom, inner] = trim.margins;
   trim.contentWidthIn = trim.widthIn - inner - outer;
@@ -46,4 +50,4 @@ function bookStyles(name) {
 ${BOOK_CSS}`;
 }
 
-module.exports = { TRIMS, DEFAULT_TRIM, SCENES, DEFAULT_SCENE, bookStyles };
+module.exports = { TRIMS, DEFAULT_TRIM, SCENES, DEFAULT_SCENE, LAYOUTS, DEFAULT_LAYOUT, bookStyles };

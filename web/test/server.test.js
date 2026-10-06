@@ -457,6 +457,10 @@ describe('the hosted server', () => {
       assert.deepEqual(printer.calls[1].opts, { lang: 'en', trim: 'a5', scene: 'ornament' }, 'nothing sent along: the saved choices');
       await print(book, '?trim=tabloid&scene=none');
       assert.deepEqual(printer.calls[2].opts, { lang: 'en', trim: '5.5x8.5', scene: 'asterisks' }, 'unknown names fall back on the defaults rather than reaching the printer');
+      await print(book, '?layout=sheet&trim=6x9');
+      assert.deepEqual(printer.calls[3].opts, { lang: 'en', layout: 'sheet' }, 'a sheet goes up with its own page and none of the book choices');
+      await print(book, '?layout=poster');
+      assert.deepEqual(printer.calls[4].opts, { lang: 'en', trim: 'a5', scene: 'ornament' }, 'an unknown layout is a book');
       assert.equal((await print('not a document')).status, 400);
       const signedIn = cookie;
       cookie = '';

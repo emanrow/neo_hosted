@@ -455,7 +455,9 @@ function createApp(config, deps = {}) {
     const html = (await readBody(req, EXPORT_BODY_LIMIT)).toString('utf8');
     if (!/<html[\s>]/i.test(html.slice(0, 2000))) throw new HttpError(400, 'Send the book as a whole HTML document');
     // the writer's saved choices, unless the dialog sent others along
-    const choices = printSettingsFrom({ ...ctx.printSettings(), ...Object.fromEntries(['trim', 'scene'].filter((k) => url.searchParams.has(k)).map((k) => [k, url.searchParams.get(k)])) });
+    // a sheet (the timeline chart) brings its own page and takes none of the book's choices
+    const sheet = url.searchParams.get('layout') === 'sheet';
+    const choices = sheet ? { layout: 'sheet' } : printSettingsFrom({ ...ctx.printSettings(), ...Object.fromEntries(['trim', 'scene'].filter((k) => url.searchParams.has(k)).map((k) => [k, url.searchParams.get(k)])) });
     try {
       const { pdf, pages, paged } = await printer.render(html, { lang: ctx.locale, ...choices });
       send(res, 200, pdf, { 'Content-Type': 'application/pdf', 'X-Neo-Pages': String(pages), 'X-Neo-Paged': paged ? '1' : '0', 'Cache-Control': 'no-store' });
