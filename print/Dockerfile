@@ -17,7 +17,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-COPY server.js book.js book.css ./
+COPY server.js book.js book.css hyphenate.js ./
 
 ENV NODE_ENV=production \
     PORT=8080 \
