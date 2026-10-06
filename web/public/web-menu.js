@@ -110,6 +110,7 @@
           item(t('Justify'), { type: 'align', value: 'justify' }, { accel: MOD + (IS_MAC ? '⇧J' : 'Shift+J') })
         ]),
         item(t('Insert Picture…'), () => hosted.insertPicture && hosted.insertPicture()),
+        item(t('Insert Footnote…'), () => hosted.insertFootnote && hosted.insertFootnote()),
         sep,
         item(t('Larger Text'), { type: 'fontSize', value: 1 }, { accel: MOD + '+' }),
         item(t('Smaller Text'), { type: 'fontSize', value: -1 }, { accel: MOD + '−' }),
