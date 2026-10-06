@@ -121,6 +121,8 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
     await page.selectOption('.ht-event:last-child .ht-place', { index: 1 });
     await page.click('.ht-event:last-child .ht-who button');
     await page.waitForSelector('.ht-svg .ht-path', { state: 'attached', timeout: 2000 });
+    const sheet = await page.evaluate(() => window.neoHosted.timelinePrintDocument());
+    check(/<svg[^>]*viewBox/.test(sheet) && sheet.includes('Dawn') && sheet.includes('The lighthouse') && sheet.includes('Ada') && /@page \{ size: (letter|A4) landscape/.test(sheet), 'the printable chart carries the event, its place and its character on a landscape sheet');
   });
   await room('the mind map opens, takes a node, closes', () => window.neoHosted.openMindMap(), '.hosted-mindmap-modal', async () => {
     await page.click('.mm-add'); await page.keyboard.type('A thought'); await page.keyboard.press('Enter'); await page.click('.mm-zoom-in');

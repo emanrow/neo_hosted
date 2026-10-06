@@ -49,7 +49,7 @@ function createPrintClient(printer, deps = {}) {
     enabled: true,
     /**
      * @param {string} html   the whole export document, fonts and cover inside it
-     * @param {{ lang?: string, trim?: string }} [opts]
+     * @param {{ lang?: string, trim?: string, scene?: string, layout?: 'book'|'sheet' }} [opts]  a sheet (a chart) brings its own @page and skips the book's styles
      * @returns {Promise<{ pdf: Buffer, pages: number, paged: boolean }>}
      * Throws an HttpError the route can pass on: 502 when the printer is
      * unreachable or failed, 504 when it took too long.
@@ -59,6 +59,7 @@ function createPrintClient(printer, deps = {}) {
       if (opts.lang) query.set('lang', opts.lang);
       if (opts.trim) query.set('trim', opts.trim);
       if (opts.scene) query.set('scene', opts.scene);
+      if (opts.layout) query.set('layout', opts.layout);
       let res;
       try {
         res = await doFetch(`${printer.url}/render?${query}`, {

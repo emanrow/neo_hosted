@@ -8,8 +8,8 @@ A second, smaller service beside the app: one headless Chromium with [Paged.js](
 
 ```
 print/
-  server.js        POST /render?lang=&trim=&scene= (text/html in, application/pdf out, X-Neo-Pages on the answer), GET /healthz; createApp(config), renderBook(browser, html, opts)
-  book.js          TRIMS (5.5x8.5, 6x9, a5, letter, a4: page size, mirrored margins, type size and leading), SCENES (asterisks, ornament, blank) and bookStyles(name), the stylesheet Paged.js lays the book out with
+  server.js        POST /render?lang=&trim=&scene=&layout= (text/html in, application/pdf out, X-Neo-Pages on the answer), GET /healthz; createApp(config), renderBook(browser, html, opts)
+  book.js          TRIMS (5.5x8.5, 6x9, a5, letter, a4: page size, mirrored margins, type size and leading), SCENES (asterisks, ornament, blank), LAYOUTS (book: the trim and book.css; sheet: the document's own @page, no book styles, no soft hyphens, for the timeline chart) and bookStyles(name), the stylesheet Paged.js lays the book out with
   hyphenate.js     softHyphens(html, locale): Liang's patterns (the `hyphen` package) put a soft hyphen at each break in the body text before Paged.js runs, in the writer's language; the <head> and every attribute are left alone
   book.css         the book's page laid over the exporter's own styles: justified book type, widows and orphans, hyphenation, headings scaled to the trim; running heads (author on the verso, title on the recto, from string-set on the title page), folios in the outer corner, none on front matter, a chapter's first page or a blank verso; chapters open on a recto (break-before: right); the contents page numbered by target-counter; scene breaks by body.scene-<name>
   Dockerfile       node:22-bookworm-slim + Debian's chromium; Railway builds it with the service's Root Directory set to `print`
