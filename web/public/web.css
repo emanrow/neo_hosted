@@ -232,7 +232,7 @@ body.hosted-touch button, body.hosted-touch .b-refresh, body.hosted-touch #nav-a
   #back-to-shelf { white-space: nowrap; padding: 0 6px; font-size: 18px; }
   #back-to-shelf > span:not([aria-hidden]) { display: none; } /* the arrow alone: the word is in the tooltip */
   #counters { gap: 8px; font-size: 11px; white-space: nowrap; }
-  #pos-counter, #word-counter { display: none; }
+  #pos-counter, #word-counter, #page-counter { display: none; }
 }
 
 /* ---------- feedback and the welcome (Help → Send Feedback…) ---------- */

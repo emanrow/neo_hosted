@@ -48,6 +48,10 @@ describe('the print client', () => {
 
   test('the choices the page offers are the names the printer knows', () => {
     assert.deepEqual(PRINT_CHOICES.trims.map((o) => o.value), Object.keys(printerBook.TRIMS));
+    for (const o of PRINT_CHOICES.trims) {
+      const trim = printerBook.TRIMS[o.value];
+      for (const k of ['contentWidthIn', 'contentHeightIn', 'type', 'leading']) assert.ok(Math.abs(o[k] - trim[k]) < 1e-9, `${o.value} ${k} matches the printer (${o[k]} vs ${trim[k]})`);
+    }
     assert.deepEqual(PRINT_CHOICES.scenes.map((o) => o.value), Object.keys(printerBook.SCENES));
     assert.equal(PRINT_CHOICES.defaults.trim, printerBook.DEFAULT_TRIM);
     assert.equal(PRINT_CHOICES.defaults.scene, printerBook.DEFAULT_SCENE);

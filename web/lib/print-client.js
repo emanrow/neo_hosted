@@ -14,13 +14,15 @@ const RENDER_TIMEOUT_MS = 6 * 60 * 1000;   // the printer's own limits plus its 
  * is the other copy; print-client.test.js keeps the two lists the same). The
  * labels are translated in the page.
  */
+// (the geometry mirrors print/book.js's TRIMS, for web-pagecount.js's
+// estimate in the page; web/test/print-client.test.js fails when they drift)
 const PRINT_CHOICES = {
   trims: [
-    { value: '5.5x8.5', label: '5.5 × 8.5 in (trade paperback)' },
-    { value: '6x9', label: '6 × 9 in' },
-    { value: 'a5', label: 'A5' },
-    { value: 'letter', label: 'Letter' },
-    { value: 'a4', label: 'A4' }
+    { value: '5.5x8.5', label: '5.5 × 8.5 in (trade paperback)', contentWidthIn: 4, contentHeightIn: 6.875, type: 11, leading: 15 },
+    { value: '6x9', label: '6 × 9 in', contentWidthIn: 4.25, contentHeightIn: 7.125, type: 11.5, leading: 16 },
+    { value: 'a5', label: 'A5', contentWidthIn: 148 / 25.4 - 1.4, contentHeightIn: 210 / 25.4 - 1.5, type: 11, leading: 15 },
+    { value: 'letter', label: 'Letter', contentWidthIn: 6.5, contentHeightIn: 9, type: 12, leading: 17 },
+    { value: 'a4', label: 'A4', contentWidthIn: 210 / 25.4 - 2, contentHeightIn: 297 / 25.4 - 2, type: 12, leading: 17 }
   ],
   scenes: [
     { value: 'asterisks', label: 'Three asterisks' },

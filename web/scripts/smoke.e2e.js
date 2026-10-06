@@ -114,6 +114,8 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
     for (let i = 0; i < 2 && (await page.$(selector)); i++) { await page.keyboard.press('Escape'); await wait(300); }
     check(!(await page.$(selector)), what);
   };
+  const pages = await page.evaluate(async () => ({ ...(await window.neoHosted.pageCount.now()), shown: !document.getElementById('page-counter').hidden }));
+  check(pages.pages >= 3 && pages.trim === '5.5x8.5' && pages.shown, 'the page count stands beside the word count (' + JSON.stringify(pages) + ')');
   await room('the timeline opens, takes a place, a character and an event, draws them, closes', () => window.neoHosted.openTimeline(), '.hosted-timeline-modal', async () => {
     await page.click('.ht-add-lane'); await page.keyboard.type('The lighthouse'); await page.keyboard.press('Tab');
     await page.click('.ht-add-char'); await page.keyboard.type('Ada'); await page.keyboard.press('Tab');
