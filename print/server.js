@@ -30,6 +30,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const puppeteer = require('puppeteer-core');
 const { bookStyles, TRIMS, DEFAULT_TRIM, SCENES, DEFAULT_SCENE } = require('./book');
+const { softHyphens } = require('./hyphenate');
 
 // (the package's exports map hides dist/, so the file is found by path)
 const PAGED_JS = path.join(__dirname, 'node_modules', 'pagedjs', 'dist', 'paged.polyfill.js');
@@ -128,7 +129,7 @@ async function renderBook(browser, html, { lang, trim, scene } = {}) {
     page.on('request', (r) => { if (r.url().startsWith('data:')) r.continue(); else r.abort(); });
     await page.setViewport({ width: Math.round(geometry.contentWidthIn * 96), height: Math.round(geometry.contentHeightIn * 96) });
     page.setDefaultTimeout(LAYOUT_TIMEOUT_MS);
-    await page.setContent(html, { waitUntil: 'load', timeout: LOAD_TIMEOUT_MS });
+    await page.setContent(softHyphens(html, lang), { waitUntil: 'load', timeout: LOAD_TIMEOUT_MS });
     await page.evaluate(({ code, sceneClass }) => {
       if (code) document.documentElement.lang = code;
       document.body.classList.add(sceneClass);

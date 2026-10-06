@@ -13,6 +13,7 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "hyphen": "^1.14.1",
     "pagedjs": "^0.4.3",
     "puppeteer-core": "^24.0.0"
   }
