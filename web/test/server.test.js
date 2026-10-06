@@ -206,6 +206,14 @@ describe('the hosted server', () => {
     assert.equal((await call('POST', `/api/map:upload?bookId=${book.id}&ext=gif`, { raw: sheet, headers: { 'Content-Type': 'application/octet-stream' } })).status, 400);
     assert.equal((await api('map:removeImage', book.id)).result, '');
     assert.equal((await call('GET', `/library/${book.id}/${sheetName}`)).status, 404, 'the sheet is gone');
+    // a chapter's picture uploads like a cover too, and is served like one
+    const figUp = await call('POST', `/api/figure:upload?bookId=${book.id}&ext=png`, { raw: sheet, headers: { 'Content-Type': 'application/octet-stream' } });
+    const figName = (await figUp.json()).result;
+    assert.match(figName, /^fig-\d+\.png$/);
+    const figServed = await call('GET', `/library/${book.id}/${figName}`);
+    assert.equal(figServed.status, 200);
+    assert.equal(figServed.headers.get('content-type'), 'image/png');
+    assert.equal((await call('POST', `/api/figure:upload?bookId=${book.id}&ext=svg`, { raw: sheet, headers: { 'Content-Type': 'application/octet-stream' } })).status, 400);
     const pages = { pages: [{ id: 'hw-1', title: 'Margin note', createdAt: '2026-10-05T12:00:00.000Z', chapterId: 'ch-1', strokes: [{ id: 's-1', ink: 'ink', width: 4, points: [[10, 10], [40, 30.5]] }] }] };
     assert.equal((await api('json:write', book.id, 'handwriting', pages)).ok, true, 'handwriting is a sidecar like the other rooms');
     assert.deepEqual((await api('json:read', book.id, 'handwriting', { pages: [] })).result, pages);
