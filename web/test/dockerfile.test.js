@@ -23,7 +23,7 @@ const copied = new Set(dockerfile.split('\n')
   .flatMap((line) => line.replace(/^COPY\s+/, '').trim().split(/\s+/).slice(0, -1)));
 
 // root files the server requires at boot or on demand, beyond the ones it serves
-const REQUIRED_AT_RUNTIME = ['package.json', 'index.html', 'i18n.js', 'spell-ro.js', 'art.js', 'import-parse.js', 'build/icon.png'];
+const REQUIRED_AT_RUNTIME = ['package.json', 'index.html', 'i18n.js', 'spell-ro.js', 'art.js', 'import-parse.js', 'library-disk.js', 'build/icon.png'];
 
 describe('the Docker image', () => {
   test('copies every root file the server serves to the browser', () => {

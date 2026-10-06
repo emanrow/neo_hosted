@@ -64,7 +64,7 @@ Without a database (a laptop, the tests), `lib/library.js` and `lib/branches.js`
       library.json  _catalog.txt          folder mode only, and the rest of this list
       Trash/<book-id>--<timestamp>/       a "deleted" book; there is no system trash on a server
       Trash/<book-id>--branch-<name>--<timestamp>/   a deleted branch
-      book-<slug>-<id>/ ...               the main draft (the desktop layout, plus timeline.json, mindmap.json, maps.json, map-<ts>.<ext> and handwriting.json for the rooms under View, and fig-<ts>.<ext> for the pictures in its chapters)
+      book-<slug>-<id>/ ...               the main draft (the desktop layout, plus timeline.json, mindmap.json, maps.json, map-<ts>.<ext> and handwriting.json for the rooms under View, fig-<ts>.<ext> for the pictures in its chapters and footnotes.json for their notes; with a bucket configured, each image file is the one-line stub `neo-image-in-bucket` and the bytes are in the bucket under images/<writer id>/<book id>/<file> (lib/image-store.js))
         .branches/active                  names the branch the writer is in (absent or "main": the folder above)
         .branches/<name>/ ...             a whole alternate draft: the same layout, plus branch.json (hosted only)
         .branches/<name>/.base/           the chapters and book.json the branch started from (moved forward by each merge)
@@ -78,23 +78,21 @@ Without a database (a laptop, the tests), `lib/library.js` and `lib/branches.js`
 
 A writer can download their library (File → Download Library…) and open it in desktop NEO. Two browsers signed into the same account see each other's edits through the same `refreshFromDisk` machinery that syncs two laptops over iCloud: `chapter:stamps` answers with `modified:size`, and `app.js` decides what to adopt. Nothing here replaces that with last-write-wins; AGENTS.md, "Saving and sync", explains why.
 
-## What was ported from main.js, and must stay in step
+## What is shared with main.js, and what is still a port
 
-`web/lib/files.js` and `web/lib/library.js` are ports, not imports, because `main.js` requires Electron at the top. They serve a server without Postgres and the tests, and `web/lib/pg-library.js` answers the same contract over rows. They carry the same contracts:
+Two root modules are required by both editions, so a fix lands in both at once:
+
+- `import-parse.js` turns a .docx, .txt or .md manuscript into chapters on a buffer; `CHAPTER_WORDS`, the per-language chapter-heading table translators maintain, lives there.
+- `library-disk.js` is the disk under a NEO Library: `libName` (one path segment; `.`, `..`, slashes and null bytes throw), `writeFileDurable` (tmp, fsync, rename, fsync the folder), `readJSON` / `writeJSON` (`.bak` of the last whole version; reads fall back on `.tmp` then `.bak` and restore, telling a callback), and `forLibrary({ t, logError })` for the parts that need the writer's language and an error log: `writeCatalog` (`_catalog.txt`), `rebuildBookMeta` (a lost `book.json` comes back from the chapter files and the catalog), `seedLostLibrary` (an unreadable `library.json` with no copy puts every book on one shelf) and `fillZip` (the backup walk, a file the disk will not hand over named in the zip rather than fatal). `main.js` calls these with `LIBRARY_DIR`, which the writer can move while the app runs; `web/lib/library.js` with the writer's folder, and with a branch's folder for `rebuildBookMeta` when they are on one. `scripts/library-disk.test.js` checks the module on its own.
+
+`web/lib/library.js` is still a port of `main.js`'s `ipcMain.handle` bodies, because those are written against Electron's globals and the desktop's one library. Two contracts remain mirrored by hand, and a fix to one upstream needs the same fix here:
 
 | In `main.js` | Here | Contract |
 |---|---|---|
-| `libName` | `files.libName` | one path segment; `.`, `..`, slashes and null bytes throw |
-| `writeFileDurable` | `files.writeFileDurable` | tmp, fsync, rename, fsync the folder |
-| `readJSON` / `writeJSON` | `files.readJSON` / `files.writeJSON` | `.bak` of the last whole version; reads fall back on `.tmp` then `.bak` and restore |
-| `rebuildBookMeta` | `library.rebuildBookMeta` | a lost `book.json` comes back from the chapter files and the catalog |
-| `library:read` recovery | `library.readLibrary` | an unreadable `library.json` with no copy puts every book on one shelf |
-| `dailyBackup` | `library.dailyBackup(copy)` | one zip a day, 14 kept, `Backups/`, `Exports/` and `Trash/` left out; `copy(name, bytes)` sends it to the bucket and is retried hourly until it lands |
-| `book:delete` → `shell.trashItem` | `library.trashBook` | the folder moves to `Trash/` inside the library, timestamped |
+| `dailyBackup` | `library.dailyBackup(copy)` | one zip a day, 14 kept, `Backups/` and `Exports/` left out (`Trash/` too, here); `copy(name, bytes)` sends it to the bucket and is retried hourly until it lands |
+| `book:delete` → `shell.trashItem` | `library.trashBook` | the folder moves to `Trash/` inside the library, timestamped, since a server has no system trash |
 
-A fix to one of these upstream needs the same fix here. Lifting them into a module both can `require` is welcome once the hosted edition has settled.
-
-One piece is already shared rather than ported: `import-parse.js` at the repository root turns a .docx, .txt or .md manuscript into chapters on a buffer, and both `main.js` and `web/server.js` require it (the server hands it its own JSZip). `CHAPTER_WORDS`, the per-language chapter-heading table translators maintain, lives there. A fix to chapter detection lands in both editions at once; it is the model for the rest of the table above.
+`web/lib/pg-library.js` answers the same contract as `library.js` over rows.
 
 ## Security posture in one paragraph
 

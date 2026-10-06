@@ -167,6 +167,11 @@
   // the pictures in a chapter travel inside the export HTML (web-figures.js): a
   // web page file and the printer have no session to fetch them with
   const withPictures = (html) => (typeof html === 'string' && window.neoHosted && window.neoHosted.figures ? window.neoHosted.figures.inlineExport(html) : Promise.resolve(html));
+  // and their footnotes (web-footnotes.js): calls and notes in the shape each format wants
+  const withNotes = async (format, content) => {
+    const fn = window.neoHosted && window.neoHosted.footnotes;
+    return fn && fn[format] ? fn[format](content) : content;
+  };
 
   const ZIP_MIME = { epub: 'application/epub+zip', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
   const TEXT_MIME = { txt: 'text/plain', md: 'text/markdown', html: 'text/html' };
@@ -197,7 +202,7 @@
     writeChapter: (bookId, chId, html) => rpc('chapter:write', noting(bookId), chId, html),
     /* ---------- public pages (hosted only; web-share.js is the caller) ---------- */
     listShares: (bookId) => rpc('share:list', bookId),
-    publishShare: async (bookId, chapterId, title, html) => rpc('share:publish', bookId, chapterId, title, await withPictures(html)),
+    publishShare: async (bookId, chapterId, title, html) => rpc('share:publish', bookId, chapterId, title, await withNotes('html', await withPictures(html))),
     removeShare: (token) => rpc('share:remove', token),
     /* ---------- history (hosted only; web-history.js is the reader) ---------- */
     listRevisions: (bookId, chId) => rpc('revision:list', bookId, chId),
@@ -276,7 +281,8 @@
     /* ---------- export: the page builds the file, the browser downloads it ---------- */
     exportSave: async ({ format, defaultName, content, zipEntries }) => {
       const name = (defaultName || 'book') + '.' + format;
-      if (format === 'html' || format === 'pdf') content = await withPictures(content);
+      if (format === 'html' || format === 'pdf') content = await withNotes('html', await withPictures(content));
+      if (format === 'txt' || format === 'md') content = await withNotes(format, content);
       if (format === 'pdf') {
         const printed = await printBook(content, name, { ask: true });
         if (printed) return name;
@@ -290,6 +296,8 @@
         // an EPUB leaves with the writer's face and drop cap laid in (web-epub.js)
         let entries = format === 'epub' && window.neoHosted && window.neoHosted.epub ? await window.neoHosted.epub.polish(zipEntries) : zipEntries;
         if (format === 'epub' && window.neoHosted && window.neoHosted.figures) entries = await window.neoHosted.figures.epubExport(entries);
+        if (format === 'docx' && window.neoHosted && window.neoHosted.figures) entries = await window.neoHosted.figures.docxExport(entries);
+        if (format === 'epub' || format === 'docx') entries = await withNotes(format, entries);
         const zip = new window.JSZip();
         for (const e of entries) zip.file(e.path, e.content, { base64: !!e.base64, compression: e.store ? 'STORE' : 'DEFLATE' });
         download(await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: ZIP_MIME[format] || 'application/zip' }), name);
@@ -302,7 +310,7 @@
     // (or, without a printer, the print view opens to save it from) and a
     // mail draft opens to drag it into.
     emailDraft: async ({ to, subject, body, html, method }) => {
-      html = await withPictures(html);
+      html = await withNotes('html', await withPictures(html));
       const opened = (await printBook(html, (subject || 'snapshot').replace(/[\\/:*?"<>|]+/g, ' ').trim() + '.pdf')) || openPrintView(html);
       const q = (s) => encodeURIComponent(s || '');
       if (method === 'gmail') window.open('https://mail.google.com/mail/?view=cm&fs=1&to=' + q(to) + '&su=' + q(subject) + '&body=' + q(body), '_blank');

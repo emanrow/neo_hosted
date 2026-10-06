@@ -56,6 +56,11 @@ function fakeBucket({ failFirst = 0 } = {}) {
       const expected = crypto.createHmac('sha256', h(h(h(h('AWS4' + KEYS.secretAccessKey, date), region), 's3'), 'aws4_request')).update(stringToSign).digest('hex');
       if (keyId !== KEYS.accessKeyId || expected !== signature) { bad.push('signature'); res.writeHead(403); res.end('SignatureDoesNotMatch'); return; }
       if (req.headers['x-amz-content-sha256'] !== sha256(body)) { bad.push('payload hash'); res.writeHead(400); res.end(); return; }
+      if (req.method === 'GET') {
+        const found = objects.get(`${req.headers.host}${req.url}`);
+        if (!found) { res.writeHead(404); res.end('NoSuchKey'); return; }
+        res.writeHead(200, { 'content-type': found.type }); res.end(found.body); return;
+      }
       objects.set(`${req.headers.host}${req.url}`, { body, type: req.headers['content-type'] });
       res.writeHead(200); res.end();
     });
@@ -91,6 +96,19 @@ describe('createObjectStore', () => {
       assert.ok(stored, 'landed under the bucket and key');
       assert.equal(stored.body.toString(), 'PK zip bytes');
       assert.equal(stored.type, 'application/zip');
+    } finally { await bucket.close(); }
+  });
+
+  test('GET brings the bytes back, and a key that is not there is null', async () => {
+    const bucket = fakeBucket();
+    const endpoint = await bucket.listen();
+    try {
+      const store = createObjectStore({ bucket: 'words', endpoint, region: 'auto', ...KEYS, pathStyle: true });
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+      await store.put('images/user-1/book-1/cover-1.png', png, 'image/png');
+      assert.deepEqual(await store.get('images/user-1/book-1/cover-1.png'), png);
+      assert.equal(await store.get('images/user-1/book-1/cover-2.png'), null);
+      assert.deepEqual(bucket.bad, []);
     } finally { await bucket.close(); }
   });
 

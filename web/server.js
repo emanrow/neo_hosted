@@ -44,6 +44,7 @@ const { createSecretBox } = require('./lib/secrets');
 const { openLibrary, COVER_EXTS } = require('./lib/library');
 const { openPgLibrary } = require('./lib/pg-library');
 const { createObjectStore, NO_OBJECT_STORE } = require('./lib/object-store');
+const { createImageStore } = require('./lib/image-store');
 const { createPrintClient, NO_PRINT_CLIENT, PRINT_CHOICES, printSettingsFrom } = require('./lib/print-client');
 const { JsonShareStore, PgShareStore, isToken } = require('./lib/share-store');
 const { registerHandlers } = require('./lib/handlers');
@@ -51,7 +52,7 @@ const { SpellService, SPELL_LANGUAGES } = require('./lib/spell');
 const { buildHostedPage, assetVersionFor, PAGE_CSP } = require('./lib/page');
 const { buildLoginPage } = require('./lib/login-page');
 const { buildAdminPage } = require('./lib/admin-page');
-const { readJSON, writeJSON, writeFileDurable, libName } = require('./lib/files');
+const { readJSON, writeJSON, writeFileDurable, libName } = require('../library-disk');
 // the desktop's own manuscript parser, shared with main.js
 const { importBuffer, isImportable } = require('../import-parse');
 const i18n = require('./lib/i18n');
@@ -176,11 +177,12 @@ function createApp(config, deps = {}) {
       try { fs.mkdirSync(libraryDir, { recursive: true }); fs.appendFileSync(path.join(libraryDir, 'neo-errors.log'), line); } catch { logServerError(source, err); }
     };
     const { library, branches } = openWriterLibrary({ userId: user.id, libraryDir, t, logError });
+    const images = createImageStore({ objectStore, writerId: user.id, library, logError });   // the bytes of covers, sheets and pictures: the bucket when there is one
     const honored = guestsOfHonor.includes(normalizeEmail(user.email));
     // this writer's slice of the revision log, keyed by the branch they are in; a no-op without a database
     const onBranch = async (bookId) => ({ userId: user.id, bookId, branch: await branches.activeBranch(bookId) });
     return {
-      user, req, locale, t, logError, branches, library, shares, honored,
+      user, req, locale, t, logError, branches, library, images, shares, honored,
       welcomePending: honored && !settings.welcomedAt,   // the one-time welcome is still owed
       merger: createMerger({ branches, library }),
       revisions: {
@@ -425,13 +427,13 @@ function createApp(config, deps = {}) {
     }
   }
 
-  /** A raw image body in, its file name out: the cover (setCoverBytes), the map map's sheet (setMapImage) or a chapter's picture (addFigure). */
-  async function handleImageUpload(ctx, url, req, res, store) {
+  /** A raw image body in, its file name out: the cover (setCoverBytes), the map map's sheet (setMapImage) or a chapter's picture (addFigure), the bytes wherever ctx.images keeps them. */
+  async function handleImageUpload(ctx, url, req, res, place) {
     const bookId = url.searchParams.get('bookId');
     const ext = String(url.searchParams.get('ext') || '').toLowerCase();
     if (!COVER_EXTS.includes(ext)) throw new HttpError(400, ctx.t('Images are PNG, JPEG or WebP'));
     const bytes = await readBody(req, COVER_BODY_LIMIT);
-    sendJSON(res, 200, { ok: true, result: await store(bookId, ext, bytes) });
+    sendJSON(res, 200, { ok: true, result: await ctx.images.put(place, bookId, ext, bytes) });
   }
 
   // A manuscript the writer picked or dropped, parsed into chapters the way
@@ -470,7 +472,7 @@ function createApp(config, deps = {}) {
   }
 
   async function serveCover(ctx, bookId, fname, res) {
-    const bytes = await ctx.library.readCover(bookId, fname);
+    const bytes = await ctx.images.get(bookId, fname);
     if (!bytes) throw new HttpError(404, 'No such image');
     send(res, 200, bytes, { 'Content-Type': MIME[path.extname(fname).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'private, max-age=31536000, immutable' });
   }
@@ -478,7 +480,7 @@ function createApp(config, deps = {}) {
   // The writer's whole library as the desktop app's folder, zipped: the
   // export that files became. Built in memory; a library is small.
   async function serveLibraryZip(ctx, res) {
-    const zip = await ctx.library.exportZip();
+    const zip = await ctx.library.exportZip(ctx.images.forExport);
     send(res, 200, zip, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${LIBRARY_FOLDER}.zip"`, 'Cache-Control': 'no-store' });
   }
 
@@ -609,6 +611,7 @@ function createApp(config, deps = {}) {
       ['Signup', config.signup],
       ['Email', mailer.enabled ? 'on (Resend)' : 'off'],
       ['Backups', objectStore.enabled ? `volume + bucket ${objectStore.bucket}` : 'volume only'],
+      ['Images', objectStore.enabled ? `bucket ${objectStore.bucket} (earlier ones where they were)` : db ? 'rows' : 'volume'],
       ['Owner', adminEmails.length ? adminEmails.join(', ') : 'the oldest account (set NEO_ADMIN_EMAILS to name one)']
     ];
     const volume = [
@@ -636,11 +639,12 @@ function createApp(config, deps = {}) {
     const libraryDir = path.join(root, LIBRARY_FOLDER);
     const logError = (source, err) => logServerError(`${target.id} ${source}`, err);
     const { library } = openWriterLibrary({ userId: target.id, libraryDir, t: i18n.translatorFor('en'), logError });
+    const images = createImageStore({ objectStore, writerId: target.id, library, logError });
     const removedDir = path.join(config.dataDir, 'removed');
     fs.mkdirSync(removedDir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const keep = path.join(removedDir, `${libName(target.id)}-${stamp}`);
-    if (db || fs.existsSync(libraryDir)) writeFileDurable(keep + '.zip', await library.exportZip());
+    if (db || fs.existsSync(libraryDir)) writeFileDurable(keep + '.zip', await library.exportZip(images.forExport));
     await shares.removeAll(target.id);
     await revisions.erase(target.id);
     if (db) await library.erase();
@@ -706,7 +710,7 @@ if (require.main === module) {
     const librariesLabel = store === 'postgres' ? 'postgres' : 'volume';   // folders on the volume when accounts are in users.json
     app.server.listen(config.port, () => {
       console.log(`NEO hosted ${VERSIONS.hosted} (NEO ${VERSIONS.neo}) listening on :${config.port}`);
-      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${librariesLabel}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}  backups: ${app.objectStore.enabled ? `volume + bucket ${app.objectStore.bucket}` : 'volume only'}  pdf: ${app.printer.enabled ? `printer at ${config.printer.url}` : 'browser print view'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
+      console.log(`library volume: ${config.dataDir}  users: ${store}${imported ? ` (${imported} imported from users.json)` : ''}  libraries: ${librariesLabel}${libraries ? ` (${libraries} imported from the volume)` : ''}  signup: ${config.signup}  email: ${app.mailer.enabled ? 'on (Resend)' : 'off'}  backups: ${app.objectStore.enabled ? `volume + bucket ${app.objectStore.bucket}` : 'volume only'}  images: ${app.objectStore.enabled ? 'bucket' : store === 'postgres' ? 'rows' : 'volume'}  pdf: ${app.printer.enabled ? `printer at ${config.printer.url}` : 'browser print view'}${config.dev ? '  (NEO_DEV: throwaway session secret)' : ''}`);
     });
     app.startBackups();
   }).catch((err) => {

@@ -25,7 +25,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { libName, writeFileDurable, readJSON, writeJSON } = require('./files');
+const { libName, writeFileDurable, readJSON, writeJSON } = require('../../library-disk');
 
 const MAIN = 'main';
 const BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$/;

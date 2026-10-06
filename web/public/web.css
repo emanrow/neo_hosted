@@ -346,6 +346,21 @@ body.light .mm-toolbar select, body.light .mm-edit { background: #fff; color: #2
 .chapter-body p.figure { text-align: center; text-indent: 0; font-size: 0.85em; font-style: italic; opacity: .85; margin: 1.4em 0; --fig-ratio: 3 / 2; }
 .chapter-body p.figure::before { content: ''; display: block; width: 100%; max-height: 60vh; aspect-ratio: var(--fig-ratio); margin: 0 auto 0.6em; background: center / contain no-repeat; }
 
+/* ---------- footnotes (Format → Insert Footnote…, web-footnotes.js) ---------- */
+/* the call's text is a private-use mark drawn at no size; the number is a counter */
+.chapter-body { counter-reset: hosted-fn; }
+.chapter-body sup.fn-ref { font-size: 0; visibility: hidden; user-select: none; cursor: pointer; }
+.chapter-body sup.fn-ref::before { counter-increment: hosted-fn; content: counter(hosted-fn); visibility: visible; font-size: calc(var(--editor-size, 17px) * var(--page-zoom, 1) * 0.7); line-height: 0; vertical-align: super; color: var(--accent, #c9a86a); padding: 0 1px; }
+.hosted-fn-pad { position: fixed; z-index: 60; background: #1c1c1c; color: #ddd; border: 1px solid #3a3a3a; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.45); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.hosted-fn-pad textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #3a3a3a; border-radius: 6px; background: #171717; color: #ddd; font: inherit; font-size: 14px; resize: vertical; }
+.hosted-fn-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted, #8a8a8a); }
+.hosted-fn-n { flex: 1; }
+.hosted-fn-row button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #3a3a3a; background: #262626; color: #ddd; cursor: pointer; }
+.hosted-fn-row button.hosted-fn-done { background: var(--accent, #c9a86a); color: #111; border-color: transparent; }
+body.light .hosted-fn-pad { background: #fffdf8; color: #222; border-color: #ddd8ce; }
+body.light .hosted-fn-pad textarea { background: #fff; color: #222; border-color: #ddd8ce; }
+body.light .hosted-fn-row button { background: #f1ede4; color: #222; border-color: #ddd8ce; }
+
 /* ---------- map map (View → Map…) ---------- */
 .hosted-map-modal { width: min(1100px, 96vw); height: 85vh; display: flex; flex-direction: column; }
 .mp-body { display: flex; gap: 14px; flex: 1; min-height: 0; }
