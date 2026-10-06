@@ -79,6 +79,7 @@ npm run test:web                 # node --test web/test/*.test.js, one file at a
 npx oxlint -c .oxlintrc.json web/server.js web/lib web/public web/test
 node scripts/i18n.js template    # after adding a writer-visible string (t() / tr())
 node web/scripts/smoke.e2e.js    # optional: headless Chromium end to end (needs Playwright)
+EPUBCHECK_JAR=... node web/scripts/epubcheck.e2e.js   # an EPUB from the real exporter under epubcheck (CI runs it)
 cd print && npm install && CHROMIUM_PATH=/path/to/chrome npm test   # the printer; its render test needs a Chromium
 ```
 

@@ -29,6 +29,7 @@ NEO_TEST_DATABASE_URL=postgres://neo:neo@127.0.0.1:5432/neo_test npm run test:we
 | `web/test/login-page.test.js` | the sign-in page in the visitor's language: every `web/locales/<code>.json` is complete with its placeholders intact, the overlay sits on upstream's dictionary, the template renders in German with the credits' links kept and no marker left, a hostile translation is escaped, English is itself |
 | `web/test/object-store.test.js` | the off-site copy: the signature against the GET Object vector in AWS's SigV4 documentation, a `PUT` against a local stand-in bucket that recomputes the signature and the payload hash, a wrong secret refused, the `.offsite` marker and the retry in `backups.js`, and the bucket's environment variables in `config.js` |
 | `web/test/server.test.js` | the real server on a free port with a temporary data folder, email off: health, static fencing, signup policy, CSRF refusal, the page, every channel's shape, cover upload and serving, the library download, manuscript upload (.txt, .md, a .docx built in the test), Trash, secrets, spellcheck, language, throttle, password reset refused with no email, logout, the owner's page (listed accounts, Not found for anyone else, an account removed with its library zipped and its folder moved), a published page served to a stranger with its policy and taken down by its owner, the backup sweep landing on the volume and in a stand-in bucket |
+| `web/test/epub.test.js` | the EPUB polish on its own (`web/public/web-epub.js` doubles as a CommonJS module): the chosen face laid in as files, manifest items and `@font-face` rules with the body set in it, file names made safe, the drop cap on unless the editor hides it, and an EPUB left exactly as it was for a system face, a face with no files or an unknown layout |
 | `web/test/dockerfile.test.js` | the `Dockerfile` copies every root file the server serves or requires (`styles.css` once went missing from the image and nothing in the repository noticed), and names nothing that does not exist |
 | `scripts/import-parse.test.js` | the shared manuscript parser on its own: chapter and scene-break detection, titles, .docx italics and styles. Lives beside upstream's tests because `main.js` uses the same module; needs the root `npm install` (JSZip) |
 
@@ -48,6 +49,15 @@ node web/scripts/smoke.e2e.js
 ```
 
 It is not part of `npm test`; it is the thing to run after touching the bridge, the menu bar, or the page transform.
+
+## The EPUB under epubcheck
+
+```
+cd web && npm i --no-save playwright-core && cd ..     # once; not a runtime dependency
+EPUBCHECK_JAR=/path/to/epubcheck.jar CHROMIUM_PATH=... node web/scripts/epubcheck.e2e.js
+```
+
+Boots the server, writes a book with a dedication, a contents page, a part and two chapters in headless Chromium with Libron chosen, exports it the way File → Export → EPUB does (the editor's own `shelfPayload`, then the hosted polish), checks that the four faces and the drop cap landed, zips it as the bridge would, and runs [epubcheck](https://www.w3.org/publishing/epubcheck/) with `--failonwarnings`. CI runs it on every pull request (the `epub` job in [hosted.yml](../.github/workflows/hosted.yml), inside Playwright's image with a JRE and epubcheck 5.2.1 fetched), so a regression in the export shows up as a red check rather than a rejected upload. Without `EPUBCHECK_JAR` the file is built and inspected and the check is skipped with a note.
 
 ## Upstream's suite
 
