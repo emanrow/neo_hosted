@@ -10,7 +10,7 @@
 //
 // Routes
 //   GET  /                         the writing room (signed in) or → /login
-//   GET  /login, /web/*, /app.js, /styles.css, /covers.js, /i18n.js,
+//   GET  /login, /web/*, /vendor/*, /app.js, /styles.css, /covers.js, /i18n.js,
 //        /jszip.min.js, /fonts/*, /locales/*       public static files
 //   POST /auth/signup | /auth/login | /auth/logout
 //   POST /auth/forgot { email } | /auth/reset { token, password }   (email on; see lib/mail.js)
@@ -59,6 +59,7 @@ const i18n = require('./lib/i18n');
 
 const ROOT = path.join(__dirname, '..');            // the desktop app: app.js, styles.css, fonts/, locales/
 const PUBLIC = path.join(__dirname, 'public');
+const VENDOR = path.join(__dirname, 'vendor');            // third-party browser code served as is (pretext), never linted as ours
 const SESSION_COOKIE = 'neo_session';
 const API_BODY_LIMIT = 24 * 1024 * 1024;            // a whole library.json or one very long chapter
 const COVER_BODY_LIMIT = 12 * 1024 * 1024;
@@ -399,6 +400,7 @@ function createApp(config, deps = {}) {
       upstream: 'https://github.com/hughhowey/neo',
       feedback: feedback.enabled(),                       // Help → Send Feedback… is on the menu
       print: printer.enabled ? PRINT_CHOICES : false,     // Export → PDF is made by the printer, with these choices; false: the browser's print dialog
+      pages: { trims: PRINT_CHOICES.trims, defaultTrim: PRINT_CHOICES.defaults.trim },   // web-pagecount.js's estimate, printer or not
       welcome: ctx.welcomePending ? 'honored' : ''       // web-feedback.js opens the one-time welcome
     };
   }
@@ -499,6 +501,7 @@ function createApp(config, deps = {}) {
       if (ROOT_DIRS.some((d) => p.startsWith(d)) && serveFile(res, ROOT, p.slice(1), { cache: 'public, max-age=86400' })) return;
       if (p === '/jszip.min.js' && serveFile(res, path.join(__dirname, 'node_modules', 'jszip', 'dist'), 'jszip.min.js')) return;
       if (p === '/favicon.ico' && serveFile(res, path.join(ROOT, 'build'), 'icon.png', { cache: 'public, max-age=86400' })) return;
+      if (p.startsWith('/vendor/') && serveFile(res, VENDOR, p.slice(8), { cache: 'public, max-age=86400' })) return;
       if (p.startsWith('/web/') && serveFile(res, PUBLIC, p.slice(5))) return;
     }
 

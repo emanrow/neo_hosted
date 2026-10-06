@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const JS_FILES = ['app.js', 'main.js', 'covers.js', 'web/public/web-bridge.js', 'web/public/web-menu.js', 'web/public/web-history.js', 'web/public/web-branches.js', 'web/public/web-share.js', 'web/public/web-feedback.js', 'web/public/web-timeline.js', 'web/public/web-mindmap.js', 'web/public/web-map.js', 'web/public/web-handwriting.js', 'web/public/web-mobile.js', 'web/public/web-figures.js', 'web/public/web-footnotes.js'];
+const JS_FILES = ['app.js', 'main.js', 'covers.js', 'web/public/web-bridge.js', 'web/public/web-menu.js', 'web/public/web-history.js', 'web/public/web-branches.js', 'web/public/web-share.js', 'web/public/web-feedback.js', 'web/public/web-timeline.js', 'web/public/web-mindmap.js', 'web/public/web-map.js', 'web/public/web-handwriting.js', 'web/public/web-mobile.js', 'web/public/web-figures.js', 'web/public/web-footnotes.js', 'web/public/web-pagecount.js'];
 const LOCALES = path.join(ROOT, 'locales');
 
 function unescapeJs(s) {

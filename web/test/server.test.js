@@ -444,6 +444,11 @@ describe('the hosted server', () => {
     const book = '<!DOCTYPE html><html><head><title>A Book</title></head><body><section class="chapter"><p>Words.</p></section></body></html>';
     const print = (body, query = '') => call('POST', '/api/export:pdf' + query, { raw: body, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     assert.match(await (await call('GET', '/')).text(), /"print":false/, 'without a printer the bridge opens the print view');
+    assert.match(await (await call('GET', '/')).text(), /"pages":\{"trims":\[\{"value":"5\.5x8\.5"[^\]]*"contentWidthIn":4,/, 'the page learns the trims\' geometry for the page count, printer or not');
+    const pretext = await call('GET', '/vendor/pretext/layout.js');
+    assert.equal(pretext.status, 200);
+    assert.match(pretext.headers.get('content-type'), /javascript/);
+    assert.equal((await call('GET', '/vendor/../server.js')).status, 404, 'nothing above vendor/ is served');
     assert.equal((await api('print:settings')).status, 200, 'the choices can still be read');
     assert.equal((await print(book)).status, 503, 'and the route says there is none');
 
