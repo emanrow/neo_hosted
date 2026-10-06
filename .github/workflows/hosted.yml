@@ -109,8 +109,9 @@ jobs:
     container: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
       - uses: actions/checkout@v4
-      - name: Install the hosted edition's runtime dependencies
-        run: cd web && npm ci --no-audit --no-fund
+      - name: Install the hosted edition's runtime dependencies and Playwright's driver
+        # playwright-core is not a runtime dependency; the version matches the image's Chromium
+        run: cd web && npm ci --no-audit --no-fund && npm i --no-save --no-audit --no-fund playwright-core@1.63.0
       - name: Install a JRE and epubcheck
         run: |
           apt-get update -q && apt-get install -y -q --no-install-recommends default-jre-headless unzip > /dev/null

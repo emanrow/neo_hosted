@@ -7,6 +7,7 @@
 // the bridge would, and runs epubcheck on the file. Exits 1 on any error
 // or warning, or if the face and the drop cap did not land.
 //
+//   cd web && npm i --no-save playwright-core   (once; not a runtime dependency)
 //   EPUBCHECK_JAR=/path/to/epubcheck.jar CHROMIUM_PATH=... node web/scripts/epubcheck.e2e.js
 //
 // Without EPUBCHECK_JAR the EPUB is still built and inspected, and the
@@ -18,7 +19,13 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
-const { chromium } = require(path.join(ROOT, 'web', 'node_modules', 'playwright-core'));
+let chromium;
+try { ({ chromium } = require('playwright')); } catch {
+  try { ({ chromium } = require(path.join(ROOT, 'web', 'node_modules', 'playwright-core'))); } catch {
+    console.error('Playwright is not installed: cd web && npm i --no-save playwright-core');
+    process.exit(1);
+  }
+}
 const JSZip = require(path.join(ROOT, 'web', 'node_modules', 'jszip'));
 const { createApp } = require(path.join(ROOT, 'web', 'server'));
 

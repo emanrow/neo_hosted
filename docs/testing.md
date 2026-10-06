@@ -53,6 +53,7 @@ It is not part of `npm test`; it is the thing to run after touching the bridge, 
 ## The EPUB under epubcheck
 
 ```
+cd web && npm i --no-save playwright-core && cd ..     # once; not a runtime dependency
 EPUBCHECK_JAR=/path/to/epubcheck.jar CHROMIUM_PATH=... node web/scripts/epubcheck.e2e.js
 ```
 
