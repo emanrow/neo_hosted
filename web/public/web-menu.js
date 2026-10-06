@@ -25,7 +25,10 @@
 
   // the bundled faces are on every machine that opens this page (styles.css @font-face)
   const bodyFonts = () => (typeof window.BODY_FONT_CHOICES !== 'undefined' ? window.BODY_FONT_CHOICES
-    : ['Georgia', 'Palatino', 'Baskerville', 'Gelasio', 'TeX Gyre Pagella', 'Libre Baskerville', 'Alegreya', 'Source Serif Pro', 'Jost', 'iA Writer Quattro']);
+    : ['Georgia', 'Palatino', 'Baskerville', 'Gelasio', 'TeX Gyre Pagella', 'Libre Baskerville', 'Alegreya', 'Source Serif Pro',
+      // the hosted edition's own book faces (web.css @font-face)
+      'Libron', 'Literata', 'EB Garamond', 'Crimson Pro',
+      'Jost', 'iA Writer Quattro']);
 
   // The open book's branches (web-branches.js keeps hosted.state.branches current)
   function branchItems() {

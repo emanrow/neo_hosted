@@ -59,6 +59,18 @@ describe('the hosted server', () => {
     assert.equal((await call('GET', '/locales/fr.json')).status, 200);
     assert.equal((await call('GET', '/jszip.min.js')).status, 200);
     assert.equal((await call('GET', '/web/web-bridge.js')).status, 200);
+    // the hosted edition's book faces: declared in web.css, served from fonts/
+    const hostedCss = await (await call('GET', '/web/web.css')).text();
+    for (const family of ['Libron', 'Literata', 'EB Garamond', 'Crimson Pro']) {
+      const faces = hostedCss.match(new RegExp(`@font-face \\{ font-family: '${family}'; src: url\\('(/fonts/[^']+)'\\)`, 'g')) || [];
+      assert.equal(faces.length, 4, `${family} in regular, italic, bold and bold italic`);
+      for (const face of faces) {
+        const file = face.match(/url\('([^']+)'\)/)[1];
+        const res = await call('GET', file);
+        assert.equal(res.status, 200, `${file} is served`);
+        assert.equal(res.headers.get('content-type'), 'font/woff2');
+      }
+    }
     assert.equal((await call('GET', '/favicon.ico')).headers.get('content-type'), 'image/png');
     assert.equal((await call('GET', '/main.js')).status, 404, 'the main process is not for the browser');
     assert.equal((await call('GET', '/web/../package.json')).status, 404);

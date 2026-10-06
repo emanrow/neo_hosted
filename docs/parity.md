@@ -30,6 +30,7 @@ What a writer gets in a browser compared with desktop NEO. ✔ same code, same f
 | Handwriting… (View menu) | + | hosted only, the fourth room off the hallway: pages of strokes drawn with a stylus, a finger or a mouse, kept as points with the pen's pressure in `handwriting.json` through the desktop's own sidecar channels and drawn as SVG ribbons (`web/public/web-handwriting.js`); Export SVG… downloads a page; never OCR'd; desktop NEO ignores the file |
 | Auto-update, Check for Update | — | the site is always current; the item is gone from the menu |
 | Library Folder… | — | the server keeps the library (rows in Postgres, or a folder on the volume); Download Library… is the way out |
+| Body Font: Libron, Literata, EB Garamond, Crimson Pro | + | hosted only, the first of the typography work: four book faces for print and e-readers (SIL OFL, licences in `fonts/`), each in regular, italic, bold and bold italic, declared in `web/public/web.css` and listed by `web/public/web-menu.js`; the editor resolves the family name through its own `bodyFontStack`, and an EPUB or print export embeds the chosen face as it does the desktop's bundled ones |
 | Other Font… (local font picker) | — | left out of the menu; `queryLocalFonts` is Chrome-only and needs a permission prompt |
 
 ## Where the differences live
