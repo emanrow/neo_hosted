@@ -58,7 +58,7 @@ describe('the printer', () => {
   test('the image carries every file server.js requires from this folder', () => {
     // (the Dockerfile copies files by name; hyphenate.js was once left out and the service could not boot)
     const dockerfile = fs.readFileSync(path.join(__dirname, '..', 'Dockerfile'), 'utf8');
-    const copied = new Set(dockerfile.match(/^COPY (.+) \.\/$/m)[1].split(/\s+/));
+    const copied = new Set([...dockerfile.matchAll(/^COPY (.+) \.\/$/gm)].flatMap((m) => m[1].split(/\s+/)));
     const source = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
     for (const [, name] of source.matchAll(/require\('\.\/([\w-]+)'\)/g)) assert.ok(copied.has(name + '.js'), `${name}.js is copied into the image`);
     assert.ok(copied.has('book.css'), 'book.js reads book.css');
