@@ -191,7 +191,9 @@ body.hosted-touch #hosted-menu-hotzone, body.hosted-touch #nav-hotzone, body.hos
 }
 body.hosted-touch #hosted-menu-button { display: block; }
 body.hosted-touch #hosted-menubar.open ~ #hosted-menu-button, body.hosted-touch #hosted-menubar.open + #hosted-menu-button { opacity: 0; pointer-events: none; }
-body.hosted-touch #hosted-menubar { height: 44px; line-height: 44px; padding-left: 48px; overflow-x: auto; overflow-y: visible; }
+/* the titles wrap onto a second row when they do not fit, never scroll: iOS Safari clips what is positioned inside a
+   scroll container, and the menu sheet below hangs off this bar (it opened, unseen, under a 44px bar before) */
+body.hosted-touch #hosted-menubar { height: auto; min-height: 44px; line-height: 44px; padding-left: 48px; flex-wrap: wrap; overflow: visible; }
 body.hosted-touch .hm-title { height: 44px; padding: 0 12px; }
 body.hosted-touch #hosted-menubar li:not(.hm-sep) { min-height: 40px; line-height: 40px; }
 body.hosted-touch #hosted-menubar .hm-has-sub.hm-sub-open > ul { display: block; }
@@ -209,10 +211,11 @@ body.hosted-touch button, body.hosted-touch .b-refresh, body.hosted-touch #nav-a
 
 /* ---------- a narrow screen ---------- */
 @media (max-width: 640px) {
-  /* the menu bar scrolls sideways; a menu drops as a sheet across the screen and its flyouts open in place */
+  /* a menu drops as a sheet across the screen, hung under the whole bar (however many rows of titles it has),
+     and its flyouts open in place; the sheet stays above the browser's bottom toolbar (dvh) where that is understood */
   #hosted-menubar { padding-right: 0; }
   .hm-top { position: static; }
-  #hosted-menubar ul { position: fixed; left: 8px; right: 8px; top: 46px; min-width: 0; max-height: calc(100vh - 60px); overflow-y: auto; }
+  #hosted-menubar ul { position: absolute; left: 8px; right: 8px; top: 100%; margin-top: 2px; min-width: 0; max-height: calc(100vh - 70px); max-height: calc(100dvh - 70px); overflow-y: auto; }
   #hosted-menubar li { white-space: normal; }
   #hosted-menubar .hm-has-sub > ul { position: static; display: none; margin: 0 -14px 0 -8px; border: 0; border-radius: 0; box-shadow: none; max-height: none; padding-left: 18px; background: rgba(255,255,255,.04); }
   #hosted-menubar .hm-has-sub { flex-wrap: wrap; }
@@ -220,6 +223,12 @@ body.hosted-touch button, body.hosted-touch .b-refresh, body.hosted-touch #nav-a
   #hosted-menubar .hm-has-sub:hover > ul { display: none; }
   #hosted-menubar .hm-has-sub.hm-sub-open > ul { display: block; }
   .hm-accel { display: none; }
+  /* dialogs fit the screen: app.js draws the progress chart 520px wide (an SVG with a viewBox, so it scales) and
+     lays the goal fields in rows that are allowed to wrap here */
+  .modal { padding: 24px 18px; }
+  #stats-chart { width: 100%; height: auto; }
+  .stats-nums { gap: 12px; justify-content: space-between; }
+  .stats-row { flex-wrap: wrap; }
   #paper-scroll { width: 100%; }
   #paper, #aux-paper { width: 100%; max-width: 100%; margin: 0 0 80px; }
   .sheet, #aux-paper { padding: 30px 20px 60px; box-shadow: none; border: none; min-height: 92vh; }
