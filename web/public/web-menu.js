@@ -176,6 +176,9 @@
   document.body.append(hotzone, bar);
 
   let openMenu = null;
+  // a touch screen: nothing hovers, and a tap's compatibility mouse events must not act (iOS Safari swallows the
+  // click of a tap whose mouseenter changed the page, so a menu that opened on hover would never open on tap)
+  const NO_HOVER = !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
 
   function closeAll() {
     bar.querySelectorAll('.hm-open').forEach((el) => el.classList.remove('hm-open'));
@@ -221,6 +224,7 @@
         renderItems(entry.submenu, li);
         // a flyout that would run off the right edge of the window opens to the left instead
         li.addEventListener('mouseenter', () => {
+          if (NO_HOVER) return;
           li.classList.remove('hm-flip');
           const sub = li.querySelector(':scope > ul');
           if (sub && sub.getBoundingClientRect().right > window.innerWidth - 4) li.classList.add('hm-flip');
@@ -263,7 +267,7 @@
       });
       // like a native bar: once one menu is open, sliding across opens the others
       top.addEventListener('mouseenter', () => {
-        if (openMenu && openMenu !== top) { closeAll(); top.classList.add('hm-open'); bar.classList.add('open'); openMenu = top; }
+        if (!NO_HOVER && openMenu && openMenu !== top) { closeAll(); top.classList.add('hm-open'); bar.classList.add('open'); openMenu = top; }
       });
       bar.appendChild(top);
     }
@@ -274,7 +278,6 @@
   // and again after a choice closes the menus
   // (not on a touch screen: a tap's compatibility mouseenter would rebuild the
   // bar under the finger, and the click would land on a button already gone)
-  const NO_HOVER = !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
   for (const el of [hotzone, bar]) el.addEventListener('mouseenter', () => { if (!openMenu && !NO_HOVER) build(); });
   document.addEventListener('click', (e) => { if (!bar.contains(e.target)) closeAll(); });
   document.addEventListener('keydown', (e) => {

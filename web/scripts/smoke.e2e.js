@@ -157,6 +157,46 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
     'each room left its sidecar beside the book');
   check(errors.length === 0, 'no console errors or failed requests' + (errors.length ? ': ' + errors.join('; ') : ''));
 
+  // ---- the same pages on a phone: a touch screen at phone width, the menu from its button, a dialog that fits ----
+  // (device emulation: touch events and (hover: none), which is what web-mobile.js and web.css key on)
+  const phone = await browser.newContext({ viewport: { width: 390, height: 664 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const small = await phone.newPage();
+  small.on('pageerror', (e) => errors.push('phone pageerror: ' + e.message));
+  await small.goto(`http://127.0.0.1:${PORT}/login`);
+  await small.fill('#email', 'smoke@example.com');
+  await small.fill('#password', 'longenough-pass');
+  await small.click('#submit');
+  await small.waitForURL(`http://127.0.0.1:${PORT}/`);
+  await small.waitForSelector('#shelves .book, #shelves .new-book', { timeout: 10000 });
+  await small.click('#shelves .book');
+  await small.waitForSelector('#editor-view:not([hidden])', { timeout: 10000 });
+  await wait(600);
+  check(await small.evaluate(() => document.body.classList.contains('hosted-touch')), 'a touch screen gets the ☰ button');
+  await small.tap('#hosted-menu-button');
+  await wait(400);
+  await small.tap('#hosted-menubar .hm-title:has-text("File")');
+  await wait(400);
+  const sheet = await small.evaluate(() => {
+    const first = document.querySelector('#hosted-menubar .hm-top.hm-open > ul > li:not(.hm-sep)');
+    if (!first) return { open: false };
+    const r = first.getBoundingClientRect();
+    return { open: true, underTheFinger: first.contains(document.elementFromPoint(r.left + 20, r.top + r.height / 2)), top: r.top };
+  });
+  check(sheet.open && sheet.underTheFinger, 'a tap on a menu title drops its sheet where the next tap reaches it (' + JSON.stringify(sheet) + ')');
+  await small.screenshot({ path: path.join(shots, 'phone-menu.png') });
+  await small.tap('#hosted-menubar .hm-top.hm-open > ul > li:has-text("Goals")');
+  await small.waitForSelector('#st-daily', { timeout: 5000 });
+  await wait(300);
+  const dialog = await small.evaluate(() => {
+    const modal = document.querySelector('#st-daily').closest('.modal');
+    return { client: modal.clientWidth, scroll: modal.scrollWidth, page: document.documentElement.scrollWidth, screen: window.innerWidth };
+  });
+  check(dialog.scroll <= dialog.client && dialog.page <= dialog.screen, 'the progress dialog fits a phone screen without sideways scrolling (' + JSON.stringify(dialog) + ')');
+  await small.screenshot({ path: path.join(shots, 'phone-stats.png') });
+  await small.tap('.m-ok');
+  await wait(300);
+  await phone.close();
+
   console.log(`\nAll good. Screenshots in ${shots}`);
   await browser.close();
   server.kill();
