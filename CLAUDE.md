@@ -39,6 +39,7 @@ Serves NEO, a distraction-free word processor for books, as an authenticated web
 | [HOSTED.md](HOSTED.md) | The hosted edition for humans: what it is, credits, how to run it, links into this tree |
 | [docs/architecture.md](docs/architecture.md) | Three doorways, no build step, request lifecycle, a writer's folder on the volume, the disk module shared with `main.js`, and what is still a port |
 | [docs/auth-and-users.md](docs/auth-and-users.md) | Sign-in, sessions, signup policy, the JSON user store and when to move to Postgres, API keys at rest, known gaps |
+| [docs/saving.md](docs/saving.md) | The write path end to end, what `app.js` assumes of a disk that HTTP does not keep, the twin-chapter bug and the saver that closes it, what can still happen and what a writer does about it |
 | [docs/parity.md](docs/parity.md) | Feature-by-feature comparison with the desktop, where each difference lives, which accelerators the menu bar owns |
 | [docs/deployment.md](docs/deployment.md) | Environment variables, Railway steps, Docker, a laptop, verifying without a shell |
 | [docs/testing.md](docs/testing.md) | The hosted suite, the Chromium smoke run, upstream's suite, what a good test here looks like |

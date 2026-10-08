@@ -27,26 +27,66 @@
   let menuListener = null;
   let signedOutShown = false;
 
-  async function rpc(channel, ...args) {
+  // A failure a retry could mend (no connection, a server answering 5xx
+  // while Railway restarts it, a session that ended) is marked `transient`
+  // on the error; the chapter saver below keeps trying those. Anything the
+  // server meant (a bad name, a refused request) is final.
+  const transient = (err) => { err.transient = true; return err; };
+  async function request(channel, args, { keepalive = false } = {}) {
     let res;
     try {
       res = await fetch('/api/' + channel, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ args }),
-        credentials: 'same-origin'
+        credentials: 'same-origin',
+        keepalive
       });
     } catch (err) {
-      throw new Error(tr('No connection to the server ({error}) — your words stay on the page until it is back', { error: String(err && err.message || err) }));
+      throw transient(new Error(tr('No connection to the server ({error}) — your words stay on the page until it is back', { error: String(err && err.message || err) })));
     }
     if (res.status === 401) {
       // never bounce away from a page with unsaved words: say it once, keep retrying
       if (!signedOutShown) { signedOutShown = true; say(tr('Your session ended. Sign in again in another tab — your words stay on this page and save once you have.'), 12000); }
-      throw new Error('Signed out');
+      throw transient(new Error('Signed out'));
     }
     const body = await res.json().catch(() => ({ ok: false, error: res.statusText }));
-    if (!body.ok) throw new Error(body.error || 'Request failed');
+    if (!body.ok) {
+      const err = new Error(body.error || 'Request failed');
+      throw res.status >= 500 ? transient(err) : err;
+    }
     return body.result;
+  }
+  const rpc = (channel, ...args) => request(channel, args);
+
+  // Chapter writes go through a saver (web-saves.js) that does not take a
+  // lost answer for a lost save: see that file for the twin-chapter bug it
+  // closes. A request small enough for `keepalive` outlives the page going
+  // to the background on a phone (the browser caps such bodies at 64 KB in
+  // all, so only short chapters ask for it).
+  const KEEPALIVE_LIMIT = 30000;
+  const fitsKeepalive = (text) => text.length < KEEPALIVE_LIMIT / 4 || new TextEncoder().encode(text).length < KEEPALIVE_LIMIT;
+  let stallToastAt = 0;
+  const chapterSaver = window.neoHostedSaves.createSaver({
+    onStall: (key, attempt, err) => {
+      if (attempt < 2 || Date.now() - stallToastAt < 60000) return;
+      stallToastAt = Date.now();
+      say(err && err.message || tr('No connection to the server ({error}) — your words stay on the page until it is back', { error: '' }), 8000);
+    }
+  });
+  // Words a stalled lane holds are nowhere but on this page: leaving now
+  // would lose them, so the browser asks first (a healthy save on its way
+  // does not count; the flush on unload makes one of those every time).
+  window.addEventListener('beforeunload', (e) => {
+    if (!chapterSaver.stalled()) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+  function writeChapterDurably(bookId, chId, html) {
+    return chapterSaver.save(bookId + '/' + chId, html, {
+      send: (text) => request('chapter:write', [bookId, chId, text], { keepalive: fitsKeepalive(text) }),
+      readBack: () => request('chapter:read', [bookId, chId])
+    });
   }
 
   // Files the writer hands the page (a dropped cover, a picked image) are
@@ -199,7 +239,7 @@
     /* ---------- chapters and sidecars ---------- */
     chapterStamps: (bookId) => rpc('chapter:stamps', noting(bookId)),
     readChapter: (bookId, chId) => rpc('chapter:read', noting(bookId), chId),
-    writeChapter: (bookId, chId, html) => rpc('chapter:write', noting(bookId), chId, html),
+    writeChapter: (bookId, chId, html) => writeChapterDurably(noting(bookId), chId, String(html ?? '')),
     /* ---------- public pages (hosted only; web-share.js is the caller) ---------- */
     listShares: (bookId) => rpc('share:list', bookId),
     publishShare: async (bookId, chapterId, title, html) => rpc('share:publish', bookId, chapterId, title, await withNotes('html', await withPictures(html))),

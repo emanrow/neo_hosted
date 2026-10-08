@@ -76,7 +76,7 @@ Without a database (a laptop, the tests), `lib/library.js` and `lib/branches.js`
 
 **The revision log** (Postgres, `revisions` table): one row per autosave that changed a chapter, a snapshot of the whole chapter every twentieth row and a paragraph-grain diff against the parent otherwise, each row hashed into the one before it with its timestamp. Rebuilding any revision walks back to the nearest snapshot and replays forward. The chapter row (or file) stays the chapter's truth; the log is history, and a chapter written before the log existed simply has history that starts at its next save.
 
-A writer can download their library (File → Download Library…) and open it in desktop NEO. Two browsers signed into the same account see each other's edits through the same `refreshFromDisk` machinery that syncs two laptops over iCloud: `chapter:stamps` answers with `modified:size`, and `app.js` decides what to adopt. Nothing here replaces that with last-write-wins; AGENTS.md, "Saving and sync", explains why.
+A writer can download their library (File → Download Library…) and open it in desktop NEO. Two browsers signed into the same account see each other's edits through the same `refreshFromDisk` machinery that syncs two laptops over iCloud: `chapter:stamps` answers with `modified:size`, and `app.js` decides what to adopt. Nothing here replaces that with last-write-wins; AGENTS.md, "Saving and sync", explains why. What that machinery assumes of a disk, where HTTP breaks the assumption and how the bridge's chapter saver (`web/public/web-saves.js`) closes the gap is in [saving.md](saving.md).
 
 ## What is shared with main.js, and what is still a port
 
