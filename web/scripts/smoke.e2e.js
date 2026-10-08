@@ -52,7 +52,8 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(`${m.type()}: ${m.text()}`); });
+  // the lost-answer pass below drops one request on purpose; the browser logs that
+  page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('ERR_INTERNET_DISCONNECTED')) errors.push(`${m.type()}: ${m.text()}`); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('response', (r) => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
 
@@ -102,6 +103,21 @@ const check = (ok, what) => { if (!ok) throw new Error('FAILED: ' + what); conso
   await wait(300);
   check((await page.evaluate(() => (typeof focusLevel !== 'undefined' ? focusLevel : '?'))) !== 'off', 'an accelerator the menu bar owns reaches app.js');
   await page.screenshot({ path: path.join(shots, 'editor.png') });
+
+  // ---- a save whose answer is lost (a phone going to the background mid-request) ----
+  // the write reaches the server, the response never comes back; the words typed
+  // after it stay unsaved on the page; then the editor looks at the server as it
+  // does on focus. Before web-saves.js this made a twin chapter "from other device".
+  await page.route('**/api/chapter:write', async (route) => { await route.fetch(); await route.abort('internetdisconnected'); });
+  await page.keyboard.type(' The answer never came back.');
+  await wait(2500);
+  await page.unroute('**/api/chapter:write');
+  await page.keyboard.type(' Still typing.');
+  await wait(200);
+  await page.evaluate(() => refreshFromDisk());
+  await wait(1000);
+  check((await page.evaluate(() => book.chapterOrder.length)) === 1, 'a save whose answer was lost is not taken for another device\'s edit');
+  await wait(1800); // the last words save
 
   // ---- the rooms off the hallway: each opens, takes one action, closes on Escape ----
   const room = async (what, open, selector, act) => {

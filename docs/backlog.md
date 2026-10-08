@@ -9,6 +9,15 @@ Extensions planned for this fork, in rough order. Each one keeps the rules in [A
 1. ~~**Images to object storage**~~ Done 2026-10-06: `web/lib/image-store.js`; the bucket holds them as soon as one is configured, the rows or the volume until then.
 2. ~~**Server-side PDF** for exports and the email snapshot~~ Done 2026-10-06 as the printer (`print/`), a second Railway service rather than a fatter image; the print view stays as the fallback. The conventions followed the same day: a trim-size and scene-break choice in a small dialog, running heads, folios in the outer corners, recto chapter openers.
 
+## Saving
+
+The write path was reviewed end to end on 2026-10-08 after a twin chapter "from other device" turned out to be the editor's own save with a lost answer ([saving.md](saving.md)); the saver in `web/public/web-saves.js` closed that. Left from the review, in order:
+
+1. **Merge instead of a twin** when two devices really did edit one chapter between refreshes: the paragraph-grain three-way merge in `web/lib/merge.js` with the revision log's last common save as the base, a twin only for the paragraphs changed on both sides. Needs a hosted-side hook before `refreshFromDisk`'s conflict rule, since `app.js` stays upstream's.
+2. **A local copy while a save is stalled** (`localStorage`, cleared once the lane lands), so a page closed during an outage still has its words at the next sign-in.
+3. **The saver for sidecars** (`json:write`: stickies, darlings, footnotes, the rooms) once a room needs it; today a failed sidecar write waits for its owner's next flush.
+4. **Upstream**: in `refreshFromDisk`, a disk copy equal to the page's current text is not a conflict. A one-line pull request to upstream; Pocket over a flaky bridge has the same gap.
+
 ## Storage
 
 Decided 2026-10-05 with the owner: canonical text moves into Postgres by stages, behind the same `library` interface `app.js` already talks to, so the editor stays upstream's. Branching (alternate drafts side by side) is the feature that decides this; proof of human work is a quiet property of the history, never a certificate; the desktop folder stops being the escape hatch and DOCX/PDF/EPUB exports take its place, with a plain-file folder export kept as a courtesy.
